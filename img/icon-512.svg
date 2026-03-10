@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#0f172a"/>
+  <text x="256" y="200" text-anchor="middle" font-family="system-ui,sans-serif" font-size="90" font-weight="800" fill="#ffffff">Show</text>
+  <text x="256" y="310" text-anchor="middle" font-family="system-ui,sans-serif" font-size="90" font-weight="800" fill="#f59e0b">Board</text>
+  <text x="256" y="420" text-anchor="middle" font-size="100">🎬</text>
+</svg>
