@@ -657,7 +657,7 @@ ul, ol { list-style: none; }
 /* =============================================
    PROFILE PAGE
    ============================================= */
-.profile-page { padding: 0 32px 40px; max-width: 640px; margin: 0 auto; }
+.profile-page { padding: 0 32px 40px; max-width: 1000px; margin: 0 auto; }
 .profile-header { text-align: center; padding: 32px 0 28px; }
 .profile-avatar-lg {
   width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 16px;
@@ -747,7 +747,9 @@ ul, ol { list-style: none; }
 .already-friend { color: var(--emerald-400); font-size: .8125rem; font-weight: 600; flex-shrink: 0; }
 
 /* Friend Profile */
-.friend-profile-page { padding-bottom: 40px; max-width: 800px; margin: 0 auto; }
+.friend-profile-page { padding-bottom: 40px; }
+.friend-profile-page .stats-grid { padding: 0 32px; }
+.friend-profile-page .section > h3 { padding: 0 32px; margin-bottom: 16px; font-size: 1.25rem; font-weight: 700; color: white; letter-spacing: -.2px; }
 
 /* =============================================
    ACTIVITY FEED
@@ -800,7 +802,7 @@ ul, ol { list-style: none; }
 /* =============================================
    MATCHER PAGES
    ============================================= */
-.matcher-page { padding-bottom: 40px; max-width: 700px; margin: 0 auto; }
+.matcher-page { padding-bottom: 40px; max-width: 800px; margin: 0 auto; }
 .matcher-setup-content { padding: 0 32px; }
 .setup-desc { color: var(--slate-400); font-size: .9375rem; line-height: 1.6; margin-bottom: 28px; }
 .setup-section { margin-bottom: 28px; }
@@ -859,7 +861,7 @@ ul, ol { list-style: none; }
 .swipe-btn.like:hover { background: rgba(16,185,129,.1); }
 
 /* Matcher Results */
-.results-page { padding: 0 32px 40px; max-width: 800px; margin: 0 auto; }
+.results-page { padding: 0 32px 40px; max-width: 1000px; margin: 0 auto; }
 .results-summary { text-align: center; padding: 32px 0; }
 .match-count { font-size: 4rem; font-weight: 800; color: var(--emerald-400); line-height: 1; }
 .results-summary p { color: var(--slate-300); font-size: 1.125rem; margin-top: 8px; }
@@ -883,7 +885,7 @@ ul, ol { list-style: none; }
    ANALYTICS PAGE
    ============================================= */
 .analytics-page { padding-bottom: 40px; }
-.analytics-content { padding: 0 32px; max-width: 900px; }
+.analytics-content { padding: 0 32px; }
 
 .chart-section {
   background: var(--glass-bg); border: 1px solid var(--glass-border);
@@ -946,7 +948,7 @@ ul, ol { list-style: none; }
 /* =============================================
    PLEX PAGES
    ============================================= */
-.plex-page { padding-bottom: 40px; max-width: 640px; margin: 0 auto; }
+.plex-page { padding-bottom: 40px; max-width: 800px; margin: 0 auto; }
 .plex-content { padding: 0 32px; }
 .plex-status {
   background: var(--glass-bg); border: 1px solid var(--glass-border);
@@ -1172,7 +1174,9 @@ ul, ol { list-style: none; }
   .details-info h1 { font-size: 1.5rem; }
   .watchlist-items, .friend-items, .activity-items, .shame-items,
   .history-items, .list-items, .search-result-items, .cast-list { padding: 0 16px; }
-  .profile-page { padding: 0 16px 40px; }
+  .profile-page { padding: 0 16px 40px; max-width: none; }
+  .friend-profile-page .stats-grid { padding: 0 16px; }
+  .friend-profile-page .section > h3 { padding: 0 16px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .media-grid { padding: 0 16px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .filter-tabs, .filter-chips { padding: 0 16px; }
@@ -1235,6 +1239,9 @@ ul, ol { list-style: none; }
   .analytics-content { padding: 0 48px; }
   .badges-grid { padding: 0 48px; }
   .matcher-setup-content { padding: 0 48px; }
+  .profile-page { padding: 0 48px 40px; max-width: none; }
+  .friend-profile-page .stats-grid { padding: 0 48px; }
+  .friend-profile-page .section > h3 { padding: 0 48px; }
   .results-page { padding: 0 48px 40px; }
   .plex-content { padding: 0 48px; }
   .create-list-btn { margin: 0 48px 20px; }
