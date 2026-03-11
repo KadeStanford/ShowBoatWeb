@@ -136,11 +136,41 @@ const WatchedHistoryPage = {
         const details = await API.getShowDetails(show.tmdbId);
         if (details) {
           show.totalEpisodes = details.number_of_episodes || 0;
+          show.year = (details.first_air_date || '').substring(0, 4);
           if (!show.name && (details.name || details.title)) show.name = details.name || details.title;
           if (!show.posterPath && details.poster_path) show.posterPath = details.poster_path;
         }
       } catch (_) {}
     }));
+
+    // Fix same-name show mismatches — if two shows share a name and one has more
+    // watched episodes than its total while another has fewer, the Plex sync likely
+    // assigned episodes to the wrong TMDB ID (title-based docId collision).
+    this._fixSameNameMismatches();
+  },
+
+  _fixSameNameMismatches() {
+    const byName = new Map();
+    for (const show of this.state.tvShows) {
+      const key = (show.name || '').toLowerCase().trim();
+      if (!key) continue;
+      if (!byName.has(key)) byName.set(key, []);
+      byName.get(key).push(show);
+    }
+    for (const [, group] of byName) {
+      if (group.length < 2) continue;
+      const withTotal = group.filter(s => s.totalEpisodes > 0);
+      if (withTotal.length < 2) continue;
+      // Only intervene if at least one show has more watched than its total
+      if (!withTotal.some(s => s.episodes.length > s.totalEpisodes)) continue;
+      // Reassign: show with the most total episodes gets the largest episode list
+      withTotal.sort((a, b) => b.totalEpisodes - a.totalEpisodes);
+      const epArrays = withTotal.map(s => s.episodes).sort((a, b) => b.length - a.length);
+      for (let i = 0; i < withTotal.length; i++) {
+        withTotal[i].episodes = epArrays[i];
+        withTotal[i].latestAt = epArrays[i].reduce((max, e) => Math.max(max, e.watchedAt || 0), 0);
+      }
+    }
   },
 
   _draw(el) {
@@ -213,7 +243,7 @@ const WatchedHistoryPage = {
         : `<div class="wh-poster wh-poster-placeholder">${UI.icon('tv', 28)}</div>`
       }
       <div class="wh-card-info">
-        <p class="wh-card-title">${UI.escapeHtml(show.name || 'Unknown Show')}</p>
+        <p class="wh-card-title">${UI.escapeHtml(show.name || 'Unknown Show')}${show.year ? ` <span class="wh-card-year">(${show.year})</span>` : ''}</p>
         <p class="wh-card-sub">${eps}${total ? ` / ${total}` : ''} episode${eps !== 1 ? 's' : ''} watched</p>
         ${show.latestAt ? `<p class="wh-card-date">${this._fmtDate(show.latestAt)}</p>` : ''}
       </div>

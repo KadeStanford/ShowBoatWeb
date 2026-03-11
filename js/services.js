@@ -772,9 +772,12 @@ const Services = {
     const batch = db.batch();
     const ref = db.collection('users').doc(uid).collection('plexHistory');
     for (const item of items) {
+      // Use tmdbId in docId when available to prevent same-name show collisions
+      const titleSlug = (item.title || '').replace(/\W+/g, '_');
+      const idPart = item.tmdbId ? String(item.tmdbId) : titleSlug;
       const docId = item.type === 'show'
-        ? `show_${(item.title || '').replace(/\W+/g, '_')}_s${item.season || 0}e${item.episode || 0}`
-        : `movie_${(item.title || '').replace(/\W+/g, '_')}`;
+        ? `show_${idPart}_s${item.season || 0}e${item.episode || 0}`
+        : `movie_${idPart}`;
       batch.set(ref.doc(docId), { ...item, savedAt: Date.now() }, { merge: true });
     }
     await batch.commit();
