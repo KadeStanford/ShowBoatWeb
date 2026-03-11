@@ -510,5 +510,57 @@ const Services = {
     } catch (_) {}
     const snap = await db.collection('users').doc(uid).collection('plexHistory').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+  },
+
+  // Backport Plex-synced items into the user's activity log.
+  // Creates one "watched" entry per unique TMDB ID (most recent play date).
+  // Uses a stable doc ID so re-syncing is idempotent.
+  async backportPlexActivity(items) {
+    const uid = this._uid(); if (!uid) return;
+    const me = this._user();
+
+    // Deduplicate: keep only the most-recent entry per tmdbId
+    const byTmdb = new Map();
+    items.forEach(item => {
+      if (!item.tmdbId) return;
+      const key = `${item.type}:${item.tmdbId}`;
+      const existing = byTmdb.get(key);
+      if (!existing || (item.lastViewedAt || 0) > (existing.lastViewedAt || 0)) {
+        byTmdb.set(key, item);
+      }
+    });
+
+    if (!byTmdb.size) return;
+
+    const activityRef = db.collection('users').doc(uid).collection('activity');
+    const BATCH_LIMIT = 499; // Firestore max is 500 ops per batch
+    let batch = db.batch();
+    let count = 0;
+
+    for (const item of byTmdb.values()) {
+      // Stable ID prevents duplicate entries on re-sync
+      const docId = `plex_watched_${item.tmdbId}`;
+      const data = {
+        type: 'watched',
+        source: 'plex',
+        mediaId: item.tmdbId,
+        mediaTitle: item.tmdbTitle || item.title,
+        mediaType: item.type === 'movie' ? 'movie' : 'tv',
+        mediaPosterPath: item.posterPath || null,
+        userId: uid,
+        userName: me?.displayName || '',
+        userPhoto: me?.photoURL || null,
+        createdAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now()
+      };
+      // merge: false so the createdAt is never overwritten on re-sync
+      batch.set(activityRef.doc(docId), data);
+      count++;
+      if (count >= BATCH_LIMIT) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) await batch.commit();
   }
 };
