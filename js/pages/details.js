@@ -1,11 +1,11 @@
 /* ShowBoat — Show/Movie Details Page */
 const DetailsPage = {
-  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null },
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null, watchedEps: new Set() },
 
   async render(params) {
     if (!params) return;
     const rawType = params.type || 'tv';
-    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null };
+    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null, watchedEps: new Set() };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
@@ -38,6 +38,7 @@ const DetailsPage = {
         const firstSeason = matchedSeason || details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
         this.state.seasonNum = firstSeason.season_number;
         await this.loadEpisodes(this.state.seasonNum);
+        this.state.watchedEps = await Services.getWatchedEpisodesForShow(this.state.id).catch(() => new Set());
       }
       this.loadFriendActivity();
       this.state.loading = false;
@@ -208,11 +209,13 @@ const DetailsPage = {
   },
 
   renderEpisodeList() {
+    const watchedSet = this.state.watchedEps || new Set();
     return `<div class="episode-list">${this.state.episodes.map((ep, i) => {
       const still = ep.still_path ? API.imageUrl(ep.still_path, 'w300') : '';
       const desc = ep.overview ? (ep.overview.length > 120 ? ep.overview.substring(0, 120) + '...' : ep.overview) : '';
       const epKey = `s${ep.season_number}_e${ep.episode_number}`;
       const friends = this.state.friendEpRatings[epKey] || [];
+      const isEpWatched = watchedSet.has(epKey);
       return `<div class="episode-item" data-ep="${ep.episode_number}" onclick="DetailsPage.showEpisodeDetails(${i})">
         ${still ? `<img src="${still}" class="episode-still" alt="" loading="lazy">` : `<div class="episode-still placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="episode-info">
@@ -225,7 +228,7 @@ const DetailsPage = {
             : `<span class="ep-friend-av" title="${UI.escapeHtml(f.name)} — ${f.rating}/10">${(f.name || '?')[0].toUpperCase()}</span>`
           ).join('')}${friends.length > 5 ? `<span class="ep-friend-av more">+${friends.length - 5}</span>` : ''}</div>` : `<div class="ep-friend-avatars" id="ep-avatars-${epKey}"></div>`}
         </div>
-        <button class="ep-watched-btn" onclick="event.stopPropagation(); DetailsPage.toggleEpisodeWatched(${ep.season_number}, ${ep.episode_number}, this)" title="Mark watched">
+        <button class="ep-watched-btn${isEpWatched ? ' active' : ''}" onclick="event.stopPropagation(); DetailsPage.toggleEpisodeWatched(${ep.season_number}, ${ep.episode_number}, this)" title="Mark watched">
           ${UI.icon('check', 18)}
         </button>
       </div>`;
@@ -310,11 +313,13 @@ const DetailsPage = {
     if (isWatched) {
       await Services.markUnwatched(this.state.id, 'tv', season, episode);
       btn.classList.remove('active');
+      this.state.watchedEps.delete(`s${season}_e${episode}`);
     } else {
       await Services.markWatched(this.state.id, 'tv', season, episode, {
         name: d.name || d.title, posterPath: d.poster_path, episodeName: epObj?.name || ''
       });
       btn.classList.add('active');
+      this.state.watchedEps.add(`s${season}_e${episode}`);
     }
   },
 

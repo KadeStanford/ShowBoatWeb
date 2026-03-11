@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), plexIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null, _plexFetchedAt: {}, _plexHomeTick: null },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendRecs: [], friendActivityIds: new Set(), plexIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null, _plexFetchedAt: {}, _plexHomeTick: null },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -35,7 +35,7 @@ const HomePage = {
       if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
     // Friend trends + activity dots + personal recs + plex sessions
-    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); this.loadPlexSessions(); this.loadPlexDots(); }
+    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); this.loadPlexSessions(); this.loadPlexDots(); this.loadFriendRecs(); }
   },
 
   async loadPlexDots() {
@@ -274,6 +274,7 @@ const HomePage = {
           <div class="horizontal-scroll" id="keep-watching-list"></div>
         </div>
         ${s.shames.length ? this.renderShameSection() : ''}
+        <div class="section" id="friend-recs-section" style="display:none"></div>
         ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll"><p class="empty-text">Loading...</p></div></div>`}
         <div class="section">
           <div class="section-header"><h3>Trending Shows</h3><button class="see-all-btn" onclick="App.navigate('discover',{tab:'tv'})">See All</button></div>
@@ -375,6 +376,49 @@ const HomePage = {
       <div class="section-header"><h3>${UI.icon(s._dynIcon, 16)} ${s._dynLabel}</h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div>
       <div class="horizontal-scroll">${this.renderHorizontalList(items)}</div>
     </div>`;
+  },
+
+  async loadFriendRecs() {
+    try {
+      const recs = await Services.getRecommendations();
+      if (!recs.length) return;
+      this.state.friendRecs = recs;
+      const sec = document.getElementById('friend-recs-section');
+      if (sec) { sec.innerHTML = this.renderFriendRecsSection(); sec.style.display = ''; }
+    } catch (_) {}
+  },
+
+  renderFriendRecsSection() {
+    const recs = this.state.friendRecs;
+    if (!recs.length) return '';
+    return `<div class="section-header"><h3>${UI.icon('send', 18)} Recommended For You</h3></div>
+      <div class="horizontal-scroll">${recs.map(r => {
+        const poster = r.mediaPosterPath ? API.imageUrl(r.mediaPosterPath, 'w342') : '';
+        const rType = (r.mediaType || 'tv') === 'show' ? 'tv' : (r.mediaType || 'tv');
+        return `<div class="friend-rec-card" onclick="App.navigate('details',{id:${r.mediaId},type:'${rType}'})">
+          ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
+          <button class="friend-rec-dismiss" onclick="event.stopPropagation(); HomePage.dismissRec('${r.id}', this)" title="Dismiss">${UI.icon('x', 14)}</button>
+          <div class="friend-rec-from">
+            ${r.fromPhoto ? `<img src="${UI.escapeHtml(r.fromPhoto)}" alt="" class="friend-rec-avatar">` : `<span class="friend-rec-avatar-ph">${(r.fromName || '?')[0].toUpperCase()}</span>`}
+            <span>${UI.escapeHtml(r.fromName || 'A friend')}</span>
+          </div>
+          <p class="card-title">${UI.escapeHtml(r.mediaTitle || '')}</p>
+        </div>`;
+      }).join('')}</div>`;
+  },
+
+  async dismissRec(recId, btn) {
+    const card = btn.closest('.friend-rec-card');
+    if (card) { card.style.opacity = '0'; card.style.transform = 'scale(0.9)'; }
+    await Services.dismissRecommendation(recId).catch(() => {});
+    this.state.friendRecs = this.state.friendRecs.filter(r => r.id !== recId);
+    setTimeout(() => {
+      if (card) card.remove();
+      if (!this.state.friendRecs.length) {
+        const sec = document.getElementById('friend-recs-section');
+        if (sec) sec.style.display = 'none';
+      }
+    }, 300);
   },
 
   renderShameSection() {

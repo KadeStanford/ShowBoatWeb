@@ -469,6 +469,25 @@ const Services = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
+  async dismissRecommendation(recId) {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(uid).collection('recommendations').doc(recId).delete();
+  },
+
+  async getWatchedEpisodesForShow(tmdbId) {
+    const uid = this._uid(); if (!uid) return new Set();
+    const ref = db.collection('users').doc(uid).collection('watched');
+    const snap = await ref.where('tmdbId', '==', Number(tmdbId)).where('mediaType', '==', 'tv').get();
+    const set = new Set();
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.seasonNumber != null && data.episodeNumber != null) {
+        set.add(`s${data.seasonNumber}_e${data.episodeNumber}`);
+      }
+    });
+    return set;
+  },
+
   // ==================== MATCHER ====================
   async createMatcherSession(friendUid, mediaType, items) {
     const uid = this._uid(); if (!uid) return null;

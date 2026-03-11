@@ -2886,6 +2886,55 @@ img.ep-friend-av { background: var(--slate-800); }
 .recommended-empty p { color: var(--text-secondary); font-size: 13px; margin: 0; }
 
 /* ============================================================
+   FRIEND RECOMMENDATION CARDS (Home Page)
+   ============================================================ */
+.friend-rec-card {
+  position: relative; flex-shrink: 0; width: 130px; cursor: pointer;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.friend-rec-card img {
+  width: 130px; height: 195px; object-fit: cover; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.friend-rec-card .poster-placeholder {
+  width: 130px; height: 195px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+  color: var(--slate-400);
+}
+.friend-rec-card .card-title {
+  font-size: 12px; color: var(--slate-200); margin: 6px 0 0; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.friend-rec-dismiss {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+  border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(0,0,0,0.6); color: var(--slate-300);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.friend-rec-card:hover .friend-rec-dismiss { opacity: 1; }
+.friend-rec-dismiss:hover { background: rgba(220,38,38,0.7); color: #fff; }
+.friend-rec-from {
+  position: absolute; bottom: 30px; left: 4px; right: 4px;
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 6px; border-radius: 8px;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  font-size: 10px; color: var(--slate-200); font-weight: 600;
+  white-space: nowrap; overflow: hidden;
+}
+.friend-rec-avatar {
+  width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  border: 1px solid rgba(52,211,153,0.4);
+}
+.friend-rec-avatar-ph {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(52,211,153,0.2); color: var(--emerald-400);
+  font-size: 10px; font-weight: 700;
+}
+
+/* ============================================================
    PROFILE — INVITE CODES & TICKETS
    ============================================================ */
 
