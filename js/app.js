@@ -40,6 +40,8 @@ const App = {
       this.user = user;
       if (user) {
         this.showNav(true);
+        // Restore Plex connection + library cache from Firestore (runs in background)
+        Services.restorePlexOnLogin().catch(() => {});
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);

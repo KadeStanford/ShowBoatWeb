@@ -605,6 +605,42 @@ const Services = {
     setLibrary(lib) { localStorage.setItem('plex_library', JSON.stringify(lib)); }
   },
 
+  // ==================== PLEX CREDENTIALS (Firestore) ====================
+  async savePlexCredentials(serverName, token) {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(uid).set(
+      { plexCredentials: { serverName: serverName || '', token, savedAt: Date.now() } },
+      { merge: true }
+    );
+  },
+
+  async restorePlexOnLogin() {
+    const uid = this._uid(); if (!uid) return;
+    // Already connected (localStorage still has credentials) — just ensure library cache is warm
+    if (this.plex.isConnected) {
+      if (!this.plex.getLibrary().length) await this._restorePlexLibraryCache(uid);
+      return;
+    }
+    try {
+      const snap = await db.collection('users').doc(uid).get();
+      const creds = snap.data()?.plexCredentials;
+      if (creds?.token) {
+        this.plex.connect(creds.serverName || '', creds.token);
+        await this._restorePlexLibraryCache(uid);
+      }
+    } catch (_) {}
+  },
+
+  async _restorePlexLibraryCache(uid) {
+    try {
+      const snap = await db.collection('users').doc(uid).collection('plexHistory').get();
+      if (!snap.empty) {
+        const items = snap.docs.map(d => d.data());
+        this.plex.setLibrary(items);
+      }
+    } catch (_) {}
+  },
+
   // ==================== PLEX HISTORY (Firestore) ====================
   async savePlexHistory(items) {
     const uid = this._uid(); if (!uid) return;
@@ -631,7 +667,6 @@ const Services = {
 
   async findInPlexHistory(tmdbId) {
     const uid = this._uid(); if (!uid) return null;
-    if (!this.plex.isConnected) return null;
     try {
       const id = Number(tmdbId);
       const snap = await db.collection('users').doc(uid).collection('plexHistory')

@@ -112,6 +112,8 @@ const PlexConnectPage = {
             if (server) { serverName = server.name || ''; Services.plex.connect(serverName, result.authToken); }
             else { Services.plex.connect('', result.authToken); }
           } catch (_) { Services.plex.connect('', result.authToken); }
+          // Persist credentials to Firestore for cross-device restore
+          Services.savePlexCredentials(serverName, result.authToken).catch(() => {});
           this.state.connected = true;
           this.state.server = serverName;
           UI.toast('Plex connected!', 'success');
@@ -265,6 +267,8 @@ const PlexConnectPage = {
 
         Services.plex.connect(server.name, token);
         this.state.server = server.name;
+        // Save credentials to Firestore so they restore on next login
+        try { await Services.savePlexCredentials(server.name, token); } catch (_) {}
         UI.toast(`Synced ${allItems.length} items from "${server.name}"`, 'success');
       } else {
         UI.toast(`Connected to "${server.name}" but no watched items found.`, 'info');
@@ -279,6 +283,11 @@ const PlexConnectPage = {
   disconnect() {
     if (!confirm('Disconnect your Plex account?')) return;
     Services.plex.disconnect();
+    // Remove saved credentials from Firestore
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      db.collection('users').doc(uid).set({ plexCredentials: firebase.firestore.FieldValue.delete() }, { merge: true }).catch(() => {});
+    }
     this.state.connected = false;
     this.state.server = null;
     this.draw(document.getElementById('page-content'));
@@ -432,10 +441,18 @@ const PlexConnectPage = {
     const allItems = this._syncItems || [];
     const showKey = plexItem.title;
     const plexEpisodes = allItems.filter(i =>
-      i.type === 'show' && i.title === showKey && i.episodeTitle && i.season != null && i.episode != null
-    ).slice(0, 6); // check up to 6 episodes
+      i.type === 'show' && i.title === showKey && i.episodeTitle &&
+      i.season > 0 && i.episode > 0  // skip specials (season 0 / episode 0)
+    ).slice(0, 8); // check up to 8 episodes
 
     if (!plexEpisodes.length) return null; // can't validate without episode data
+
+    // Group by season number so we fetch each season only once (avoids per-episode 404s)
+    const seasonGroups = {};
+    for (const ep of plexEpisodes) {
+      if (!seasonGroups[ep.season]) seasonGroups[ep.season] = [];
+      seasonGroups[ep.season].push(ep);
+    }
 
     // Normalise a string for fuzzy comparison
     const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -443,14 +460,19 @@ const PlexConnectPage = {
     for (const candidate of candidates) {
       let matchCount = 0;
       let checked = 0;
-      for (const ep of plexEpisodes) {
-        try {
-          const data = await API.tmdb(`/tv/${candidate.id}/season/${ep.season}/episode/${ep.episode}`).catch(() => null);
-          if (!data || !data.name) continue;
+      for (const [seasonNum, eps] of Object.entries(seasonGroups)) {
+        // One request per season instead of one per episode — no 404s for missing episodes
+        const seasonData = await API.tmdb(`/tv/${candidate.id}/season/${seasonNum}`).catch(() => null);
+        if (!seasonData?.episodes) continue;
+        // Build an episode-number → title map for this season
+        const epMap = {};
+        for (const e of seasonData.episodes) epMap[e.episode_number] = e.name;
+        for (const ep of eps) {
+          const tmdbTitle = epMap[ep.episode];
+          if (!tmdbTitle) continue; // episode number beyond what this season has
           checked++;
-          const tmdbNorm = norm(data.name);
+          const tmdbNorm = norm(tmdbTitle);
           const plexNorm = norm(ep.episodeTitle);
-          // Count as match if titles share enough characters
           if (tmdbNorm === plexNorm ||
               tmdbNorm.includes(plexNorm) ||
               plexNorm.includes(tmdbNorm) ||
@@ -458,9 +480,9 @@ const PlexConnectPage = {
           ) {
             matchCount++;
           }
-        } catch (_) {}
+        }
       }
-      // Require at least 1 confirmed title match (or all checked match if only 1 ep available)
+      // Require at least 1 confirmed title match (≥50% if multiple checked)
       if (checked > 0 && matchCount >= Math.max(1, Math.floor(checked * 0.5))) {
         return candidate;
       }
