@@ -3,6 +3,7 @@ const DetailsPage = {
   state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null },
 
   async render(params) {
+    if (!params) return;
     const rawType = params.type || 'tv';
     this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null };
     const el = document.getElementById('page-content');

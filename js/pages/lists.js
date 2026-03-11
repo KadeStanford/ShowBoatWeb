@@ -127,6 +127,7 @@ const SharedListDetailPage = {
   state: { id: '', list: null, items: [], sortBy: 'added' },
 
   async render(params) {
+    if (!params?.id) return;
     this.state.id = params.id;
     this.state.sortBy = 'added';
     const el = document.getElementById('page-content');

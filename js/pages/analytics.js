@@ -51,7 +51,7 @@ const AnalyticsPage = {
       });
       this.state.genreData = genres;
       this.draw();
-    } catch (e) { document.getElementById('analytics-content').innerHTML = UI.emptyState('Error', e.message); }
+    } catch (e) { const ac = document.getElementById('analytics-content'); if (ac) ac.innerHTML = UI.emptyState('Error', e.message); }
   },
 
   draw() {
