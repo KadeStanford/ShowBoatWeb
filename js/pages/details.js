@@ -1,9 +1,9 @@
 /* ShowBoat — Show/Movie Details Page */
 const DetailsPage = {
-  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], loading: true },
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true },
 
   async render(params) {
-    this.state = { id: params.id, type: params.type || 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], loading: true };
+    this.state = { id: params.id, type: params.type || 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
@@ -15,16 +15,18 @@ const DetailsPage = {
         details = await API.getMovieDetails(this.state.id);
       }
       this.state.details = details;
-      const [credits, inWl, isW, rat] = await Promise.all([
+      const [credits, inWl, isW, rat, logo] = await Promise.all([
         API.getMediaCredits(this.state.id, this.state.type),
         Services.isInWatchlist(this.state.id).catch(() => false),
         Services.isWatched(this.state.id, this.state.type).catch(() => false),
-        Services.getRating(this.state.id).catch(() => null)
+        Services.getRating(this.state.id).catch(() => null),
+        API.fetchLogo(this.state.id, this.state.type).catch(() => null)
       ]);
       this.state.credits = credits;
       this.state.inWatchlist = inWl;
       this.state.isWatched = isW;
       this.state.rating = rat?.rating || 0;
+      this.state.logoUrl = logo ? API.imageUrl(logo, 'w500') : null;
       if (this.state.type === 'tv' && details.seasons?.length) {
         const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
         this.state.seasonNum = firstSeason.season_number;
@@ -59,7 +61,8 @@ const DetailsPage = {
           <div class="details-top">
             ${poster ? `<img src="${poster}" class="details-poster" alt="">` : ''}
             <div class="details-info">
-              <h1>${UI.escapeHtml(title)}</h1>
+              ${this.state.logoUrl ? `<img src="${UI.escapeHtml(this.state.logoUrl)}" alt="${UI.escapeHtml(title)}" class="details-logo">` : ''}
+              <h1 ${this.state.logoUrl ? 'class="sr-only"' : ''}>${UI.escapeHtml(title)}</h1>
               <div class="details-meta">
                 ${year ? `<span class="meta-chip">${year}</span>` : ''}
                 ${runtime ? `<span class="meta-chip">${runtime}m</span>` : ''}
