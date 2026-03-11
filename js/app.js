@@ -40,11 +40,15 @@ const App = {
     'friend-analytics':   { render: (p) => FriendAnalyticsPage.render(p), auth: true, nav: true }
   },
 
+  signupInProgress: false,
+
   init() {
     // Listen for auth state changes
     auth.onAuthStateChanged(user => {
       this.user = user;
       if (user) {
+        // If signup is still provisioning the account, skip background setup
+        if (this.signupInProgress) return;
         this.showNav(true);
         // Restore Plex connection + library cache from Firestore (runs in background)
         Services.restorePlexOnLogin().catch(() => {});

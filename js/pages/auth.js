@@ -276,17 +276,27 @@ const AuthPages = {
     const btn = document.getElementById('signup-btn');
     btn.disabled = true; btn.textContent = 'Verifying code...';
     try {
-      // Validate invite code first
+      // Validate invite code first (public read — no auth needed)
       const validCode = await Services.validateInviteCode(code);
       if (!validCode) { UI.toast('Invalid or already used invite code', 'error'); btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account'; return; }
 
       btn.textContent = 'Creating account...';
-      // Check username uniqueness
-      const snap = await db.collection('users').where('username_lowercase', '==', username.toLowerCase()).get();
-      if (!snap.empty) { UI.toast('Username is already taken', 'error'); btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account'; return; }
-
+      // Prevent onAuthStateChanged from firing background setup before the user doc exists
+      App.signupInProgress = true;
+      // Create Firebase Auth account first so we're authenticated for Firestore queries
       const cred = await auth.createUserWithEmailAndPassword(email, password);
       await cred.user.updateProfile({ displayName: username });
+
+      // Now check username uniqueness (requires auth)
+      const snap = await db.collection('users').where('username_lowercase', '==', username.toLowerCase()).get();
+      if (!snap.empty) {
+        // Username taken — delete the just-created auth account and bail
+        await cred.user.delete();
+        UI.toast('Username is already taken', 'error');
+        btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account';
+        return;
+      }
+
       // Mark code as used, provision user with 5 tickets and 3 invite codes of their own
       await Services.useInviteCode(code, cred.user.uid);
       await db.collection('users').doc(cred.user.uid).set({
@@ -296,7 +306,11 @@ const AuthPages = {
       });
       // Generate 3 invite codes for the new user to share
       await Services.generateUserInviteCodes(cred.user.uid, 3);
+      // Account fully provisioned — let onAuthStateChanged run normally
+      App.signupInProgress = false;
+      App.navigate('home');
     } catch (err) {
+      App.signupInProgress = false;
       UI.toast(err.message, 'error');
       btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account';
     }
