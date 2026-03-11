@@ -19,10 +19,10 @@ const MatcherSetupPage = {
         <p class="setup-desc">Pick a friend and swipe on shows/movies together. Find what you both want to watch!</p>
         <div class="setup-section">
           <h3>Select a Friend</h3>
-          <div class="friend-select-list">${this.state.friends.map(f => `<button class="friend-select-btn ${this.state.selected === f.friendId ? 'active' : ''}" onclick="MatcherSetupPage.selectFriend('${f.friendId}','${UI.escapeHtml(f.friendUsername || '')}')">
-            <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
-            <span>${UI.escapeHtml(f.friendUsername || f.friendId)}</span>
-          </button>`).join('')}</div>
+          <div class="friend-select-list">${this.state.friends.map(f => { const fid = f.uid || f.docId; const fname = f.username || fid; return `<button class="friend-select-btn ${this.state.selected === fid ? 'active' : ''}" onclick="MatcherSetupPage.selectFriend('${fid}','${UI.escapeHtml(fname)}')">
+            <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+            <span>${UI.escapeHtml(fname)}</span>
+          </button>`; }).join('')}</div>
         </div>
         <div class="setup-section">
           <h3>Content Type</h3>
@@ -53,9 +53,13 @@ const MatcherSetupPage = {
   async start() {
     if (!this.state.selected) return;
     try {
-      const session = await Services.createMatcherSession(this.state.selected, this.state.type);
-      App.navigate('matcher-swipe', { sessionId: session.id, type: this.state.type });
-    } catch (e) { UI.toast('Failed to create session', 'error'); }
+      // Fetch trending items to seed the matcher session
+      const items = await API.getTrending(this.state.type);
+      const sessionId = await Services.createMatcherSession(this.state.selected, this.state.type, items.slice(0, 20).map(i => ({
+        id: i.id, name: i.name || i.title, posterPath: i.poster_path, overview: i.overview, mediaType: this.state.type
+      })));
+      App.navigate('matcher-swipe', { sessionId, type: this.state.type });
+    } catch (e) { UI.toast('Failed to create session: ' + e.message, 'error'); }
   }
 };
 
@@ -122,7 +126,7 @@ const MatcherSwipePage = {
     el.innerHTML = UI.loading();
     try {
       const liked = Object.entries(this.state.votes).filter(([, v]) => v).map(([id]) => parseInt(id));
-      await Services.submitVote(this.state.sessionId, liked);
+      await Services.submitMatcherVote(this.state.sessionId, liked);
       App.navigate('matcher-results', { sessionId: this.state.sessionId });
     } catch (e) { el.innerHTML = UI.emptyState('Error submitting', e.message); }
   }

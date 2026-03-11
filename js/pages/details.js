@@ -134,6 +134,7 @@ const DetailsPage = {
   },
 
   _pendingReview: '',
+  _ratingDebounceTimer: null,
 
   async setRating(val) {
     const rating = val;
@@ -142,10 +143,14 @@ const DetailsPage = {
     if (numEl) numEl.textContent = `${rating > 0 ? rating : '—'}/10`;
     const slider = document.getElementById('slider-');
     if (slider) { const pct = rating * 10; slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`; }
-    const d = this.state.details;
-    const review = document.getElementById('overall-review')?.value || this._pendingReview || '';
-    await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
-    UI.toast(`Rated ${rating}/10`, 'success');
+    // Debounce: only save after user stops sliding for 600ms
+    clearTimeout(this._ratingDebounceTimer);
+    this._ratingDebounceTimer = setTimeout(async () => {
+      const d = this.state.details;
+      const review = document.getElementById('overall-review')?.value || this._pendingReview || '';
+      await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
+      UI.toast(`Rated ${rating}/10`, 'success');
+    }, 600);
   },
 
   async saveOverallReview() {
@@ -289,7 +294,7 @@ const DetailsPage = {
 
     UI.showModal(`
       <div class="ep-modal-full">
-        <div class="ep-modal-hero" ${heroImg ? `style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-secondary) 100%), url('${heroImg}')"` : ''}>
+        <div class="ep-modal-hero" ${heroImg ? `style="background-image:linear-gradient(to bottom, rgba(15,23,42,0) 20%, rgba(15,23,42,0.85) 80%, #0f172a 100%), url('${heroImg}'); background-size:cover; background-position:center top;"` : ''}>
           <div class="ep-modal-hero-info">
             ${logoHtml}
             <h2>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h2>
