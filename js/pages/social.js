@@ -120,7 +120,8 @@ const FriendProfilePage = {
 
   renderItems(items) {
     return items.slice(0, 10).map(i => {
-      const poster = i.showPoster ? API.imageUrl(i.showPoster, 'w185') : '';
+      const posterPath = i.poster_path || i.posterPath || i.showPoster || '';
+      const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.showId || i.id},type:'${i.showType || 'tv'}'})">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
         <p class="card-title">${UI.escapeHtml(i.showName || '')}</p>

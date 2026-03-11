@@ -36,7 +36,8 @@ const WatchlistPage = {
       return;
     }
     el.innerHTML = `<div class="watchlist-items">${items.map(item => {
-      const poster = item.showPoster ? API.imageUrl(item.showPoster, 'w185') : '';
+      const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
+      const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const type = item.showType || item.type || 'tv';
       return `<div class="watchlist-item" onclick="App.navigate('details',{id:${item.showId || item.id},type:'${type}'})">
         ${poster ? `<img src="${poster}" class="wl-poster" alt="" loading="lazy">` : `<div class="wl-poster placeholder">${UI.icon('film', 24)}</div>`}

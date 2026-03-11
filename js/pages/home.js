@@ -118,7 +118,7 @@ const HomePage = {
   renderShameSection() {
     return `<div class="section"><div class="section-header"><h3>${UI.icon('thumbs-down', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
       <div class="horizontal-scroll">${this.state.shames.map(s => {
-        const poster = s.showPoster ? API.imageUrl(s.showPoster, 'w185') : '';
+        const poster = (s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
         return `<div class="shame-card" onclick="App.navigate('details',{id:${s.showId},type:'${s.showType || 'tv'}'})">
           ${poster ? `<img src="${poster}" alt="" class="shame-poster">` : `<div class="shame-poster placeholder">${UI.icon('tv', 24)}</div>`}
           <div class="shame-badge">${UI.icon('thumbs-down', 12)}</div>
@@ -131,7 +131,8 @@ const HomePage = {
     return items.map(item => {
       const id = item.showId || item.id;
       const type = item.media_type || item.showType || 'tv';
-      const poster = item.poster_path ? API.imageUrl(item.poster_path, 'w185') : (item.showPoster ? API.imageUrl(item.showPoster, 'w185') : '');
+      const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
+      const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const title = item.name || item.title || item.showName || '';
       return `<div class="media-card-sm" onclick="App.navigate('details',{id:${id},type:'${type}'})">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}

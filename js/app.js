@@ -54,8 +54,16 @@ const App = {
     // Handle browser back/forward
     window.addEventListener('hashchange', () => this.onHashChange());
 
-    // Setup nav buttons
+    // Setup nav buttons (bottom nav)
     document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        if (page) this.navigate(page);
+      });
+    });
+
+    // Setup sidebar nav buttons (desktop)
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const page = btn.dataset.page;
         if (page) this.navigate(page);
@@ -98,6 +106,11 @@ const App = {
     if (route.navIdx !== undefined) {
       document.querySelectorAll('.nav-btn').forEach((btn, i) => btn.classList.toggle('active', i === route.navIdx));
     }
+    // Update active sidebar button
+    const sidebarPages = ['home', 'discover', 'watchlist', 'friends', 'activity', 'shared-lists', 'matcher-setup', 'analytics', 'profile'];
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
 
     // Render page
     const el = document.getElementById('page-content');
@@ -137,7 +150,9 @@ const App = {
 
   showNav(show) {
     const nav = document.getElementById('bottom-nav');
+    const sidebar = document.getElementById('sidebar-nav');
     if (nav) nav.style.display = show ? 'flex' : 'none';
+    if (sidebar) sidebar.classList.toggle('hidden', !show);
     document.getElementById('page-content')?.classList.toggle('has-nav', show);
   },
 
