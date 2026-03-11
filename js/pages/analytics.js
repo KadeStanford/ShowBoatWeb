@@ -90,16 +90,25 @@ const AnalyticsPage = {
     ratings.forEach(r => { const bucket = Math.round(r.rating || 0); if (bucket >= 0 && bucket <= 10) ratingDist[bucket]++; });
     const maxRating = Math.max(...ratingDist, 1);
 
-    // Activity calendar data: map day → list of titles
+    // Activity calendar data: map day → list of watched items with detail
     const dayActivity = {};
     watched.forEach(w => {
       if (w.watchedAt) {
         const d = new Date(w.watchedAt);
         const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         if (!dayActivity[key]) dayActivity[key] = [];
-        dayActivity[key].push(w.name || w.showName || '');
+        const epMatch = (w.docId || '').match(/:s(\d+):e(\d+)$/);
+        dayActivity[key].push({
+          name: w.name || w.showName || '',
+          mediaType: w.mediaType || (w.docId?.startsWith('movie:') ? 'movie' : 'tv'),
+          tmdbId: w.tmdbId || 0,
+          season: epMatch ? Number(epMatch[1]) : null,
+          episode: epMatch ? Number(epMatch[2]) : null,
+          episodeName: w.episodeName || ''
+        });
       }
     });
+    this._dayActivity = dayActivity;
 
     const renderTopScroll = (items, type) => {
       if (!items.length) return '';
@@ -209,8 +218,9 @@ const AnalyticsPage = {
         const count = items.length;
         const heatClass = count === 0 ? '' : count <= 2 ? 'heat-low' : count <= 5 ? 'heat-mid' : 'heat-high';
         const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
-        const tooltip = count ? items.slice(0,3).join(', ') + (items.length > 3 ? ` +${items.length-3} more` : '') : '';
-        cells += `<div class="cal-cell ${heatClass}${isToday ? ' cal-today' : ''}" title="${UI.escapeHtml(tooltip)}">${count > 0 ? `<span class="cal-count">${count}</span>` : ''}</div>`;
+        const tooltip = count ? items.slice(0,3).map(i => i.name).join(', ') + (items.length > 3 ? ` +${items.length-3} more` : '') : '';
+        const clickAttr = count > 0 ? ` onclick="AnalyticsPage.showDayDetail('${key}')" style="cursor:pointer"` : '';
+        cells += `<div class="cal-cell ${heatClass}${isToday ? ' cal-today' : ''}" title="${UI.escapeHtml(tooltip)}"${clickAttr}>${count > 0 ? `<span class="cal-count">${count}</span>` : ''}</div>`;
       }
       return `<div class="cal-month-block">
         <div class="cal-month-label">${MONTHS[month]} ${year}</div>
@@ -218,6 +228,56 @@ const AnalyticsPage = {
         <div class="cal-grid">${cells}</div>
       </div>`;
     }).join('');
+  },
+
+  showDayDetail(dateKey) {
+    const items = this._dayActivity?.[dateKey] || [];
+    if (!items.length) return;
+    const [y, m, d] = dateKey.split('-');
+    const dateLabel = new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Group episodes by show, keep movies separate
+    const showGroups = new Map();
+    const movies = [];
+    items.forEach(item => {
+      if (item.mediaType === 'movie') {
+        movies.push(item);
+      } else if (item.season != null && item.episode != null) {
+        const key = item.tmdbId || item.name;
+        if (!showGroups.has(key)) showGroups.set(key, { name: item.name, tmdbId: item.tmdbId, eps: [] });
+        showGroups.get(key).eps.push(item);
+      } else {
+        movies.push(item); // show-level doc without episode detail
+      }
+    });
+
+    let html = '';
+    showGroups.forEach(group => {
+      const sorted = group.eps.sort((a, b) => (a.season * 1000 + a.episode) - (b.season * 1000 + b.episode));
+      html += `<div class="cal-day-group" ${group.tmdbId ? `onclick="UI.closeModal();App.navigate('details',{id:${group.tmdbId},type:'tv'})" style="cursor:pointer"` : ''}>
+        <div class="cal-day-group-header">
+          <span class="cal-day-icon">${UI.icon('tv', 14)}</span>
+          <span class="cal-day-show-name">${UI.escapeHtml(group.name)}</span>
+          <span class="cal-day-count">${sorted.length} ep${sorted.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="cal-day-eps">${sorted.map(ep => `<span class="cal-day-ep-tag">S${ep.season}E${ep.episode}${ep.episodeName ? ` — ${UI.escapeHtml(ep.episodeName)}` : ''}</span>`).join('')}</div>
+      </div>`;
+    });
+    movies.forEach(m => {
+      html += `<div class="cal-day-group" ${m.tmdbId ? `onclick="UI.closeModal();App.navigate('details',{id:${m.tmdbId},type:'${m.mediaType === 'movie' ? 'movie' : 'tv'}')" style="cursor:pointer"` : ''}>
+        <div class="cal-day-group-header">
+          <span class="cal-day-icon">${UI.icon(m.mediaType === 'movie' ? 'film' : 'tv', 14)}</span>
+          <span class="cal-day-show-name">${UI.escapeHtml(m.name)}</span>
+          <span class="cal-day-type-badge">${m.mediaType === 'movie' ? 'Movie' : 'Show'}</span>
+        </div>
+      </div>`;
+    });
+
+    UI.showModal(`<div class="cal-day-modal">
+      <h3 class="cal-day-modal-title">${dateLabel}</h3>
+      <p class="cal-day-modal-sub">${items.length} item${items.length !== 1 ? 's' : ''} watched</p>
+      <div class="cal-day-modal-list">${html}</div>
+    </div>`);
   }
 };
 

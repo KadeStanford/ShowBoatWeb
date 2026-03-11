@@ -194,8 +194,17 @@ const AdminDash = {
   // ==================== USERS ====================
   async loadUsers() {
     try {
-      const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
-      this._allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Use two queries: users with createdAt (sorted) + users without (unsorted)
+      // This ensures admin/early accounts without createdAt aren't excluded
+      const [sorted, all] = await Promise.all([
+        db.collection('users').orderBy('createdAt', 'desc').limit(200).get(),
+        db.collection('users').limit(200).get()
+      ]);
+      const seen = new Set();
+      const users = [];
+      for (const d of sorted.docs) { seen.add(d.id); users.push({ id: d.id, ...d.data() }); }
+      for (const d of all.docs) { if (!seen.has(d.id)) users.push({ id: d.id, ...d.data() }); }
+      this._allUsers = users;
       this.filterUsers();
     } catch (e) { console.error('Users load error:', e); }
   },

@@ -261,7 +261,7 @@
     <div class="admin-section" id="tab-users">
       <div class="admin-card">
         <div class="admin-filter-row">
-          <input class="admin-search" type="text" id="users-search" placeholder="Search by username or email..." oninput="AdminDash.filterUsers()">
+          <input class="admin-search" type="text" id="users-search" placeholder="Search by username or email..." oninput="AdminDash.filterUsers()" autocomplete="off" name="users-search-nofill">
         </div>
         <table class="admin-table">
           <thead><tr><th>Username</th><th>Email</th><th>Joined</th><th>Status</th><th>Tickets</th><th>Codes</th><th>Give Codes</th><th>Actions</th></tr></thead>

@@ -845,18 +845,17 @@ const ActivityPage = {
     const poster = a.mediaPosterPath ? API.imageUrl(a.mediaPosterPath, 'w342') : '';
     const isMovie = a.mediaType === 'movie';
     const navCall = a.mediaId ? `App.navigate('details',{id:${a.mediaId},type:'${a.mediaType || 'tv'}'})` : '';
-    const epLabel = !isMovie && a.seasonNumber != null ? `S${a.seasonNumber}E${a.episodeNumber} watched` : (isMovie ? 'movie watched' : 'watched');
+    const epLabel = !isMovie && a.seasonNumber != null ? `S${a.seasonNumber}E${a.episodeNumber}` : '';
     return `<div class="activity-card-v2 plex-activity-card" ${navCall ? `onclick="${navCall}"` : ''}>
-      <div class="act-avatar-col">
-        ${poster ? `<img src="${poster}" class="act-plex-poster" alt="">` : `<div class="act-avatar-initial act-plex-avatar">${(a.mediaTitle||'?')[0]}</div>`}
-        <div class="act-type-dot dot-plex">${this._plexLogoSm}</div>
-      </div>
+      ${poster ? `<div class="act-poster" style="background-image:url('${poster}')"></div>` : `<div class="act-poster act-poster-ph">${UI.icon(isMovie ? 'film' : 'tv', 20)}</div>`}
       <div class="act-body">
-        <p class="act-headline"><span class="act-plex-badge">Plex</span> ${UI.escapeHtml(a.mediaTitle || '')}</p>
-        <p class="act-verb">${epLabel}</p>
-        ${a.createdAt ? `<p class="act-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
+        <div class="act-top-row">
+          <span class="act-badge act-badge-plex">${this._plexLogoSm} Plex</span>
+          <span class="act-badge act-badge-watched">${UI.icon('eye', 10)} Watched</span>
+          ${a.createdAt ? `<span class="act-time">${UI.timeAgo(a.createdAt)}</span>` : ''}
+        </div>
+        <p class="act-title">${UI.escapeHtml(a.mediaTitle || '')}${epLabel ? ` <span class="act-ep-label">${epLabel}</span>` : ''}</p>
       </div>
-      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
     </div>`;
   },
 
@@ -873,17 +872,16 @@ const ActivityPage = {
       .map(ep => ep.seasonNumber != null ? `S${ep.seasonNumber}E${ep.episodeNumber}` : '').filter(Boolean).join(', ');
     const moreEps = epCount > 5 ? ` +${epCount - 5} more` : '';
     return `<div class="activity-card-v2 plex-activity-card" onclick="${first.mediaId ? `App.navigate('details',{id:${first.mediaId},type:'tv'})` : ''}">
-      <div class="act-avatar-col">
-        ${poster ? `<img src="${poster}" class="act-plex-poster" alt="">` : `<div class="act-avatar-initial act-plex-avatar">${(first.mediaTitle||'?')[0]}</div>`}
-        <div class="act-type-dot dot-plex">${this._plexLogoSm}</div>
-      </div>
+      ${poster ? `<div class="act-poster" style="background-image:url('${poster}')"></div>` : `<div class="act-poster act-poster-ph">${UI.icon('tv', 20)}</div>`}
       <div class="act-body">
-        <p class="act-headline"><span class="act-plex-badge">Plex</span> ${UI.escapeHtml(first.mediaTitle || '')}</p>
-        <p class="act-verb">${epCount} episode${epCount !== 1 ? 's' : ''} watched</p>
+        <div class="act-top-row">
+          <span class="act-badge act-badge-plex">${this._plexLogoSm} Plex</span>
+          <span class="act-badge act-badge-watched">${UI.icon('eye', 10)} ${epCount} ep${epCount !== 1 ? 's' : ''}</span>
+          ${g.time ? `<span class="act-time">${UI.timeAgo(g.time)}</span>` : ''}
+        </div>
+        <p class="act-title">${UI.escapeHtml(first.mediaTitle || '')}</p>
         ${epList ? `<p class="act-ep-name">${UI.escapeHtml(epList)}${moreEps}</p>` : ''}
-        ${g.time ? `<p class="act-time">${UI.timeAgo(g.time)}</p>` : ''}
       </div>
-      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
     </div>`;
   },
 
@@ -947,40 +945,40 @@ const ActivityPage = {
     const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
     const displayName = isMine ? 'You' : (a.userName || a.username || 'Someone');
 
-    let verb, dotClass, dotIcon;
-    if (isEpisode) { verb = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-rated'; dotIcon = 'star'; }
-    else if (isEpWatched) { verb = `watched S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-watched'; dotIcon = 'eye'; }
-    else if (a.type === 'watched') { verb = 'watched'; dotClass = 'dot-watched'; dotIcon = 'eye'; }
-    else if (a.type === 'rated') { verb = 'rated'; dotClass = 'dot-rated'; dotIcon = 'star'; }
-    else if (a.type === 'added_to_watchlist') { verb = 'saved to watchlist'; dotClass = 'dot-watchlist'; dotIcon = 'bookmark'; }
-    else if (a.type === 'shame') { verb = 'shamed'; dotClass = 'dot-shame'; dotIcon = 'flame'; }
-    else { verb = a.type; dotClass = 'dot-watched'; dotIcon = 'activity'; }
+    let verb, badgeClass, badgeIcon, badgeLabel;
+    if (isEpisode) { verb = `S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; badgeClass = 'act-badge-rated'; badgeIcon = 'star'; badgeLabel = 'Rated'; }
+    else if (isEpWatched) { verb = `S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; badgeClass = 'act-badge-watched'; badgeIcon = 'eye'; badgeLabel = 'Watched'; }
+    else if (a.type === 'watched') { verb = ''; badgeClass = 'act-badge-watched'; badgeIcon = 'eye'; badgeLabel = 'Watched'; }
+    else if (a.type === 'rated') { verb = ''; badgeClass = 'act-badge-rated'; badgeIcon = 'star'; badgeLabel = 'Rated'; }
+    else if (a.type === 'added_to_watchlist') { verb = ''; badgeClass = 'act-badge-watchlist'; badgeIcon = 'bookmark'; badgeLabel = 'Saved'; }
+    else if (a.type === 'shame') { verb = ''; badgeClass = 'act-badge-shame'; badgeIcon = 'flame'; badgeLabel = 'Shamed'; }
+    else { verb = ''; badgeClass = 'act-badge-watched'; badgeIcon = 'activity'; badgeLabel = a.type || 'Activity'; }
 
     const avatarHtml = a.userPhoto
       ? `<img src="${UI.escapeHtml(a.userPhoto)}" class="act-avatar-img" alt="">`
       : `<div class="act-avatar-initial">${(a.userName || a.username || '?')[0].toUpperCase()}</div>`;
 
-    const ratingStars = (a.type === 'rated' || isEpisode) && a.rating
-      ? `<div class="act-rating-row">${Array.from({length: 5}, (_, i) => `<span class="act-star ${i < Math.round(a.rating / 2) ? 'filled' : ''}">${UI.icon('star', 12)}</span>`).join('')}<span class="act-rating-num">${a.rating}/10</span></div>`
+    const ratingHtml = (a.type === 'rated' || isEpisode) && a.rating
+      ? `<div class="act-rating-inline"><span class="act-rating-score">${a.rating}</span><span class="act-rating-max">/10</span></div>`
       : '';
 
     const episodeRow = (isEpisode || isEpWatched) && a.episodeName
       ? `<p class="act-ep-name">${UI.escapeHtml(a.episodeName)}</p>` : '';
 
     return `<div class="activity-card-v2" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
-      <div class="act-avatar-col">
-        <div class="act-avatar-wrap">${avatarHtml}</div>
-        <div class="act-type-dot ${dotClass}">${UI.icon(dotIcon, 10)}</div>
-      </div>
+      ${poster ? `<div class="act-poster" style="background-image:url('${poster}')"></div>` : `<div class="act-poster act-poster-ph">${UI.icon(aType === 'movie' ? 'film' : 'tv', 20)}</div>`}
       <div class="act-body">
-        <p class="act-headline"><strong class="act-username">${UI.escapeHtml(displayName)}</strong> <span class="act-verb">${verb}</span></p>
-        <p class="act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
+        <div class="act-top-row">
+          <div class="act-avatar-sm">${avatarHtml}</div>
+          <span class="act-username">${UI.escapeHtml(displayName)}</span>
+          <span class="act-badge ${badgeClass}">${UI.icon(badgeIcon, 10)} ${badgeLabel}</span>
+          ${a.createdAt ? `<span class="act-time">${UI.timeAgo(a.createdAt)}</span>` : ''}
+        </div>
+        <p class="act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${verb ? ` <span class="act-ep-label">${verb}</span>` : ''}</p>
         ${episodeRow}
-        ${ratingStars}
+        ${ratingHtml}
         ${a.comment ? `<p class="act-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
-        ${a.createdAt ? `<p class="act-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
       </div>
-      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
     </div>`;
   }
 };
