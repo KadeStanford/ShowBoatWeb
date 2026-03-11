@@ -30,6 +30,22 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null;
     }
+    // Recommendations: any authenticated user can send a recommendation
+    // to another user (writes to the receiver's subcollection)
+    match /users/{userId}/recommendations/{recId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+    // Notifications: cross-user notifications (e.g. shame-watched alerts)
+    match /users/{userId}/notifications/{notifId} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+    // Reactions: any authenticated user can react to another user's episode ratings
+    match /users/{userId}/episodeRatings/{ratingId}/reactions/{reactorId} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null && request.auth.uid == reactorId;
+    }
     // Shared resources accessible to all authenticated users
     match /shames/{shameId} {
       allow read, write: if request.auth != null;
@@ -45,10 +61,10 @@ service cloud.firestore {
     }
 
     // ==================== ADMIN COLLECTIONS ====================
-    // Invite codes: admin full access; authenticated users can read,
-    // mark a code as used (update), or create codes they own
+    // Invite codes: admin full access; anyone can read (validation before signup);
+    // authenticated users can mark a code as used or create codes they own
     match /inviteCodes/{codeId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if isAdmin();
       allow update: if request.auth != null
         && request.resource.data.usedBy == request.auth.uid
@@ -62,8 +78,9 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read, update: if isAdmin();
     }
-    // Waitlist: admin full access
+    // Waitlist: anyone can read (duplicate check) and add; admin has full access
     match /waitlist/{entryId} {
+      allow read, create: if true;
       allow read, write: if isAdmin();
     }
     // User reports: authenticated users can create, admin can read/update
