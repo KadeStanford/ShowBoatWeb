@@ -1,12 +1,26 @@
 /* ShowBoat — Media Pages: ActorDetails, CastList, SharedActors, YouTube */
 const ActorDetailsPage = {
+  state: { credits: [], watchlistIds: new Set(), showWatchlistFirst: false },
+
   async render(params) {
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
-      const person = await API.getPersonDetails(params.id);
+      const [person, watchlist] = await Promise.all([
+        API.getPersonDetails(params.id),
+        Services.getWatchlist().catch(() => [])
+      ]);
+      this.state.watchlistIds = new Set(watchlist.map(w => Number(w.id)));
       const photo = person.profile_path ? API.imageUrl(person.profile_path, 'w342') : '';
-      const credits = [...(person.combined_credits?.cast || [])].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+      const credits = [...(person.combined_credits?.cast || [])];
+      // Default sort: newest to oldest by release/air date
+      credits.sort((a, b) => {
+        const da = new Date(a.first_air_date || a.release_date || '1900').getTime();
+        const db = new Date(b.first_air_date || b.release_date || '1900').getTime();
+        return db - da;
+      });
+      this.state.credits = credits;
+      this.state.showWatchlistFirst = false;
       const birthYear = person.birthday ? new Date(person.birthday).getFullYear() : '';
       const age = person.birthday && !person.deathday ? new Date().getFullYear() - new Date(person.birthday).getFullYear() : '';
 
@@ -21,23 +35,49 @@ const ActorDetailsPage = {
             ${person.place_of_birth ? `<p class="actor-place">${UI.escapeHtml(person.place_of_birth)}</p>` : ''}
           </div>
         </div>
-        ${person.biography ? `<div class="section"><h3>Biography</h3><p class="bio-text">${UI.escapeHtml(person.biography).substring(0, 500)}${person.biography.length > 500 ? '...' : ''}</p></div>` : ''}
+        ${person.biography ? `<div class="section"><h3 style="padding:0 32px">Biography</h3><p class="bio-text">${UI.escapeHtml(person.biography).substring(0, 500)}${person.biography.length > 500 ? '...' : ''}</p></div>` : ''}
         ${credits.length ? `<div class="section">
-          <h3>Known For (${credits.length})</h3>
-          <div class="media-grid">${credits.slice(0, 20).map(c => {
-            const poster = c.poster_path ? API.imageUrl(c.poster_path, 'w342') : '';
-            const type = c.media_type || 'movie';
-            return `<div class="media-card" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
-              ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
-              <div class="card-info">
-                <p class="card-title">${UI.escapeHtml(c.name || c.title || '')}</p>
-                <p class="card-subtitle">${UI.escapeHtml(c.character || '')}</p>
-              </div>
-            </div>`;
-          }).join('')}</div>
+          <div class="section-header">
+            <h3>Filmography (${credits.length})</h3>
+            <button class="filter-tab" id="wl-toggle-btn" onclick="ActorDetailsPage.toggleWatchlistFirst()">${UI.icon('bookmark', 14)} Watchlist First</button>
+          </div>
+          <div id="actor-credits-list"></div>
         </div>` : ''}
       </div>`;
-    } catch (e) { el.innerHTML = UI.pageHeader('Actor', true) + UI.emptyState('Error', e.message); }
+      this.drawCredits();
+    } catch (e) { el.innerHTML = UI.pageHeader('Actor', true) + UI.emptyState('x', 'Error', e.message); }
+  },
+
+  toggleWatchlistFirst() {
+    this.state.showWatchlistFirst = !this.state.showWatchlistFirst;
+    const btn = document.getElementById('wl-toggle-btn');
+    if (btn) btn.classList.toggle('active', this.state.showWatchlistFirst);
+    this.drawCredits();
+  },
+
+  drawCredits() {
+    const el = document.getElementById('actor-credits-list');
+    if (!el) return;
+    let credits = [...this.state.credits];
+    if (this.state.showWatchlistFirst) {
+      const inWl = credits.filter(c => this.state.watchlistIds.has(Number(c.id)));
+      const notWl = credits.filter(c => !this.state.watchlistIds.has(Number(c.id)));
+      credits = [...inWl, ...notWl];
+    }
+    el.innerHTML = `<div class="cast-list" style="padding:0 32px">${credits.map(c => {
+      const poster = c.poster_path ? API.imageUrl(c.poster_path, 'w185') : '';
+      const type = c.media_type || 'movie';
+      const year = (c.first_air_date || c.release_date || '').slice(0, 4);
+      const inWl = this.state.watchlistIds.has(Number(c.id));
+      return `<div class="cast-list-item" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
+        ${poster ? `<img src="${poster}" style="width:48px;height:72px;border-radius:8px;object-fit:cover;background:var(--slate-800);flex-shrink:0" alt="" loading="lazy">` : `<div style="width:48px;height:72px;border-radius:8px;background:var(--slate-800);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--slate-600)">${UI.icon('film', 20)}</div>`}
+        <div class="cast-info" style="flex:1">
+          <p class="cast-name">${UI.escapeHtml(c.name || c.title || '')}</p>
+          <p class="cast-char">${UI.escapeHtml(c.character || '')}${year ? ` · ${year}` : ''} · ${type === 'tv' ? 'TV' : 'Movie'}</p>
+        </div>
+        ${inWl ? `<span style="color:var(--emerald-400);flex-shrink:0" title="In your watchlist">${UI.icon('bookmark-filled', 18)}</span>` : ''}
+      </div>`;
+    }).join('')}</div>`;
   }
 };
 
@@ -73,8 +113,8 @@ const SharedActorsPage = {
         Services.getWatched(), Services.getWatched(params.friendId)
       ]);
       // Gather unique media IDs from both
-      const myIds = new Set(myWatched.map(w => w.showId || w.id));
-      const friendIds = new Set(friendWatched.map(w => w.showId || w.id));
+      const myIds = new Set(myWatched.map(w => w.tmdbId || w.id));
+      const friendIds = new Set(friendWatched.map(w => w.tmdbId || w.id));
       // Find overlapping shows
       const shared = [...myIds].filter(id => friendIds.has(id));
 

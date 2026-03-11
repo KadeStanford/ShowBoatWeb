@@ -66,8 +66,8 @@ const SharedListDetailPage = {
     el.innerHTML = UI.loading();
     try {
       const data = await Services.getSharedListDetail(params.id);
-      this.state.list = data.list;
-      this.state.items = data.items || [];
+      this.state.list = data;
+      this.state.items = data?.items || [];
       this.draw(el);
     } catch (e) { el.innerHTML = UI.pageHeader('List', true) + UI.emptyState('Error', e.message); }
   },
@@ -79,10 +79,10 @@ const SharedListDetailPage = {
       <p class="list-members">${l.members?.length || 1} member${(l.members?.length || 1) > 1 ? 's' : ''}</p>
       <div id="list-items-content">
         ${this.state.items.length ? `<div class="media-grid">${this.state.items.map(item => {
-          const poster = item.showPoster ? API.imageUrl(item.showPoster, 'w342') : '';
-          return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.showId},type:'${item.showType || 'tv'}'})">
+          const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
+          return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${item.mediaType || item.showType || 'tv'}'})">
             ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
-            <div class="card-info"><p class="card-title">${UI.escapeHtml(item.showName || '')}</p></div>
+            <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || item.showName || '')}</p></div>
             <button class="card-remove-btn" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 16)}</button>
           </div>`;
         }).join('')}</div>` : UI.emptyState('Empty list', 'Add shows from their detail page')}
@@ -98,10 +98,10 @@ const SharedListDetailPage = {
       if (content) {
         if (this.state.items.length) {
           content.innerHTML = `<div class="media-grid">${this.state.items.map(item => {
-            const poster = item.showPoster ? API.imageUrl(item.showPoster, 'w342') : '';
-            return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.showId},type:'${item.showType || 'tv'}'})">
+            const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
+            return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${item.mediaType || item.showType || 'tv'}'})">
               ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
-              <div class="card-info"><p class="card-title">${UI.escapeHtml(item.showName || '')}</p></div>
+              <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || item.showName || '')}</p></div>
               <button class="card-remove-btn" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 16)}</button>
             </div>`;
           }).join('')}</div>`;

@@ -92,7 +92,8 @@ const UI = {
 
   // --- Page Header with Back Button ---
   pageHeader(title, backPage) {
-    const backAction = backPage ? `App.navigate('${backPage}')` : 'history.back()';
+    if (!backPage) return `<div class="page-header"><h1>${this._esc(title)}</h1></div>`;
+    const backAction = backPage === true ? 'App.back()' : `App.navigate('${backPage}')`;
     return `<div class="page-header">
       <button class="back-btn" onclick="${backAction}">${this.icon('arrow-left', 20)}</button>
       <h1>${this._esc(title)}</h1>

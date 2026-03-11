@@ -302,12 +302,12 @@ const Services = {
     await Promise.all(friendUids.map(async uid => {
       try {
         const snap = await db.collection('users').doc(uid).collection('activity')
-          .orderBy('createdAt', 'desc').limit(10).get();
+          .orderBy('createdAt', 'desc').limit(50).get();
         snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
       } catch (e) { /* skip */ }
     }));
     activities.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    return activities.slice(0, 50);
+    return activities;
   },
 
   // ==================== USER PROFILE ====================

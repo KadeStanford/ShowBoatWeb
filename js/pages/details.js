@@ -125,12 +125,14 @@ const DetailsPage = {
   renderEpisodeList() {
     return `<div class="episode-list">${this.state.episodes.map((ep, i) => {
       const still = ep.still_path ? API.imageUrl(ep.still_path, 'w300') : '';
+      const desc = ep.overview ? (ep.overview.length > 120 ? ep.overview.substring(0, 120) + '...' : ep.overview) : '';
       return `<div class="episode-item" onclick="DetailsPage.showEpisodeDetails(${i})">
         ${still ? `<img src="${still}" class="episode-still" alt="" loading="lazy">` : `<div class="episode-still placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="episode-info">
           <p class="ep-number">E${ep.episode_number}</p>
           <p class="ep-name">${UI.escapeHtml(ep.name || `Episode ${ep.episode_number}`)}</p>
           ${ep.air_date ? `<p class="ep-date">${ep.air_date}</p>` : ''}
+          ${desc ? `<p class="ep-desc">${UI.escapeHtml(desc)}</p>` : ''}
         </div>
         <button class="ep-watched-btn" onclick="event.stopPropagation(); DetailsPage.toggleEpisodeWatched(${ep.season_number}, ${ep.episode_number}, this)" title="Mark watched">
           ${UI.icon('check', 18)}

@@ -124,11 +124,11 @@ const FriendProfilePage = {
 
   renderItems(items) {
     return items.slice(0, 10).map(i => {
-      const posterPath = i.poster_path || i.posterPath || i.showPoster || '';
+      const posterPath = i.poster_path || i.posterPath || i.mediaPosterPath || i.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
-      return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.showId || i.id},type:'${i.showType || 'tv'}'})">
+      return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId || i.mediaId || i.showId || i.id},type:'${i.mediaType || i.showType || 'tv'}'})">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
-        <p class="card-title">${UI.escapeHtml(i.showName || '')}</p>
+        <p class="card-title">${UI.escapeHtml(i.name || i.mediaTitle || i.showName || '')}</p>
         ${i.rating ? `<p class="card-subtitle">${UI.icon('star', 12)} ${i.rating}</p>` : ''}
       </div>`;
     }).join('');
@@ -142,7 +142,18 @@ const ActivityPage = {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="activity-page">${UI.pageHeader('Activity Feed', true)}<div id="feed-content">${UI.loading()}</div></div>`;
     try {
-      this.state.feed = await Services.getActivityFeed();
+      const uid = auth.currentUser?.uid;
+      const friends = uid ? await Services.getFriends() : [];
+      const friendUids = friends.map(f => f.friendId || f.uid || f.docId);
+      // Fetch friend activity + own activity in parallel
+      const [friendActivity, ownActivity] = await Promise.all([
+        friendUids.length ? Services.getActivityFeed(friendUids) : Promise.resolve([]),
+        uid ? Services.getActivityFeed([uid]) : Promise.resolve([])
+      ]);
+      // Merge, deduplicate, and sort
+      const allMap = new Map();
+      [...ownActivity, ...friendActivity].forEach(a => { if (!allMap.has(a.id)) allMap.set(a.id, a); });
+      this.state.feed = [...allMap.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       this.drawFeed();
     } catch (e) { document.getElementById('feed-content').innerHTML = UI.emptyState('Error', e.message); }
   },
@@ -150,15 +161,17 @@ const ActivityPage = {
   drawFeed() {
     const el = document.getElementById('feed-content');
     if (!this.state.feed.length) { el.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here'); return; }
+    const currentUid = auth.currentUser?.uid;
     el.innerHTML = `<div class="activity-items">${this.state.feed.map(a => {
-      const poster = a.showPoster ? API.imageUrl(a.showPoster, 'w92') : '';
-      const actionText = a.type === 'watched' ? 'watched' : a.type === 'rated' ? `rated ${a.rating}/10` : a.type === 'watchlist' ? 'added to watchlist' : a.type === 'shame' ? 'shamed' : a.type;
-      return `<div class="activity-item" onclick="App.navigate('details',{id:${a.showId},type:'${a.showType || 'tv'}'})">
+      const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
+      const actionText = a.type === 'watched' ? 'watched' : a.type === 'rated' ? `rated ${a.rating || '?'}/10` : a.type === 'added_to_watchlist' ? 'added to watchlist' : a.type === 'shame' ? 'shamed' : a.type;
+      const displayName = a.userId === currentUid ? 'You' : (a.userName || a.username || 'Someone');
+      return `<div class="activity-item" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${a.mediaType || a.showType || 'tv'}'})">
         ${poster ? `<img src="${poster}" class="activity-poster" alt="">` : `<div class="activity-poster placeholder">${UI.icon('film', 16)}</div>`}
         <div class="activity-info">
-          <p><strong>${UI.escapeHtml(a.username || 'You')}</strong> ${actionText}</p>
-          <p class="activity-show">${UI.escapeHtml(a.showName || '')}</p>
-          ${a.timestamp ? `<p class="activity-time">${UI.timeAgo(a.timestamp)}</p>` : ''}
+          <p><strong>${UI.escapeHtml(displayName)}</strong> ${actionText}</p>
+          <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
+          ${a.createdAt ? `<p class="activity-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -184,12 +197,12 @@ const WallOfShamePage = {
     const all = [...this.state.shames.map(s => ({ ...s, isReceived: true })), ...this.state.sent.map(s => ({ ...s, isReceived: false }))];
     if (!all.length) { el.innerHTML = UI.emptyState('No shames', 'Nobody has been shamed yet!'); return; }
     el.innerHTML = `<div class="shame-items">${all.map(s => {
-      const poster = s.showPoster ? API.imageUrl(s.showPoster, 'w185') : '';
-      return `<div class="shame-list-item" onclick="App.navigate('details',{id:${s.showId},type:'${s.showType || 'tv'}'})">
+      const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w185') : '';
+      return `<div class="shame-list-item" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${s.mediaType || s.showType || 'tv'}'})">
         ${poster ? `<img src="${poster}" class="shame-item-poster" alt="">` : `<div class="shame-item-poster placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="shame-item-info">
-          <p class="shame-show">${UI.escapeHtml(s.showName || '')}</p>
-          <p class="shame-detail">${s.isReceived ? `Shamed by ${UI.escapeHtml(s.shamerUsername || '')}` : `You shamed ${UI.escapeHtml(s.shamedUsername || '')}`}</p>
+          <p class="shame-show">${UI.escapeHtml(s.mediaTitle || s.showName || '')}</p>
+          <p class="shame-detail">${s.isReceived ? `Shamed by ${UI.escapeHtml(s.shamerName || s.shamerUsername || '')}` : `You shamed ${UI.escapeHtml(s.shamedName || s.shamedUsername || '')}`}</p>
           ${s.createdAt ? `<p class="shame-time">${UI.timeAgo(s.createdAt)}</p>` : ''}
         </div>
         <div class="shame-icon">${UI.icon('thumbs-down', 20)}</div>

@@ -22,9 +22,9 @@ const AnalyticsPage = {
     const ratings = this.state.ratings;
     const watched = this.state.watched;
 
-    // Calculate genre distribution
+    // Calculate genre distribution by media type
     const genres = {};
-    watched.forEach(w => { const g = w.genre || w.showType || 'Unknown'; genres[g] = (genres[g] || 0) + 1; });
+    watched.forEach(w => { const g = w.mediaType === 'tv' ? 'TV Show' : w.mediaType === 'movie' ? 'Movie' : (w.mediaType || 'Unknown'); genres[g] = (genres[g] || 0) + 1; });
     const genreEntries = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const maxGenre = genreEntries.length ? genreEntries[0][1] : 1;
 
@@ -43,13 +43,13 @@ const AnalyticsPage = {
     const maxMonth = monthEntries.length ? Math.max(...monthEntries.map(e => e[1])) : 1;
 
     // TV vs Movie split
-    const tvCount = watched.filter(w => (w.showType || w.type) === 'tv').length;
-    const movieCount = watched.filter(w => (w.showType || w.type) === 'movie').length;
+    const tvCount = watched.filter(w => w.mediaType === 'tv').length;
+    const movieCount = watched.filter(w => w.mediaType === 'movie').length;
 
     el.innerHTML = `
       <div class="analytics-content">
         <div class="stats-grid">
-          <div class="stat-card accent"><span class="stat-number">${s.watchedCount || 0}</span><span class="stat-label">Total Watched</span></div>
+          <div class="stat-card accent"><span class="stat-number">${s.watched || 0}</span><span class="stat-label">Total Watched</span></div>
           <div class="stat-card accent"><span class="stat-number">${avgRating}</span><span class="stat-label">Avg Rating</span></div>
           <div class="stat-card"><span class="stat-number">${tvCount}</span><span class="stat-label">TV Shows</span></div>
           <div class="stat-card"><span class="stat-number">${movieCount}</span><span class="stat-label">Movies</span></div>

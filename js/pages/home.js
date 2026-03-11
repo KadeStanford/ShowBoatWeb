@@ -49,7 +49,7 @@ const HomePage = {
       }
       const counts = {};
       allItems.forEach(item => {
-        const key = `${item.showId || item.id}`;
+        const key = `${item.tmdbId || item.showId || item.id}`;
         if (!counts[key]) counts[key] = { ...item, count: 0 };
         counts[key].count++;
       });
@@ -120,19 +120,19 @@ const HomePage = {
   renderShameSection() {
     return `<div class="section"><div class="section-header"><h3>${UI.icon('thumbs-down', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
       <div class="horizontal-scroll">${this.state.shames.map(s => {
-        const poster = (s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
-        return `<div class="shame-card" onclick="App.navigate('details',{id:${s.showId},type:'${s.showType || 'tv'}'})">
+        const poster = (s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
+        return `<div class="shame-card" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${s.mediaType || s.showType || 'tv'}'})">
           ${poster ? `<img src="${poster}" alt="" class="shame-poster">` : `<div class="shame-poster placeholder">${UI.icon('tv', 24)}</div>`}
           <div class="shame-badge">${UI.icon('thumbs-down', 12)}</div>
-          <p class="shame-name">${UI.escapeHtml(s.shamedUsername || '')}</p>
+          <p class="shame-name">${UI.escapeHtml(s.shamedName || s.shamedUsername || '')}</p>
         </div>`;
       }).join('')}</div></div>`;
   },
 
   renderHorizontalList(items, isFriend) {
     return items.map(item => {
-      const id = item.showId || item.id;
-      const type = item.media_type || item.showType || 'tv';
+      const id = item.tmdbId || item.mediaId || item.showId || item.id;
+      const type = item.media_type || item.mediaType || item.showType || 'tv';
       const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const title = item.name || item.title || item.showName || '';
@@ -150,39 +150,30 @@ const HomePage = {
     this.state.timer = setInterval(() => this.nextSlide(), 5000);
   },
 
+  onHeroClick() {
+    const item = this.state.featured[this.state.current];
+    if (item) App.navigate('details', { id: item.id, type: item.media_type });
+  },
+
   goToSlide(i) {
+    if (i === this.state.current) return;
     this.state.current = i;
-    const hero = document.querySelector('.hero');
-    if (hero) {
-      const item = this.state.featured[i];
-      const bg = item.backdrop_path ? API.imageUrl(item.backdrop_path, 'original') : '';
-      hero.style.backgroundImage = `url('${bg}')`;
-      hero.setAttribute('onclick', `App.navigate('details',{id:${item.id},type:'${item.media_type}'})`);
-      const content = hero.querySelector('.hero-content');
-      if (content) {
-        const title = item.name || item.title || '';
-        const year = (item.first_air_date || item.release_date || '').substring(0, 4);
-        const overview = (item.overview || '').substring(0, 120);
-        const dots = this.state.featured.map((_, j) => `<span class="carousel-dot ${j === i ? 'active' : ''}" onclick="event.stopPropagation(); HomePage.goToSlide(${j})"></span>`).join('');
-        content.innerHTML = `
-          <div id="hero-logo-${i}" class="hero-logo-container">
-            ${item.logoUrl ? `<img src="${UI.escapeHtml(item.logoUrl)}" alt="" class="hero-logo-img">` : `<h2 class="hero-title">${UI.escapeHtml(title)}</h2>`}
-          </div>
-          <div class="hero-meta">
-            <span class="hero-type">${item.media_type === 'tv' ? 'TV Show' : 'Movie'}</span>
-            ${year ? `<span class="hero-year">${year}</span>` : ''}
-            ${item.vote_average ? `<span class="hero-rating">${UI.icon('star', 14)} ${item.vote_average.toFixed(1)}</span>` : ''}
-          </div>
-          ${overview ? `<p class="hero-overview">${UI.escapeHtml(overview)}...</p>` : ''}
-          <div class="carousel-dots">${dots}</div>`;
-      }
-    }
+    document.querySelectorAll('.hero-slide').forEach(s => s.classList.toggle('active', parseInt(s.dataset.slide) === i));
+    document.querySelectorAll('.carousel-dot').forEach((d, j) => d.classList.toggle('active', j === i));
     clearInterval(this.state.timer);
     this.state.timer = setInterval(() => this.nextSlide(), 5000);
   },
 
+  prevSlide() {
+    const len = this.state.featured.length;
+    if (len <= 1) return;
+    this.goToSlide((this.state.current - 1 + len) % len);
+  },
+
   nextSlide() {
-    this.goToSlide((this.state.current + 1) % this.state.featured.length);
+    const len = this.state.featured.length;
+    if (len <= 1) return;
+    this.goToSlide((this.state.current + 1) % len);
   },
 
   destroy() { clearInterval(this.state.timer); }
