@@ -737,6 +737,147 @@ ul, ol { list-style: none; }
 .modal-close-float:hover { background: rgba(0,0,0,0.8); }
 .modal-box { position: relative; }
 
+/* Overall Review Input */
+.review-input {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--slate-800); border: 1px solid var(--glass-border);
+  color: white; font-size: .875rem; font-family: inherit;
+  resize: vertical; min-height: 72px; margin-top: 12px;
+  transition: border-color var(--transition);
+}
+.review-input:focus { outline: none; border-color: var(--accent); }
+.review-input::placeholder { color: var(--slate-500); }
+.save-review-btn {
+  margin-top: 10px; padding: 10px 20px; border-radius: var(--radius-md);
+  background: var(--accent); color: white; font-weight: 700;
+  font-size: .875rem; cursor: pointer; border: none;
+  transition: all var(--transition); align-self: flex-start;
+}
+.save-review-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.rating-section h3 { color: white; font-weight: 700; font-size: 1rem; margin-bottom: 12px; }
+
+/* =============================================
+   FULL-SCREEN EPISODE MODAL
+   ============================================= */
+.modal-box:has(.ep-modal-full) { max-width: 640px; padding: 0; overflow: hidden; }
+
+.ep-modal-full { display: flex; flex-direction: column; }
+
+.ep-modal-hero {
+  position: relative; min-height: 220px; padding: 24px 28px;
+  background-size: cover; background-position: center top;
+  display: flex; align-items: flex-end;
+  background-color: var(--slate-800);
+}
+.ep-modal-hero-info { position: relative; z-index: 2; }
+.ep-modal-hero-info .ep-modal-show {
+  color: var(--accent); font-size: .8125rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px;
+}
+.ep-modal-hero-info h2 { color: white; font-size: 1.35rem; font-weight: 800; line-height: 1.3; margin: 0; }
+.ep-modal-meta {
+  display: flex; align-items: center; gap: 12px; margin-top: 8px;
+  color: var(--slate-300); font-size: .8125rem;
+}
+.ep-modal-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* Episode Modal Tabs */
+.ep-modal-tabs {
+  display: flex; border-bottom: 1px solid var(--glass-border);
+  background: var(--bg-secondary); padding: 0 12px;
+  position: sticky; top: 0; z-index: 3;
+}
+.ep-tab {
+  padding: 14px 20px; font-size: .875rem; font-weight: 600;
+  color: var(--slate-400); background: none; border: none;
+  cursor: pointer; position: relative; transition: color var(--transition);
+}
+.ep-tab:hover { color: var(--slate-200); }
+.ep-tab.active { color: var(--accent); }
+.ep-tab.active::after {
+  content: ''; position: absolute; bottom: 0; left: 12px; right: 12px;
+  height: 2px; background: var(--accent); border-radius: 2px;
+}
+
+/* Tab Panels */
+.ep-modal-content { padding: 24px 28px; }
+.ep-tab-panel { display: none; }
+.ep-tab-panel.active { display: block; }
+.ep-overview { color: var(--slate-300); line-height: 1.7; font-size: .9375rem; }
+.ep-overview.muted { color: var(--slate-500); font-style: italic; }
+
+/* Episode Review Form (inside tab) */
+.ep-review-form { display: flex; flex-direction: column; gap: 14px; }
+.ep-review-form label { color: var(--slate-300); font-weight: 600; font-size: .875rem; }
+.ep-stars-lg .stars-container { gap: 4px; }
+.ep-stars-lg .rating-number { font-size: 1.75rem; font-weight: 800; }
+
+/* Friend Episode Cards */
+.ep-friend-card {
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px;
+  transition: border-color var(--transition);
+}
+.ep-friend-card:hover { border-color: var(--slate-700); }
+.ep-friend-card:last-child { margin-bottom: 0; }
+.ep-friend-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.ep-friend-card-info { flex: 1; }
+.ep-friend-card-info strong { color: white; font-size: .9375rem; display: block; }
+.ep-friend-card-stars { margin-top: 2px; }
+.ep-friend-card-stars .stars-container { gap: 1px; }
+.ep-friend-card-stars .rating-number { font-size: 1rem; min-width: 40px; }
+.ep-friend-card-comment {
+  color: var(--slate-400); font-size: .875rem; font-style: italic;
+  line-height: 1.5; margin: 4px 0 10px; padding-left: 2px;
+}
+.ep-friend-card-time { color: var(--slate-500); font-size: .75rem; margin-top: 8px; }
+
+/* Friend Avatar Large */
+.friend-avatar.lg { width: 40px; height: 40px; font-size: 1rem; }
+.friend-avatar.lg img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* Reaction Bar */
+.reaction-bar { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.reaction-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.reaction-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 999px; font-size: .8125rem;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  color: var(--slate-300); cursor: pointer; transition: all var(--transition);
+}
+.reaction-pill:hover { border-color: var(--slate-600); background: var(--slate-800); }
+.reaction-pill.mine { border-color: var(--accent); background: rgba(var(--accent-rgb, 99,102,241), .12); }
+.reaction-add { display: flex; flex-wrap: wrap; gap: 4px; }
+.reaction-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  font-size: 1rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.reaction-btn:hover { transform: scale(1.15); background: var(--slate-800); border-color: var(--slate-600); }
+.reaction-btn.active { border-color: var(--accent); background: rgba(var(--accent-rgb, 99,102,241), .12); }
+
+/* No friends message */
+.ep-no-friends { color: var(--slate-500); font-size: .875rem; text-align: center; padding: 32px 16px; }
+
+/* Friend Episode Reviews in sidebar */
+.friend-ep-header { color: var(--slate-400); font-size: .8125rem; font-weight: 600; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.friend-ep-reviews { display: flex; flex-direction: column; gap: 6px; }
+.friend-ep-review-item {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.02);
+}
+.friend-ep-review-item strong { color: white; font-size: .8125rem; }
+.friend-ep-tag {
+  font-size: .6875rem; font-weight: 700; color: var(--accent);
+  background: rgba(var(--accent-rgb, 99,102,241), .12);
+  padding: 2px 6px; border-radius: 4px;
+}
+.friend-ep-score { color: var(--amber-400); font-weight: 700; font-size: .8125rem; }
+.friend-ep-comment { width: 100%; color: var(--slate-400); font-size: .75rem; font-style: italic; margin-top: 2px; line-height: 1.4; }
+
 /* Details page responsive */
 @media (max-width: 900px) {
   .details-content-grid { grid-template-columns: 1fr; }
@@ -755,6 +896,11 @@ ul, ol { list-style: none; }
   .details-genres { justify-content: center; }
   .details-stats-row { justify-content: center; }
   .details-hero { height: 300px; }
+  .ep-modal-hero { min-height: 160px; padding: 16px 18px; }
+  .ep-modal-hero-info h2 { font-size: 1.1rem; }
+  .ep-modal-content { padding: 16px 18px; }
+  .ep-tab { padding: 12px 14px; font-size: .8125rem; }
+  .reaction-btn { width: 32px; height: 32px; font-size: .875rem; }
 }
 
 /* =============================================

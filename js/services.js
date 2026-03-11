@@ -115,9 +115,10 @@ const Services = {
     await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).set({
       tmdbId: Number(tmdbId), rating, ratedAt: Date.now(),
       name: meta.name || '', posterPath: meta.posterPath || null,
-      mediaType: meta.mediaType || 'tv'
+      mediaType: meta.mediaType || 'tv',
+      review: meta.review || ''
     }, { merge: true });
-    this._logActivity('rated', { id: tmdbId, name: meta.name, mediaType: meta.mediaType, posterPath: meta.posterPath, rating });
+    this._logActivity('rated', { id: tmdbId, name: meta.name, mediaType: meta.mediaType, posterPath: meta.posterPath, rating, comment: meta.review });
   },
 
   // ==================== EPISODE RATINGS ====================
@@ -138,9 +139,80 @@ const Services = {
 
   async getEpisodeRating(tmdbId, season, episode, userId) {
     const uid = userId || this._uid(); if (!uid) return null;
+    // Try new format first
     const docId = `${tmdbId}_s${season}_e${episode}`;
     const doc = await db.collection('users').doc(uid).collection('episodeRatings').doc(docId).get();
-    return doc.exists ? doc.data() : null;
+    if (doc.exists) return doc.data();
+    // Try old React Native format: episodeReviews collection
+    try {
+      const oldDoc = await db.collection('users').doc(uid).collection('episodeReviews').doc(docId).get();
+      if (oldDoc.exists) return oldDoc.data();
+    } catch (_) {}
+    // Try old format with different doc ID patterns
+    try {
+      const altId = `${tmdbId}:s${season}:e${episode}`;
+      const altDoc = await db.collection('users').doc(uid).collection('episodeRatings').doc(altId).get();
+      if (altDoc.exists) return altDoc.data();
+      const altDoc2 = await db.collection('users').doc(uid).collection('episodeReviews').doc(altId).get();
+      if (altDoc2.exists) return altDoc2.data();
+    } catch (_) {}
+    // Try ratings collection with episode key
+    try {
+      const rDoc = await db.collection('users').doc(uid).collection('ratings').doc(`${tmdbId}_s${season}_e${episode}`).get();
+      if (rDoc.exists) return rDoc.data();
+    } catch (_) {}
+    return null;
+  },
+
+  async getAllEpisodeRatingsForShow(tmdbId, userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
+    const results = [];
+    // Try episodeRatings collection
+    try {
+      const snap = await db.collection('users').doc(uid).collection('episodeRatings')
+        .where('tmdbId', '==', Number(tmdbId)).get();
+      snap.docs.forEach(d => results.push({ docId: d.id, ...d.data() }));
+    } catch (_) {}
+    // Try old episodeReviews collection
+    try {
+      const snap = await db.collection('users').doc(uid).collection('episodeReviews')
+        .where('tmdbId', '==', Number(tmdbId)).get();
+      snap.docs.forEach(d => {
+        if (!results.some(r => r.seasonNumber === d.data().seasonNumber && r.episodeNumber === d.data().episodeNumber)) {
+          results.push({ docId: d.id, ...d.data() });
+        }
+      });
+    } catch (_) {}
+    return results;
+  },
+
+  // ==================== REACTIONS ====================
+  async addReaction(targetUserId, ratingDocId, emoji) {
+    const uid = this._uid(); if (!uid) return;
+    const me = this._user();
+    const reactionRef = db.collection('users').doc(targetUserId)
+      .collection('episodeRatings').doc(ratingDocId)
+      .collection('reactions').doc(uid);
+    await reactionRef.set({
+      emoji, userId: uid, userName: me.displayName || '',
+      createdAt: Date.now()
+    });
+  },
+
+  async removeReaction(targetUserId, ratingDocId) {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(targetUserId)
+      .collection('episodeRatings').doc(ratingDocId)
+      .collection('reactions').doc(uid).delete();
+  },
+
+  async getReactions(targetUserId, ratingDocId) {
+    try {
+      const snap = await db.collection('users').doc(targetUserId)
+        .collection('episodeRatings').doc(ratingDocId)
+        .collection('reactions').get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (_) { return []; }
   },
 
   // ==================== FRIENDS ====================

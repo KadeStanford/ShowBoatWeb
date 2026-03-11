@@ -1,10 +1,10 @@
 /* ShowBoat — Show/Movie Details Page */
 const DetailsPage = {
-  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true },
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true },
 
   async render(params) {
     const rawType = params.type || 'tv';
-    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
+    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
@@ -27,6 +27,7 @@ const DetailsPage = {
       this.state.inWatchlist = inWl;
       this.state.isWatched = isW;
       this.state.rating = rat?.rating || 0;
+      this.state.review = rat?.review || '';
       this.state.logoUrl = logo ? API.imageUrl(logo, 'w500') : null;
       if (this.state.type === 'tv' && details.seasons?.length) {
         const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
@@ -95,10 +96,12 @@ const DetailsPage = {
           <div class="details-content-grid">
             <div class="details-main">
               <div class="rating-section">
-                <label>Your Rating</label>
+                <h3>Your Overall Rating</h3>
                 <div class="star-rating-row" id="star-rating">
                   ${this.renderStars(this.state.rating)}
                 </div>
+                <textarea id="overall-review" class="review-input" placeholder="Write your review of the ${this.state.type === 'tv' ? 'series' : 'movie'} as a whole..." rows="3" oninput="DetailsPage._pendingReview=this.value">${UI.escapeHtml(this.state.review)}</textarea>
+                <button class="save-review-btn" onclick="DetailsPage.saveOverallReview()">Save Review</button>
               </div>
               ${d.overview ? `<div class="section overview-section"><h3>Overview</h3><p class="overview-text">${UI.escapeHtml(d.overview)}</p></div>` : ''}
               ${this.state.type === 'tv' && d.seasons?.length ? this.renderSeasons(d.seasons) : ''}
@@ -152,14 +155,25 @@ const DetailsPage = {
     });
   },
 
+  _pendingReview: '',
+
   async setRating(val) {
     const rating = val / 2 >= 0.5 ? val : 0;
     this.state.rating = rating;
     const container = document.getElementById('star-rating');
     if (container) container.innerHTML = this.renderStars(rating);
     const d = this.state.details;
-    await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type });
+    const review = document.getElementById('overall-review')?.value || this._pendingReview || '';
+    await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
     UI.toast(`Rated ${rating}/10`, 'success');
+  },
+
+  async saveOverallReview() {
+    const d = this.state.details;
+    const review = (document.getElementById('overall-review')?.value || '').trim();
+    this.state.review = review;
+    await Services.rateMedia(this.state.id, this.state.rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
+    UI.toast('Review saved!', 'success');
   },
 
   renderSeasons(seasons) {
@@ -267,7 +281,7 @@ const DetailsPage = {
   async setEpisodeRating(val) {
     this._epRating = val;
     const container = document.getElementById('ep-star-rating');
-    if (container) container.innerHTML = this.renderStars(val, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 });
+    if (container) container.innerHTML = this.renderStars(val, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 24 });
   },
 
   showEpisodeDetails(idx) {
@@ -275,28 +289,60 @@ const DetailsPage = {
     if (!ep) return;
     this._epRating = 0;
     this._epIdx = idx;
-    const still = ep.still_path ? API.imageUrl(ep.still_path, 'w500') : '';
-    // Load any existing episode rating
-    this._loadEpisodeRating(ep.season_number, ep.episode_number);
+    this._epComment = '';
+    const still = ep.still_path ? API.imageUrl(ep.still_path, 'w780') : '';
+    const d = this.state.details;
+    const showTitle = d.name || d.title || '';
+
     UI.showModal(`
-      <div class="episode-modal">
-        ${still ? `<img src="${still}" class="modal-still" alt="">` : ''}
-        <h3>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h3>
-        ${ep.air_date ? `<p class="modal-date">${ep.air_date}</p>` : ''}
-        ${ep.vote_average ? `<p class="modal-tmdb-rating">${UI.icon('star', 14)} ${ep.vote_average.toFixed(1)} <span class="tmdb-label">TMDB</span></p>` : ''}
-        ${ep.overview ? `<p class="modal-overview">${UI.escapeHtml(ep.overview)}</p>` : ''}
-        <div class="ep-rating-section">
-          <label>Your Rating</label>
-          <div class="star-rating-row" id="ep-star-rating">
-            ${this.renderStars(0, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 })}
+      <div class="ep-modal-full">
+        <div class="ep-modal-hero" ${still ? `style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-secondary) 100%), url('${still}')"` : ''}>
+          <div class="ep-modal-hero-info">
+            <p class="ep-modal-show">${UI.escapeHtml(showTitle)}</p>
+            <h2>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h2>
+            <div class="ep-modal-meta">
+              ${ep.air_date ? `<span>${ep.air_date}</span>` : ''}
+              ${ep.vote_average ? `<span>${UI.icon('star', 14)} ${ep.vote_average.toFixed(1)} TMDB</span>` : ''}
+              ${ep.runtime ? `<span>${ep.runtime}m</span>` : ''}
+            </div>
           </div>
-          <label>Comment</label>
-          <textarea id="ep-comment" class="ep-comment-input" placeholder="What did you think of this episode?" rows="3"></textarea>
-          <button class="ep-save-btn" onclick="DetailsPage.saveEpisodeRating()">Save Rating</button>
         </div>
-        <div id="ep-friends-ratings"></div>
+        <div class="ep-modal-tabs">
+          <button class="ep-tab active" onclick="DetailsPage.switchEpTab('details')">Details</button>
+          <button class="ep-tab" onclick="DetailsPage.switchEpTab('review')">Your Review</button>
+          <button class="ep-tab" onclick="DetailsPage.switchEpTab('friends')">Friends</button>
+        </div>
+        <div class="ep-modal-content">
+          <div id="ep-tab-details" class="ep-tab-panel active">
+            ${ep.overview ? `<p class="ep-overview">${UI.escapeHtml(ep.overview)}</p>` : '<p class="ep-overview muted">No overview available.</p>'}
+          </div>
+          <div id="ep-tab-review" class="ep-tab-panel">
+            <div class="ep-review-form">
+              <label>Your Rating</label>
+              <div class="star-rating-row ep-stars-lg" id="ep-star-rating">
+                ${this.renderStars(0, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 28 })}
+              </div>
+              <label>Your Thoughts</label>
+              <textarea id="ep-comment" class="ep-comment-input" placeholder="What did you think of this episode?" rows="4"></textarea>
+              <button class="ep-save-btn" onclick="DetailsPage.saveEpisodeRating()">Save Rating</button>
+            </div>
+          </div>
+          <div id="ep-tab-friends" class="ep-tab-panel">
+            <div id="ep-friends-ratings">${UI.loading()}</div>
+          </div>
+        </div>
       </div>`);
+    this._loadEpisodeRating(ep.season_number, ep.episode_number);
     this._loadFriendEpisodeRatings(ep.season_number, ep.episode_number);
+  },
+
+  switchEpTab(tab) {
+    document.querySelectorAll('.ep-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ep-tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.ep-tab-panel#ep-tab-${tab}`)?.classList.add('active');
+    const tabs = document.querySelectorAll('.ep-tab');
+    const idx = tab === 'details' ? 0 : tab === 'review' ? 1 : 2;
+    tabs[idx]?.classList.add('active');
   },
 
   async _loadEpisodeRating(season, episode) {
@@ -305,7 +351,7 @@ const DetailsPage = {
       if (existing) {
         this._epRating = existing.rating || 0;
         const container = document.getElementById('ep-star-rating');
-        if (container) container.innerHTML = this.renderStars(this._epRating, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 });
+        if (container) container.innerHTML = this.renderStars(this._epRating, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 28 });
         const comment = document.getElementById('ep-comment');
         if (comment && existing.comment) comment.value = existing.comment;
       }
@@ -321,34 +367,76 @@ const DetailsPage = {
       showName: d.name || d.title, posterPath: d.poster_path, episodeName: ep.name
     });
     UI.toast('Episode rating saved!', 'success');
-    UI.closeModal();
   },
 
   async _loadFriendEpisodeRatings(season, episode) {
     try {
       const friends = await Services.getFriends();
       const ratings = [];
-      for (const f of friends.slice(0, 10)) {
+      const docId = `${this.state.id}_s${season}_e${episode}`;
+      for (const f of friends.slice(0, 15)) {
         const fid = f.uid || f.docId;
         const fname = f.username || fid;
+        const fPhoto = f.photoURL || null;
         const r = await Services.getEpisodeRating(this.state.id, season, episode, fid).catch(() => null);
-        if (r) ratings.push({ ...r, friendName: fname });
+        if (r) {
+          const reactions = await Services.getReactions(fid, docId).catch(() => []);
+          ratings.push({ ...r, friendId: fid, friendName: fname, friendPhoto: fPhoto, docId, reactions });
+        }
       }
       const el = document.getElementById('ep-friends-ratings');
-      if (el && ratings.length) {
-        el.innerHTML = `<div class="ep-friend-ratings">
-          <h4>Friends' Ratings</h4>
-          ${ratings.map(r => `<div class="ep-friend-rating-item">
-            <div class="friend-avatar">${(r.friendName || '?')[0].toUpperCase()}</div>
-            <div class="ep-friend-rating-info">
-              <strong>${UI.escapeHtml(r.friendName)}</strong>
-              <span class="ep-friend-score">${r.rating}/10</span>
-              ${r.comment ? `<p class="ep-friend-comment">${UI.escapeHtml(r.comment)}</p>` : ''}
-            </div>
-          </div>`).join('')}
-        </div>`;
+      if (!el) return;
+      if (!ratings.length) {
+        el.innerHTML = `<div class="ep-no-friends">No friends have rated this episode yet.</div>`;
+        return;
       }
-    } catch (_) {}
+      const currentUid = auth.currentUser?.uid;
+      el.innerHTML = ratings.map(r => {
+        const myReaction = r.reactions.find(rx => rx.id === currentUid);
+        const reactionCounts = {};
+        r.reactions.forEach(rx => { reactionCounts[rx.emoji] = (reactionCounts[rx.emoji] || 0) + 1; });
+        return `<div class="ep-friend-card">
+          <div class="ep-friend-card-header">
+            <div class="friend-avatar lg">${r.friendPhoto ? `<img src="${UI.escapeHtml(r.friendPhoto)}" alt="">` : (r.friendName || '?')[0].toUpperCase()}</div>
+            <div class="ep-friend-card-info">
+              <strong>${UI.escapeHtml(r.friendName)}</strong>
+              <div class="ep-friend-card-stars">${this.renderStars(r.rating, { prefix: 'fr' + r.friendId.slice(0, 6), interactive: false, size: 16 })}</div>
+            </div>
+          </div>
+          ${r.comment ? `<p class="ep-friend-card-comment">"${UI.escapeHtml(r.comment)}"</p>` : ''}
+          <div class="reaction-bar">
+            <div class="reaction-pills">${Object.entries(reactionCounts).map(([em, cnt]) =>
+              `<span class="reaction-pill ${myReaction?.emoji === em ? 'mine' : ''}" onclick="DetailsPage.toggleReaction('${r.friendId}','${r.docId}','${em}')">${em} ${cnt}</span>`
+            ).join('')}</div>
+            <div class="reaction-add">
+              ${['❤️','😂','🔥','👏','😢','💀'].map(em =>
+                `<button class="reaction-btn ${myReaction?.emoji === em ? 'active' : ''}" onclick="DetailsPage.toggleReaction('${r.friendId}','${r.docId}','${em}')">${em}</button>`
+              ).join('')}
+            </div>
+          </div>
+          ${r.ratedAt ? `<p class="ep-friend-card-time">${UI.timeAgo(r.ratedAt)}</p>` : ''}
+        </div>`;
+      }).join('');
+    } catch (_) {
+      const el = document.getElementById('ep-friends-ratings');
+      if (el) el.innerHTML = `<div class="ep-no-friends">Could not load friend ratings.</div>`;
+    }
+  },
+
+  async toggleReaction(friendId, docId, emoji) {
+    const currentUid = auth.currentUser?.uid;
+    if (!currentUid) return;
+    // Check if we already have this reaction
+    const reactions = await Services.getReactions(friendId, docId).catch(() => []);
+    const myReaction = reactions.find(r => r.id === currentUid);
+    if (myReaction && myReaction.emoji === emoji) {
+      await Services.removeReaction(friendId, docId);
+    } else {
+      await Services.addReaction(friendId, docId, emoji);
+    }
+    // Reload the friends tab
+    const ep = this.state.episodes[this._epIdx];
+    if (ep) this._loadFriendEpisodeRatings(ep.season_number, ep.episode_number);
   },
 
   showMoreActions() {
@@ -440,23 +528,42 @@ const DetailsPage = {
       for (const f of friends.slice(0, 10)) {
         const fid = f.uid || f.docId;
         const fname = f.username || fid;
-        const [wl, w] = await Promise.all([
+        const [wl, w, rat] = await Promise.all([
           Services.getWatchlist(fid).catch(() => []),
-          Services.getWatched(fid).catch(() => [])
+          Services.getWatched(fid).catch(() => []),
+          Services.getRating(this.state.id).catch(() => null)
         ]);
         const inWl = wl.some(item => String(item.id || item.tmdbId) === String(this.state.id));
         const isW = w.some(item => String(item.tmdbId) === String(this.state.id));
-        if (inWl || isW) activity.push({ fid, fname, inWatchlist: inWl, isWatched: isW });
+        if (inWl || isW || rat) activity.push({ fid, fname, inWatchlist: inWl, isWatched: isW, rating: rat?.rating });
+      }
+      // Also load friend episode ratings for this show
+      const epRatings = [];
+      for (const f of friends.slice(0, 10)) {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        const ratings = await Services.getAllEpisodeRatingsForShow(this.state.id, fid).catch(() => []);
+        ratings.forEach(r => epRatings.push({ ...r, fname }));
       }
       this.state.friendActivity = activity;
       const section = document.getElementById('friend-activity-section');
-      if (section && activity.length) {
+      if (section && (activity.length || epRatings.length)) {
         section.innerHTML = `<div class="section"><h3>Friends</h3>
-          <div class="friend-activity-list">${activity.map(f => `<div class="friend-activity-item">
+          ${activity.length ? `<div class="friend-activity-list">${activity.map(f => `<div class="friend-activity-item">
             <div class="friend-avatar">${(f.fname || '?')[0].toUpperCase()}</div>
-            <span class="friend-name">${UI.escapeHtml(f.fname)}</span>
-            <span class="friend-status ${f.isWatched ? 'watched' : 'watchlist'}">${f.isWatched ? 'Watched' : 'In Watchlist'}</span>
-          </div>`).join('')}</div></div>`;
+            <div class="friend-activity-details">
+              <span class="friend-name">${UI.escapeHtml(f.fname)}</span>
+              <span class="friend-status ${f.isWatched ? 'watched' : 'watchlist'}">${f.isWatched ? 'Watched' : f.inWatchlist ? 'In Watchlist' : ''}${f.rating ? ` · ${f.rating}/10` : ''}</span>
+            </div>
+          </div>`).join('')}</div>` : ''}
+          ${epRatings.length ? `<h4 class="friend-ep-header">Episode Reviews</h4>
+          <div class="friend-ep-reviews">${epRatings.slice(0, 8).map(r => `<div class="friend-ep-review-item">
+            <strong>${UI.escapeHtml(r.fname)}</strong>
+            <span class="friend-ep-tag">S${r.seasonNumber}E${r.episodeNumber}</span>
+            <span class="friend-ep-score">${r.rating}/10</span>
+            ${r.comment ? `<p class="friend-ep-comment">${UI.escapeHtml(r.comment.length > 80 ? r.comment.substring(0, 80) + '...' : r.comment)}</p>` : ''}
+          </div>`).join('')}</div>` : ''}
+        </div>`;
       }
     } catch (_) {}
   }
