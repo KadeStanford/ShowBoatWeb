@@ -490,8 +490,10 @@ const DiscoverPage = {
       if (this.state.page >= this.state.totalPages && this.state._observer) {
         this.state._observer.disconnect(); this.state._observer = null;
       }
-      // Keep saved page in sync for scroll restoration
+      // Keep saved grid + page in sync for scroll restoration
       this.state._savedPage = this.state.page;
+      const fullGrid = document.getElementById('discover-results');
+      if (fullGrid) this.state._savedGridHTML = fullGrid.innerHTML;
     } catch (_) {}
     this.state.loading = false;
   },

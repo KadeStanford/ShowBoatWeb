@@ -122,6 +122,10 @@ const App = {
 
     // Cleanup previous page
     if (this.currentPage === 'home') HomePage.destroy?.();
+    if (this.currentPage === 'discover') {
+      const grid = document.getElementById('discover-results');
+      if (grid) DiscoverPage.state._savedGridHTML = grid.innerHTML;
+    }
 
     // Track history (unless going back)
     if (!_isBack && this.currentPage) {
