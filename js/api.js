@@ -4,12 +4,8 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 
 const API = {
-  // --- Image URLs ---
-  posterUrl(path, size = 'w342') { return path ? `${TMDB_IMG}/${size}${path}` : null; },
-  backdropUrl(path, size = 'w1280') { return path ? `${TMDB_IMG}/${size}${path}` : null; },
-  logoUrl(path, size = 'w300') { return path ? `${TMDB_IMG}/${size}${path}` : null; },
-  stillUrl(path, size = 'w300') { return path ? `${TMDB_IMG}/${size}${path}` : null; },
-  profileUrl(path, size = 'w185') { return path ? `${TMDB_IMG}/${size}${path}` : null; },
+  // --- Image URL (generic, used by all pages) ---
+  imageUrl(path, size = 'w342') { return path ? `${TMDB_IMG}/${size}${path}` : ''; },
 
   // --- Fetch helper ---
   async tmdb(endpoint, params = {}) {
@@ -21,14 +17,14 @@ const API = {
     return res.json();
   },
 
-  // --- Search ---
+  // --- Search (return raw TMDB results) ---
   async searchShows(query, page = 1) {
     const data = await this.tmdb('/search/tv', { query, page });
-    return data ? this._mapShows(data.results, 'tv') : [];
+    return data?.results || [];
   },
   async searchMovies(query, page = 1) {
     const data = await this.tmdb('/search/movie', { query, page });
-    return data ? this._mapMovies(data.results) : [];
+    return data?.results || [];
   },
   async searchPeople(query, page = 1) {
     const data = await this.tmdb('/search/person', { query, page });
@@ -36,23 +32,13 @@ const API = {
   },
   async searchMulti(query, page = 1) {
     const data = await this.tmdb('/search/multi', { query, page });
-    if (!data) return [];
-    return data.results.map(r => {
-      if (r.media_type === 'movie') return { id: r.id, name: r.title || r.name, posterPath: r.poster_path, backdropPath: r.backdrop_path, overview: r.overview || '', mediaType: 'movie', firstAirDate: r.release_date, genreIds: r.genre_ids || [], voteAverage: r.vote_average };
-      if (r.media_type === 'tv') return { id: r.id, name: r.name, posterPath: r.poster_path, backdropPath: r.backdrop_path, overview: r.overview || '', mediaType: 'tv', firstAirDate: r.first_air_date, genreIds: r.genre_ids || [], voteAverage: r.vote_average };
-      if (r.media_type === 'person') return { id: r.id, name: r.name, posterPath: r.profile_path, mediaType: 'person' };
-      return null;
-    }).filter(Boolean);
+    return data?.results || [];
   },
 
-  // --- Trending ---
-  async getTrendingShows() {
-    const data = await this.tmdb('/trending/tv/week');
-    return data ? this._mapShows(data.results, 'tv') : [];
-  },
-  async getTrendingMovies() {
-    const data = await this.tmdb('/trending/movie/week');
-    return data ? this._mapMovies(data.results) : [];
+  // --- Trending (generic — accepts 'tv', 'movie', 'all', 'person') ---
+  async getTrending(type = 'all') {
+    const data = await this.tmdb(`/trending/${type}/week`);
+    return data?.results || [];
   },
 
   // --- Genres ---
@@ -64,119 +50,59 @@ const API = {
   // --- Discover ---
   async discoverMedia(type = 'tv', params = {}) {
     const data = await this.tmdb(`/discover/${type}`, params);
-    if (!data) return [];
-    return type === 'movie' ? this._mapMovies(data.results) : this._mapShows(data.results, 'tv');
+    return data?.results || [];
   },
 
   // --- Top Rated / Upcoming / On Air ---
   async getTopRated(type = 'tv', page = 1) {
     const data = await this.tmdb(`/${type}/top_rated`, { page });
-    if (!data) return [];
-    return type === 'movie' ? this._mapMovies(data.results) : this._mapShows(data.results, 'tv');
+    return data?.results || [];
   },
   async getUpcomingMovies(page = 1) {
     const data = await this.tmdb('/movie/upcoming', { page });
-    return data ? this._mapMovies(data.results) : [];
+    return data?.results || [];
   },
   async getOnTheAirShows(page = 1) {
     const data = await this.tmdb('/tv/on_the_air', { page });
-    return data ? this._mapShows(data.results, 'tv') : [];
+    return data?.results || [];
   },
 
-  // --- Details ---
+  // --- Details (return raw TMDB data with credits & images appended) ---
   async getShowDetails(id) {
     const data = await this.tmdb(`/tv/${id}`, { append_to_response: 'credits,images' });
     if (!data) return null;
-    const logoPath = data.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path || data.images?.logos?.[0]?.file_path || null;
-    return {
-      id: data.id, name: data.name, overview: data.overview || '',
-      posterPath: data.poster_path, backdropPath: data.backdrop_path, logoPath,
-      firstAirDate: data.first_air_date, lastAirDate: data.last_air_date,
-      status: data.status, tagline: data.tagline || '',
-      numberOfSeasons: data.number_of_seasons, numberOfEpisodes: data.number_of_episodes,
-      episodeRunTime: data.episode_run_time || [],
-      voteAverage: data.vote_average, voteCount: data.vote_count,
-      genres: data.genres || [], homepage: data.homepage,
-      networks: (data.networks || []).map(n => ({ id: n.id, name: n.name, logoPath: n.logo_path })),
-      seasons: (data.seasons || []).map(s => ({
-        id: s.id, seasonNumber: s.season_number, name: s.name,
-        episodeCount: s.episode_count, posterPath: s.poster_path, airDate: s.air_date
-      })),
-      cast: (data.credits?.cast || []).slice(0, 20).map(c => ({
-        id: c.id, name: c.name, character: c.character, profilePath: c.profile_path, order: c.order
-      })),
-      mediaType: 'tv'
-    };
+    data.media_type = 'tv';
+    data.cast = (data.credits?.cast || []).slice(0, 20);
+    return data;
   },
   async getMovieDetails(id) {
     const data = await this.tmdb(`/movie/${id}`, { append_to_response: 'credits,images' });
     if (!data) return null;
-    const logoPath = data.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path || data.images?.logos?.[0]?.file_path || null;
-    return {
-      id: data.id, name: data.title, overview: data.overview || '',
-      posterPath: data.poster_path, backdropPath: data.backdrop_path, logoPath,
-      firstAirDate: data.release_date, lastAirDate: null,
-      status: data.status, tagline: data.tagline || '',
-      numberOfSeasons: null, numberOfEpisodes: null,
-      episodeRunTime: data.runtime ? [data.runtime] : [],
-      voteAverage: data.vote_average, voteCount: data.vote_count,
-      genres: data.genres || [], homepage: data.homepage, networks: [],
-      seasons: [], mediaType: 'movie',
-      cast: (data.credits?.cast || []).slice(0, 20).map(c => ({
-        id: c.id, name: c.name, character: c.character, profilePath: c.profile_path, order: c.order
-      }))
-    };
+    data.media_type = 'movie';
+    data.cast = (data.credits?.cast || []).slice(0, 20);
+    return data;
   },
 
-  // --- Season Episodes ---
+  // --- Season Episodes (raw) ---
   async getSeasonEpisodes(showId, seasonNum) {
     const data = await this.tmdb(`/tv/${showId}/season/${seasonNum}`);
-    if (!data) return [];
-    return (data.episodes || []).map(e => ({
-      id: e.id, name: e.name, overview: e.overview || '',
-      episodeNumber: e.episode_number, seasonNumber: e.season_number,
-      stillPath: e.still_path, airDate: e.air_date,
-      voteAverage: e.vote_average, runtime: e.runtime
-    }));
+    return data?.episodes || [];
   },
 
-  // --- Episode Details ---
+  // --- Episode Details (raw) ---
   async getEpisodeDetails(showId, seasonNum, epNum) {
-    const data = await this.tmdb(`/tv/${showId}/season/${seasonNum}/episode/${epNum}`);
-    if (!data) return null;
-    return {
-      id: data.id, name: data.name, overview: data.overview || '',
-      episodeNumber: data.episode_number, seasonNumber: data.season_number,
-      stillPath: data.still_path, airDate: data.air_date,
-      voteAverage: data.vote_average, runtime: data.runtime,
-      crew: data.crew || [], guestStars: data.guest_stars || []
-    };
+    return this.tmdb(`/tv/${showId}/season/${seasonNum}/episode/${epNum}`);
   },
 
-  // --- Credits ---
+  // --- Credits (raw) ---
   async getMediaCredits(id, type = 'tv') {
     const data = await this.tmdb(`/${type}/${id}/credits`);
-    if (!data) return { cast: [], crew: [] };
-    return {
-      cast: (data.cast || []).map(c => ({ id: c.id, name: c.name, character: c.character, profilePath: c.profile_path, order: c.order })),
-      crew: (data.crew || []).map(c => ({ id: c.id, name: c.name, job: c.job, department: c.department, profilePath: c.profile_path }))
-    };
+    return data || { cast: [], crew: [] };
   },
 
-  // --- Person Details ---
+  // --- Person Details (raw with combined_credits) ---
   async getPersonDetails(id) {
-    const data = await this.tmdb(`/person/${id}`, { append_to_response: 'combined_credits' });
-    if (!data) return null;
-    return {
-      id: data.id, name: data.name, biography: data.biography || '',
-      profilePath: data.profile_path, birthday: data.birthday, deathday: data.deathday,
-      placeOfBirth: data.place_of_birth, knownFor: data.known_for_department,
-      credits: (data.combined_credits?.cast || []).map(c => ({
-        id: c.id, name: c.title || c.name, posterPath: c.poster_path,
-        mediaType: c.media_type, character: c.character, releaseDate: c.release_date || c.first_air_date,
-        voteAverage: c.vote_average
-      })).sort((a, b) => (b.voteAverage || 0) - (a.voteAverage || 0))
-    };
+    return this.tmdb(`/person/${id}`, { append_to_response: 'combined_credits' });
   },
 
   // --- Fetch Logo ---
@@ -185,24 +111,6 @@ const API = {
     if (!data) return null;
     const en = data.logos?.find(l => l.iso_639_1 === 'en');
     return en?.file_path || data.logos?.[0]?.file_path || null;
-  },
-
-  // --- Helpers ---
-  _mapShows(results, mediaType) {
-    return (results || []).map(r => ({
-      id: r.id, name: r.name || r.title, posterPath: r.poster_path,
-      backdropPath: r.backdrop_path, overview: r.overview || '',
-      firstAirDate: r.first_air_date || r.release_date,
-      genreIds: r.genre_ids || [], mediaType, voteAverage: r.vote_average
-    }));
-  },
-  _mapMovies(results) {
-    return (results || []).map(r => ({
-      id: r.id, name: r.title || r.name, posterPath: r.poster_path,
-      backdropPath: r.backdrop_path, overview: r.overview || '',
-      firstAirDate: r.release_date, genreIds: r.genre_ids || [],
-      mediaType: 'movie', voteAverage: r.vote_average
-    }));
   }
 };
 

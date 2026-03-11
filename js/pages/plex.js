@@ -46,7 +46,7 @@ const PlexConnectPage = {
     btn.disabled = true; btn.textContent = 'Connecting...';
     try {
       const pin = await PlexAPI.createPin();
-      const authUrl = PlexAPI.getAuthUrl(pin.id, pin.code);
+      const authUrl = PlexAPI.getAuthUrl(pin.code);
       window.open(authUrl, '_blank');
       UI.toast('Authenticate in the new tab, then click below', 'info');
       btn.textContent = 'Checking...';

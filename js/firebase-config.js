@@ -15,6 +15,7 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 
 // Enable persistence for offline support
+db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, merge: true });
 db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
 // Register service worker for PWA
