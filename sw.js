@@ -1,4 +1,4 @@
-const CACHE_NAME = 'showboat-v7';
+const CACHE_NAME = 'showboat-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,6 +36,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   // Network-first for API calls and JS files, cache-first for other static assets
   if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {

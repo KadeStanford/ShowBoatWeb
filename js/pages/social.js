@@ -29,11 +29,15 @@ const FriendsPage = {
     const el = document.getElementById('friends-list');
     if (!el) return;
     if (!this.state.friends.length) { el.innerHTML = UI.emptyState('No friends yet', 'Search for users to add them'); return; }
-    el.innerHTML = `<div class="friend-items">${this.state.friends.map(f => `<div class="friend-item" onclick="App.navigate('friend-profile',{id:'${f.friendId}',name:'${UI.escapeHtml(f.friendUsername || '')}'})">
-      <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
-      <div class="friend-info"><p class="friend-name">${UI.escapeHtml(f.friendUsername || f.friendId)}</p></div>
-      <button class="friend-remove-btn" onclick="event.stopPropagation(); FriendsPage.removeFriend('${f.friendId}')" title="Remove">${UI.icon('user-minus', 18)}</button>
-    </div>`).join('')}</div>`;
+    el.innerHTML = `<div class="friend-items">${this.state.friends.map(f => {
+      const fid = f.friendId || f.uid || f.docId;
+      const fname = f.friendUsername || f.username || '';
+      return `<div class="friend-item" onclick="App.navigate('friend-profile',{id:'${fid}',name:'${UI.escapeHtml(fname)}'})">
+      <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+      <div class="friend-info"><p class="friend-name">${UI.escapeHtml(fname || fid)}</p></div>
+      <button class="friend-remove-btn" onclick="event.stopPropagation(); FriendsPage.removeFriend('${fid}')" title="Remove">${UI.icon('user-minus', 18)}</button>
+    </div>`;
+    }).join('')}</div>`;
   },
 
   searchTimeout: null,
