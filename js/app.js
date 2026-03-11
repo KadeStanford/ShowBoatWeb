@@ -1,6 +1,7 @@
 /* ShowBoat — App Router & State Management */
 const App = {
   currentPage: null,
+  currentParams: null,
   history: [],
   user: null,
 
@@ -107,9 +108,7 @@ const App = {
     });
   },
 
-  navigate(page, params) {
-    if (this.currentPage === page && !params) return;
-
+  navigate(page, params, _isBack) {
     const route = this.routes[page];
     if (!route) { console.warn('Unknown route:', page); return; }
 
@@ -120,17 +119,17 @@ const App = {
     // Cleanup previous page
     if (this.currentPage === 'home') HomePage.destroy?.();
 
-    // Track history
-    if (this.currentPage && this.currentPage !== page) {
-      // Navigating to a root page clears the history to prevent pileup
+    // Track history (unless going back)
+    if (!_isBack && this.currentPage) {
       if (this._rootPages.has(page)) {
         this.history = [];
       } else {
-        this._pushHistory(this.currentPage);
+        this._pushHistory(this.currentPage, this.currentParams);
       }
     }
 
     this.currentPage = page;
+    this.currentParams = params || null;
 
     // Update hash without triggering hashchange handler
     const hash = params ? `#${page}?${new URLSearchParams(this.serializeParams(params)).toString()}` : `#${page}`;
@@ -147,30 +146,24 @@ const App = {
       document.querySelectorAll('.nav-btn').forEach((btn, i) => btn.classList.toggle('active', i === route.navIdx));
     }
     // Update active sidebar button
-    const sidebarPages = ['home', 'discover', 'watchlist', 'friends', 'activity', 'shared-lists', 'matcher-setup', 'analytics', 'profile'];
     document.querySelectorAll('.sidebar-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
 
-    // Render page with transition
+    // Render page — instant swap, let JS Animate handle entrance
     const el = document.getElementById('page-content');
-    el.classList.add('page-exit');
-    setTimeout(() => {
-      el.classList.remove('page-exit');
-      el.classList.add('page-enter');
-      const result = route.render(params);
-      if (typeof result === 'string') el.innerHTML = result;
-      setTimeout(() => el.classList.remove('page-enter'), 300);
-    }, 120);
+    el.style.opacity = '0';
+    const result = route.render(params);
+    if (typeof result === 'string') el.innerHTML = result;
+    requestAnimationFrame(() => { el.style.opacity = ''; });
 
     // Scroll to top
     el.scrollTop = 0;
     window.scrollTo(0, 0);
 
-    // Trigger entrance animations — 200ms fallback for sync pages (auth)
-    // Async pages call Animate.afterPageRender() themselves after drawing
+    // Trigger entrance animations
     if (typeof Animate !== 'undefined') {
-      setTimeout(() => Animate.afterPageRender(), 200);
+      requestAnimationFrame(() => Animate.afterPageRender());
     }
   },
 
@@ -178,24 +171,22 @@ const App = {
   _rootPages: new Set(['home', 'friends', 'discover', 'watchlist', 'profile', 'activity']),
 
   back() {
-    if (this.history.length === 0) { this.navigate('home'); return; }
-    // Pop past any duplicate of the current page to prevent single-click stalls
-    let prev = this.history.pop();
-    while (prev === this.currentPage && this.history.length > 0) {
-      prev = this.history.pop();
-    }
-    if (!prev || prev === this.currentPage) { this.navigate('home'); return; }
-    // Navigate to prev, then remove the re-entry that navigate() will push
-    this.navigate(prev);
-    // navigate() just pushed this.currentPage (which was prev's predecessor) — pop that
-    this.history.pop();
+    if (this.history.length === 0) { this.navigate('home', undefined, true); return; }
+    const entry = this.history.pop();
+    if (!entry) { this.navigate('home', undefined, true); return; }
+    const page = typeof entry === 'string' ? entry : entry.page;
+    const params = typeof entry === 'string' ? undefined : entry.params;
+    this.navigate(page, params, true);
   },
 
-  _pushHistory(page) {
+  _pushHistory(page, params) {
     if (!page) return;
-    // Avoid consecutive duplicate entries to prevent back-button pileup
-    if (this.history.length && this.history[this.history.length - 1] === page) return;
-    this.history.push(page);
+    const entry = params ? { page, params } : { page };
+    // Avoid consecutive duplicate entries
+    const last = this.history[this.history.length - 1];
+    const lastPage = last ? (typeof last === 'string' ? last : last.page) : null;
+    if (lastPage === page) return;
+    this.history.push(entry);
     if (this.history.length > 50) this.history.shift();
   },
 

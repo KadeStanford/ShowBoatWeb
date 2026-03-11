@@ -180,7 +180,7 @@ const HomePage = {
       list.innerHTML = shows.map(show => {
         const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w185') : '';
         const sub = `S${show.latestSeason} · E${show.latestEpisode}`;
-        return `<div class="media-card-sm" onclick="App.navigate('details',{id:${show.tmdbId},type:'tv'})" style="cursor:pointer">
+        return `<div class="media-card-sm" onclick="App.navigate('details',{id:${show.tmdbId},type:'tv',season:${show.latestSeason||1},episode:${show.latestEpisode||1}})" style="cursor:pointer">
           ${poster ? `<img src="${UI.escapeHtml(poster)}" alt="" class="card-poster">` : '<div class="poster-placeholder"></div>'}
           <div class="card-info"><p class="card-title">${UI.escapeHtml(show.name || '')}</p><p class="card-subtitle">${sub}</p></div>
         </div>`;

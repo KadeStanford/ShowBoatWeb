@@ -211,7 +211,25 @@ const AdminDash = {
       <td style="font-size:12px;color:var(--text-secondary)">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
       <td style="text-align:center">${u.tickets || 0}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${(u.inviteCodes || []).length} codes</td>
-    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary)">No users found.</td></tr>';
+      <td><button class="btn-sm btn-approve" onclick="AdminDash.grantCode('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Give Code</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary)">No users found.</td></tr>';
+  },
+
+  async grantCode(userId, displayName) {
+    if (!confirm(`Generate and assign an invite code to ${displayName}?`)) return;
+    try {
+      const code = this._genCode();
+      await db.collection('inviteCodes').doc(code).set({
+        code, createdBy: 'admin-grant', usedBy: null, usedAt: null, active: true, createdAt: Date.now(), grantedTo: userId
+      });
+      // Add the code to the user's inviteCodes array
+      await db.collection('users').doc(userId).update({
+        inviteCodes: firebase.firestore.FieldValue.arrayUnion(code)
+      });
+      alert(`Code ${code} assigned to ${displayName}`);
+      await this.loadUsers();
+      await this.loadCodes();
+    } catch (e) { alert('Error: ' + e.message); }
   },
 
   // ==================== WAITLIST ====================

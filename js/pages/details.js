@@ -493,6 +493,9 @@ const DetailsPage = {
   _scrollToEpisode(epNum) {
     const el = document.querySelector(`.episode-item[data-ep="${epNum}"]`);
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ep-highlight'); }
+    // Auto-open the episode modal
+    const idx = this.state.episodes.findIndex(ep => ep.episode_number === epNum);
+    if (idx >= 0) this.showEpisodeDetails(idx);
   },
 
   _openInPlex() {
