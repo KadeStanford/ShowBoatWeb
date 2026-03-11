@@ -641,15 +641,31 @@ ul, ol { list-style: none; }
 .rating-section { margin-bottom: 28px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 24px; }
 .rating-section label { color: var(--slate-300); font-weight: 600; font-size: .9375rem; display: block; margin-bottom: 14px; }
 
-/* Star Rating */
-.star-rating-row { display: flex; align-items: center; gap: 4px; }
-.stars-container { display: flex; align-items: center; gap: 2px; }
-.star { cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease; display: inline-flex; }
-.star:hover { transform: scale(1.2); }
-.star svg { display: block; }
-.star.preview-filled svg path:first-child { fill: var(--accent) !important; }
-.star.preview-dim { opacity: 0.35; }
-.rating-number { font-size: 1.5rem; font-weight: 800; color: var(--amber-400); min-width: 52px; text-align: center; margin-left: 12px; }
+/* Rating Slider */
+.rating-slider-row { display: flex; align-items: center; gap: 14px; }
+.rating-slider {
+  -webkit-appearance: none; appearance: none; width: 100%; max-width: 260px; height: 6px;
+  border-radius: 3px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) 0%, rgba(255,255,255,0.1) 0%);
+  transition: background 0.1s;
+}
+.rating-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--accent); border: 2px solid white;
+  box-shadow: 0 1px 6px rgba(0,0,0,.4); cursor: pointer; transition: transform 0.15s;
+}
+.rating-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.rating-slider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+  border: 2px solid white; box-shadow: 0 1px 6px rgba(0,0,0,.4); cursor: pointer;
+}
+.rating-slider::-moz-range-track { height: 6px; border-radius: 3px; background: transparent; }
+.rating-number { font-size: 1.5rem; font-weight: 800; color: var(--amber-400); min-width: 52px; text-align: center; white-space: nowrap; }
+.rating-badge {
+  display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm);
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  color: var(--amber-400); font-size: .8125rem; font-weight: 700; white-space: nowrap;
+}
 
 /* Detail Action Buttons in sidebar */
 .detail-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -774,6 +790,10 @@ ul, ol { list-style: none; }
   color: var(--accent); font-size: .8125rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px;
 }
+.ep-modal-logo {
+  max-height: 32px; max-width: 160px; width: auto; object-fit: contain;
+  margin-bottom: 6px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6));
+}
 .ep-modal-hero-info h2 { color: white; font-size: 1.35rem; font-weight: 800; line-height: 1.3; margin: 0; }
 .ep-modal-meta {
   display: flex; align-items: center; gap: 12px; margin-top: 8px;
@@ -809,8 +829,8 @@ ul, ol { list-style: none; }
 /* Episode Review Form (inside tab) */
 .ep-review-form { display: flex; flex-direction: column; gap: 14px; }
 .ep-review-form label { color: var(--slate-300); font-weight: 600; font-size: .875rem; }
-.ep-stars-lg .stars-container { gap: 4px; }
-.ep-stars-lg .rating-number { font-size: 1.75rem; font-weight: 800; }
+.ep-review-form .rating-slider-row { margin-bottom: 4px; }
+.ep-review-form .rating-number { font-size: 1.75rem; font-weight: 800; }
 
 /* Friend Episode Cards */
 .ep-friend-card {
@@ -823,9 +843,8 @@ ul, ol { list-style: none; }
 .ep-friend-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .ep-friend-card-info { flex: 1; }
 .ep-friend-card-info strong { color: white; font-size: .9375rem; display: block; }
-.ep-friend-card-stars { margin-top: 2px; }
-.ep-friend-card-stars .stars-container { gap: 1px; }
-.ep-friend-card-stars .rating-number { font-size: 1rem; min-width: 40px; }
+.ep-friend-card-rating { margin-top: 2px; }
+.ep-friend-card-rating .rating-badge { font-size: .75rem; padding: 1px 6px; }
 .ep-friend-card-comment {
   color: var(--slate-400); font-size: .875rem; font-style: italic;
   line-height: 1.5; margin: 4px 0 10px; padding-left: 2px;
@@ -1063,23 +1082,120 @@ ul, ol { list-style: none; }
    ============================================= */
 .shame-page { padding-bottom: 40px; }
 .shame-items { display: flex; flex-direction: column; gap: 2px; padding: 0 32px; }
+
+/* Shame Stats Row */
+.shame-stats { display: flex; justify-content: center; gap: 24px; padding: 16px 32px 20px; }
+.shame-stat { text-align: center; }
+.shame-stat-num { display: block; font-size: 1.75rem; font-weight: 800; color: var(--rose-400); }
+.shame-stat-label { font-size: .75rem; color: var(--slate-400); text-transform: uppercase; letter-spacing: .04em; }
+
+/* Shame Tabs */
+.shame-tabs { display: flex; gap: 0; padding: 0 32px; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
+.shame-tab {
+  padding: 12px 20px; font-size: .875rem; font-weight: 600;
+  color: var(--slate-400); background: none; border: none; cursor: pointer;
+  position: relative; transition: color var(--transition);
+}
+.shame-tab:hover { color: var(--slate-200); }
+.shame-tab.active { color: var(--rose-400); }
+.shame-tab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 12px; right: 12px;
+  height: 2px; background: var(--rose-400); border-radius: 2px;
+}
+
+/* Shame List Items */
 .shame-list-item {
-  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-  border-radius: var(--radius-md); background: var(--glass-bg);
-  border: 1px solid var(--glass-border); cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
   transition: all var(--transition);
 }
+.shame-list-item.active { border-left: 3px solid var(--rose-400); }
+.shame-list-item.resolved { opacity: .6; }
 .shame-list-item:hover { background: var(--slate-800); }
+.shame-item-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; cursor: pointer; }
 .shame-list-item img, .shame-item-poster {
   width: 48px; height: 72px; border-radius: var(--radius-sm);
   object-fit: cover; background: var(--slate-800); flex-shrink: 0;
 }
 .shame-item-poster.placeholder { display: flex; align-items: center; justify-content: center; color: var(--slate-600); }
-.shame-item-info { flex: 1; }
-.shame-show { color: white; font-weight: 600; }
-.shame-detail { color: var(--rose-300); font-size: .8125rem; }
+.shame-item-info { flex: 1; min-width: 0; }
+.shame-show { color: white; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shame-detail { color: var(--rose-300); font-size: .8125rem; margin-top: 2px; }
+.shame-detail strong { color: var(--rose-200); }
+.shame-item-meta { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.shame-timer { color: var(--amber-400); font-size: .75rem; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+.shame-resolved-badge { color: var(--emerald-400); font-size: .75rem; font-weight: 600; display: flex; align-items: center; gap: 3px; }
 .shame-time { color: var(--slate-500); font-size: .75rem; }
+.shame-item-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.shame-resolve-btn {
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+  border-radius: var(--radius-md); background: var(--emerald-600);
+  color: white; font-weight: 700; font-size: .75rem; border: none;
+  cursor: pointer; transition: all var(--transition); white-space: nowrap;
+}
+.shame-resolve-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 .shame-icon { color: var(--rose-400); flex-shrink: 0; }
+.shame-icon.resolved { color: var(--slate-600); }
+
+/* Shame Someone Button */
+.shame-someone-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: calc(100% - 64px); margin: 20px 32px 0; padding: 14px 24px;
+  border-radius: var(--radius-md); background: var(--rose-600);
+  color: white; font-weight: 700; font-size: .9375rem; border: none;
+  cursor: pointer; transition: all var(--transition);
+}
+.shame-someone-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+/* Shame Search Modal */
+.shame-search-modal { display: flex; flex-direction: column; gap: 8px; }
+.shame-search-modal h3 { color: white; font-weight: 700; font-size: 1.125rem; }
+.shame-search-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: var(--radius-md); background: none; border: 1px solid transparent;
+  cursor: pointer; transition: all var(--transition); width: 100;
+  text-align: left; color: white;
+}
+.shame-search-item:hover { background: var(--slate-800); border-color: var(--glass-border); }
+.shame-search-item img { width: 40px; height: 60px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.shame-search-poster { width: 40px; height: 60px; border-radius: var(--radius-sm); background: var(--slate-800); display: flex; align-items: center; justify-content: center; color: var(--slate-600); flex-shrink: 0; }
+.shame-search-title { font-weight: 600; font-size: .875rem; }
+.shame-search-type { color: var(--slate-400); font-size: .75rem; }
+
+/* =============================================
+   ACTIVITY DOTS ON CARDS
+   ============================================= */
+.media-card-sm, .media-card { position: relative; }
+.activity-dot {
+  position: absolute; top: 6px; right: 6px; z-index: 3;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--emerald-500); border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 6px rgba(16,185,129,.5);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(16,185,129,.5); }
+  50% { box-shadow: 0 0 12px rgba(16,185,129,.8); }
+}
+
+/* =============================================
+   FRIEND AVATARS ON EPISODES
+   ============================================= */
+.ep-friend-avatars {
+  display: flex; align-items: center; margin-top: 6px;
+}
+.ep-friend-av {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .625rem; font-weight: 700; color: white;
+  background: linear-gradient(135deg, var(--indigo-500), var(--purple-600));
+  margin-left: -6px; object-fit: cover; flex-shrink: 0;
+}
+.ep-friend-av:first-child { margin-left: 0; }
+.ep-friend-av.more { background: var(--slate-700); font-size: .5625rem; color: var(--slate-300); }
+img.ep-friend-av { background: var(--slate-800); }
 
 /* =============================================
    MATCHER PAGES

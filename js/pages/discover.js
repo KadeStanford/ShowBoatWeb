@@ -1,6 +1,6 @@
 /* ShowBoat — Discover Page */
 const DiscoverPage = {
-  state: { query: '', results: [], tab: 'multi', genres: [], selectedGenre: '', trending: [], page: 1, loading: false },
+  state: { query: '', results: [], tab: 'multi', genres: [], selectedGenre: '', trending: [], page: 1, loading: false, friendActivityIds: new Set() },
 
   async render(params) {
     if (params?.tab) this.state.tab = params.tab;
@@ -20,8 +20,29 @@ const DiscoverPage = {
       <div id="genre-chips"></div>
       <div id="discover-results">${UI.loading()}</div>
     </div>`;
+    this.loadFriendActivityDots();
     await this.loadGenres();
     await this.loadContent();
+  },
+
+  async loadFriendActivityDots() {
+    try {
+      const friends = await Services.getFriends();
+      const fids = friends.slice(0, 15).map(f => f.friendId || f.uid || f.docId);
+      if (!fids.length) return;
+      const activities = await Services.getActivityFeed(fids);
+      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const recent = activities.filter(a => (a.createdAt || 0) > weekAgo);
+      const ids = new Set();
+      recent.forEach(a => { const mid = String(a.mediaId || a.showId || ''); if (mid) ids.add(mid); });
+      this.state.friendActivityIds = ids;
+      // Inject dots into already-rendered cards
+      document.querySelectorAll('.media-card[data-media-id]').forEach(card => {
+        if (ids.has(card.dataset.mediaId) && !card.querySelector('.activity-dot')) {
+          card.insertAdjacentHTML('afterbegin', '<span class="activity-dot"></span>');
+        }
+      });
+    } catch (_) {}
   },
 
   async loadGenres() {
@@ -65,7 +86,9 @@ const DiscoverPage = {
     const poster = item.poster_path ? API.imageUrl(item.poster_path, 'w342') : '';
     const title = item.name || item.title || '';
     const year = (item.first_air_date || item.release_date || '').substring(0, 4);
-    return `<div class="media-card" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
+    const hasDot = this.state.friendActivityIds.has(String(item.id));
+    return `<div class="media-card" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
+      ${hasDot ? '<span class="activity-dot"></span>' : ''}
       ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
       <div class="card-info">
         <p class="card-title">${UI.escapeHtml(title)}</p>

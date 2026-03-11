@@ -1,10 +1,10 @@
 /* ShowBoat — Show/Movie Details Page */
 const DetailsPage = {
-  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true },
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {} },
 
   async render(params) {
     const rawType = params.type || 'tv';
-    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
+    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {} };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
@@ -37,6 +37,7 @@ const DetailsPage = {
       this.loadFriendActivity();
       this.state.loading = false;
       this.draw(el);
+      if (this.state.type === 'tv') this.loadFriendEpAvatars();
     } catch (e) { el.innerHTML = UI.pageHeader('Details', true) + UI.emptyState('Error loading details', e.message); }
   },
 
@@ -97,8 +98,8 @@ const DetailsPage = {
             <div class="details-main">
               <div class="rating-section">
                 <h3>Your Overall Rating</h3>
-                <div class="star-rating-row" id="star-rating">
-                  ${this.renderStars(this.state.rating)}
+                <div id="star-rating">
+                  ${this.renderRating(this.state.rating)}
                 </div>
                 <textarea id="overall-review" class="review-input" placeholder="Write your review of the ${this.state.type === 'tv' ? 'series' : 'movie'} as a whole..." rows="3" oninput="DetailsPage._pendingReview=this.value">${UI.escapeHtml(this.state.review)}</textarea>
                 <button class="save-review-btn" onclick="DetailsPage.saveOverallReview()">Save Review</button>
@@ -117,51 +118,30 @@ const DetailsPage = {
       </div>`;
   },
 
-  renderStars(rating, opts = {}) {
-    const { prefix = '', size = 22, interactive = true, onRate = 'DetailsPage.setRating' } = opts;
-    const halfStars = Math.round((rating || 0) * 2) / 2;
-    let html = '';
-    for (let i = 1; i <= 5; i++) {
-      const starVal = i * 2;
-      const filled = halfStars >= starVal;
-      const half = !filled && halfStars >= starVal - 1;
-      const cls = filled ? 'star filled' : half ? 'star half' : 'star empty';
-      if (interactive) {
-        html += `<span class="${cls}" data-value="${starVal}" onclick="${onRate}(${starVal})" onmouseenter="DetailsPage.previewStars('${prefix}',${starVal})" onmouseleave="DetailsPage.previewStars('${prefix}',0)">
-          <svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="${filled || half ? 'var(--accent)' : 'none'}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>${half ? `<clipPath id="halfclip${prefix}${i}"><rect x="0" y="0" width="12" height="24"/></clipPath><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="var(--accent)" clip-path="url(#halfclip${prefix}${i})" stroke="none"/>` : ''}</svg>
-        </span>`;
-      } else {
-        html += `<span class="${cls}">
-          <svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="${filled || half ? 'var(--accent)' : 'none'}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>${half ? `<clipPath id="halfclip${prefix}${i}"><rect x="0" y="0" width="12" height="24"/></clipPath><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="var(--accent)" clip-path="url(#halfclip${prefix}${i})" stroke="none"/>` : ''}</svg>
-        </span>`;
-      }
+  renderRating(rating, opts = {}) {
+    const { prefix = '', interactive = true, onRate = 'DetailsPage.setRating' } = opts;
+    const val = Math.round(rating || 0);
+    if (interactive) {
+      const pct = val * 10;
+      return `<div class="rating-slider-row" id="rating-row-${prefix}">
+        <input type="range" class="rating-slider" id="slider-${prefix}" min="0" max="10" step="1" value="${val}"
+          oninput="${onRate}(parseInt(this.value))"
+          style="background:linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)">
+        <span class="rating-number" id="rating-num-${prefix}">${val > 0 ? val : '—'}/10</span>
+      </div>`;
     }
-    const val = rating > 0 ? rating : '—';
-    return `<div class="stars-container" id="stars-${prefix}">${html}</div><span class="rating-number" id="rating-num-${prefix}">${val}/10</span>`;
-  },
-
-  previewStars(prefix, hoverVal) {
-    const container = document.getElementById(`stars-${prefix}`);
-    if (!container) return;
-    const stars = container.querySelectorAll('.star');
-    stars.forEach(s => {
-      const v = parseInt(s.dataset.value);
-      if (hoverVal > 0) {
-        s.classList.toggle('preview-filled', v <= hoverVal);
-        s.classList.toggle('preview-dim', v > hoverVal);
-      } else {
-        s.classList.remove('preview-filled', 'preview-dim');
-      }
-    });
+    return `<span class="rating-badge">${val}/10</span>`;
   },
 
   _pendingReview: '',
 
   async setRating(val) {
-    const rating = val / 2 >= 0.5 ? val : 0;
+    const rating = val;
     this.state.rating = rating;
-    const container = document.getElementById('star-rating');
-    if (container) container.innerHTML = this.renderStars(rating);
+    const numEl = document.getElementById('rating-num-');
+    if (numEl) numEl.textContent = `${rating > 0 ? rating : '—'}/10`;
+    const slider = document.getElementById('slider-');
+    if (slider) { const pct = rating * 10; slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`; }
     const d = this.state.details;
     const review = document.getElementById('overall-review')?.value || this._pendingReview || '';
     await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
@@ -188,6 +168,8 @@ const DetailsPage = {
     return `<div class="episode-list">${this.state.episodes.map((ep, i) => {
       const still = ep.still_path ? API.imageUrl(ep.still_path, 'w300') : '';
       const desc = ep.overview ? (ep.overview.length > 120 ? ep.overview.substring(0, 120) + '...' : ep.overview) : '';
+      const epKey = `s${ep.season_number}_e${ep.episode_number}`;
+      const friends = this.state.friendEpRatings[epKey] || [];
       return `<div class="episode-item" onclick="DetailsPage.showEpisodeDetails(${i})">
         ${still ? `<img src="${still}" class="episode-still" alt="" loading="lazy">` : `<div class="episode-still placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="episode-info">
@@ -195,6 +177,10 @@ const DetailsPage = {
           <p class="ep-name">${UI.escapeHtml(ep.name || `Episode ${ep.episode_number}`)}</p>
           ${ep.air_date ? `<p class="ep-date">${ep.air_date}</p>` : ''}
           ${desc ? `<p class="ep-desc">${UI.escapeHtml(desc)}</p>` : ''}
+          ${friends.length ? `<div class="ep-friend-avatars" id="ep-avatars-${epKey}">${friends.slice(0, 5).map(f => 
+            f.photo ? `<img src="${UI.escapeHtml(f.photo)}" alt="${UI.escapeHtml(f.name)}" title="${UI.escapeHtml(f.name)} — ${f.rating}/10" class="ep-friend-av">` 
+            : `<span class="ep-friend-av" title="${UI.escapeHtml(f.name)} — ${f.rating}/10">${(f.name || '?')[0].toUpperCase()}</span>`
+          ).join('')}${friends.length > 5 ? `<span class="ep-friend-av more">+${friends.length - 5}</span>` : ''}</div>` : `<div class="ep-friend-avatars" id="ep-avatars-${epKey}"></div>`}
         </div>
         <button class="ep-watched-btn" onclick="event.stopPropagation(); DetailsPage.toggleEpisodeWatched(${ep.season_number}, ${ep.episode_number}, this)" title="Mark watched">
           ${UI.icon('check', 18)}
@@ -232,6 +218,7 @@ const DetailsPage = {
     if (container) container.innerHTML = UI.loading();
     await this.loadEpisodes(num);
     if (container) container.innerHTML = this.renderEpisodeList();
+    this.loadFriendEpAvatars();
   },
 
   async loadEpisodes(seasonNum) {
@@ -280,8 +267,10 @@ const DetailsPage = {
 
   async setEpisodeRating(val) {
     this._epRating = val;
-    const container = document.getElementById('ep-star-rating');
-    if (container) container.innerHTML = this.renderStars(val, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 24 });
+    const numEl = document.getElementById('rating-num-ep');
+    if (numEl) numEl.textContent = `${val > 0 ? val : '—'}/10`;
+    const slider = document.getElementById('slider-ep');
+    if (slider) { const pct = val * 10; slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`; }
   },
 
   showEpisodeDetails(idx) {
@@ -291,14 +280,18 @@ const DetailsPage = {
     this._epIdx = idx;
     this._epComment = '';
     const still = ep.still_path ? API.imageUrl(ep.still_path, 'w780') : '';
+    const heroImg = still || (this.state.details.backdrop_path ? API.imageUrl(this.state.details.backdrop_path, 'w780') : '');
     const d = this.state.details;
     const showTitle = d.name || d.title || '';
+    const logoHtml = this.state.logoUrl
+      ? `<img src="${UI.escapeHtml(this.state.logoUrl)}" alt="${UI.escapeHtml(showTitle)}" class="ep-modal-logo">`
+      : `<p class="ep-modal-show">${UI.escapeHtml(showTitle)}</p>`;
 
     UI.showModal(`
       <div class="ep-modal-full">
-        <div class="ep-modal-hero" ${still ? `style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-secondary) 100%), url('${still}')"` : ''}>
+        <div class="ep-modal-hero" ${heroImg ? `style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-secondary) 100%), url('${heroImg}')"` : ''}>
           <div class="ep-modal-hero-info">
-            <p class="ep-modal-show">${UI.escapeHtml(showTitle)}</p>
+            ${logoHtml}
             <h2>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h2>
             <div class="ep-modal-meta">
               ${ep.air_date ? `<span>${ep.air_date}</span>` : ''}
@@ -319,8 +312,8 @@ const DetailsPage = {
           <div id="ep-tab-review" class="ep-tab-panel">
             <div class="ep-review-form">
               <label>Your Rating</label>
-              <div class="star-rating-row ep-stars-lg" id="ep-star-rating">
-                ${this.renderStars(0, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 28 })}
+              <div id="ep-star-rating">
+                ${this.renderRating(0, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating' })}
               </div>
               <label>Your Thoughts</label>
               <textarea id="ep-comment" class="ep-comment-input" placeholder="What did you think of this episode?" rows="4"></textarea>
@@ -351,7 +344,7 @@ const DetailsPage = {
       if (existing) {
         this._epRating = existing.rating || 0;
         const container = document.getElementById('ep-star-rating');
-        if (container) container.innerHTML = this.renderStars(this._epRating, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 28 });
+        if (container) container.innerHTML = this.renderRating(this._epRating, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating' });
         const comment = document.getElementById('ep-comment');
         if (comment && existing.comment) comment.value = existing.comment;
       }
@@ -400,7 +393,7 @@ const DetailsPage = {
             <div class="friend-avatar lg">${r.friendPhoto ? `<img src="${UI.escapeHtml(r.friendPhoto)}" alt="">` : (r.friendName || '?')[0].toUpperCase()}</div>
             <div class="ep-friend-card-info">
               <strong>${UI.escapeHtml(r.friendName)}</strong>
-              <div class="ep-friend-card-stars">${this.renderStars(r.rating, { prefix: 'fr' + r.friendId.slice(0, 6), interactive: false, size: 16 })}</div>
+              <div class="ep-friend-card-rating">${this.renderRating(r.rating, { interactive: false })}</div>
             </div>
           </div>
           ${r.comment ? `<p class="ep-friend-card-comment">"${UI.escapeHtml(r.comment)}"</p>` : ''}
@@ -519,6 +512,34 @@ const DetailsPage = {
     const d = this.state.details;
     await Services.addToSharedList(listId, { id: Number(this.state.id), name: d.name || d.title, mediaType: this.state.type, posterPath: d.poster_path });
     UI.toast('Added to list!', 'success');
+  },
+
+  async loadFriendEpAvatars() {
+    try {
+      const friends = await Services.getFriends();
+      const map = {};
+      for (const f of friends.slice(0, 15)) {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        const fPhoto = f.photoURL || null;
+        const ratings = await Services.getAllEpisodeRatingsForShow(this.state.id, fid).catch(() => []);
+        ratings.forEach(r => {
+          const key = `s${r.seasonNumber}_e${r.episodeNumber}`;
+          if (!map[key]) map[key] = [];
+          map[key].push({ id: fid, name: fname, photo: fPhoto, rating: r.rating || 0 });
+        });
+      }
+      this.state.friendEpRatings = map;
+      // Inject avatars into already-rendered episode items
+      Object.entries(map).forEach(([key, friends]) => {
+        const el = document.getElementById(`ep-avatars-${key}`);
+        if (!el || el.childElementCount > 0) return;
+        el.innerHTML = friends.slice(0, 5).map(f =>
+          f.photo ? `<img src="${UI.escapeHtml(f.photo)}" alt="${UI.escapeHtml(f.name)}" title="${UI.escapeHtml(f.name)} — ${f.rating}/10" class="ep-friend-av">` 
+            : `<span class="ep-friend-av" title="${UI.escapeHtml(f.name)} — ${f.rating}/10">${(f.name || '?')[0].toUpperCase()}</span>`
+        ).join('') + (friends.length > 5 ? `<span class="ep-friend-av more">+${friends.length - 5}</span>` : '');
+      });
+    } catch (_) {}
   },
 
   async loadFriendActivity() {

@@ -303,6 +303,23 @@ const Services = {
     if (!snap.empty) await batch.commit();
   },
 
+  async resolveShame(shameId) {
+    const uid = this._uid(); if (!uid) return;
+    const userRef = db.collection('users').doc(uid).collection('shames').doc(shameId);
+    const globalRef = db.collection('shames').doc(shameId);
+    const batch = db.batch();
+    batch.update(userRef, { status: 'resolved', resolvedAt: Date.now() });
+    batch.update(globalRef, { status: 'resolved', resolvedAt: Date.now() });
+    await batch.commit();
+  },
+
+  async getAllShames() {
+    const uid = this._uid(); if (!uid) return [];
+    const snap = await db.collection('users').doc(uid).collection('shames')
+      .orderBy('createdAt', 'desc').get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
   // ==================== SHARED LISTS ====================
   async getSharedLists() {
     const uid = this._uid(); if (!uid) return [];

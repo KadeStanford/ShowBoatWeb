@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [] },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set() },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -33,8 +33,29 @@ const HomePage = {
       const logo = await API.fetchLogo(item.id, item.media_type);
       if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
-    // Friend trends
-    if (uid) this.loadFriendTrends();
+    // Friend trends + activity dots
+    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); }
+  },
+
+  async loadFriendActivityDots() {
+    try {
+      const friends = await Services.getFriends();
+      const fids = friends.slice(0, 15).map(f => f.friendId || f.uid || f.docId);
+      if (!fids.length) return;
+      const activities = await Services.getActivityFeed(fids);
+      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const recent = activities.filter(a => (a.createdAt || 0) > weekAgo);
+      const ids = new Set();
+      recent.forEach(a => { const mid = String(a.mediaId || a.showId || ''); if (mid) ids.add(mid); });
+      this.state.friendActivityIds = ids;
+      // Inject dots into already-rendered cards
+      document.querySelectorAll('.media-card-sm[data-media-id]').forEach(card => {
+        if (ids.has(card.dataset.mediaId) && !card.querySelector('.activity-dot')) {
+          card.style.position = 'relative';
+          card.insertAdjacentHTML('afterbegin', '<span class="activity-dot"></span>');
+        }
+      });
+    } catch (_) {}
   },
 
   async loadFriendTrends() {
@@ -147,7 +168,9 @@ const HomePage = {
       const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const title = item.name || item.title || item.showName || '';
-      return `<div class="media-card-sm" onclick="App.navigate('details',{id:${id},type:'${type}'})">
+      const hasDot = this.state.friendActivityIds.has(String(id));
+      return `<div class="media-card-sm" data-media-id="${id}" onclick="App.navigate('details',{id:${id},type:'${type}'})">
+        ${hasDot ? '<span class="activity-dot"></span>' : ''}
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
         <p class="card-title">${UI.escapeHtml(title)}</p>
         ${isFriend && item.friendName ? `<p class="card-subtitle">${UI.escapeHtml(item.friendName)}</p>` : ''}
