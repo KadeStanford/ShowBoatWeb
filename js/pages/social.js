@@ -1,6 +1,6 @@
 /* ShowBoat — Social Pages: Friends, FriendProfile, ActivityFeed, WallOfShame */
 const FriendsPage = {
-  state: { friends: [], search: '', searchResults: [] },
+  state: { friends: [], search: '', searchResults: [], recommended: [] },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -13,21 +13,115 @@ const FriendsPage = {
         </div>
       </div>
       <div id="search-results"></div>
+      <div id="recommended-friends"></div>
       <div id="friends-list">${UI.loading()}</div>
     </div>`;
     await this.loadFriends();
+    this.loadRecommended().catch(() => {});
   },
 
   async loadFriends() {
     try {
       this.state.friends = await Services.getFriends();
-      // Enrich with current photoURL from each friend's profile
       const profiles = await Promise.all(
         this.state.friends.map(f => Services.getUserProfile(f.friendId || f.uid || f.docId).catch(() => null))
       );
       this.state.friends.forEach((f, i) => { if (profiles[i]?.photoURL) f.photoURL = profiles[i].photoURL; });
       this.drawFriends();
     } catch (e) { document.getElementById('friends-list').innerHTML = UI.emptyState('Error', e.message); }
+  },
+
+  // Taste-matching: find potential friends who share watched content with the user's friends
+  async loadRecommended() {
+    const el = document.getElementById('recommended-friends');
+    if (!el) return;
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid || !this.state.friends.length) return;
+      const friendIds = new Set(this.state.friends.map(f => f.friendId || f.uid || f.docId));
+
+      // Get my watched list to calculate taste overlap
+      const myWatched = await Services.getWatched(uid).catch(() => []);
+      const myWatchedIds = new Set(myWatched.map(x => String(x.tmdbId)));
+      if (!myWatchedIds.size) return;
+
+      // For each friend, get their friends (mutual friend candidates)
+      const candidateScores = new Map();
+      const batchFriendIds = [...friendIds].slice(0, 5); // Limit to avoid too many reads
+      await Promise.all(batchFriendIds.map(async fid => {
+        try {
+          const theirFriends = await Services.getFriends(fid).catch(() => []);
+          for (const tf of theirFriends) {
+            const cid = tf.friendId || tf.uid || tf.docId;
+            if (!cid || cid === uid || friendIds.has(cid)) continue;
+            if (!candidateScores.has(cid)) {
+              candidateScores.set(cid, { uid: cid, username: tf.friendUsername || tf.username || '', mutualFriends: 0, sharedWatched: 0 });
+            }
+            candidateScores.get(cid).mutualFriends++;
+          }
+        } catch (_) {}
+      }));
+
+      if (!candidateScores.size) return;
+
+      // Calculate watched overlap for top candidates
+      const topCandidates = [...candidateScores.values()]
+        .sort((a, b) => b.mutualFriends - a.mutualFriends)
+        .slice(0, 8);
+
+      await Promise.all(topCandidates.map(async c => {
+        try {
+          const theirWatched = await Services.getWatched(c.uid).catch(() => []);
+          c.sharedWatched = theirWatched.filter(x => myWatchedIds.has(String(x.tmdbId))).length;
+          const profile = await Services.getUserProfile(c.uid).catch(() => null);
+          if (profile?.username) c.username = profile.username;
+          if (profile?.photoURL) c.photoURL = profile.photoURL;
+        } catch (_) {}
+      }));
+
+      // Score = shared watched * 3 + mutual friends * 10
+      const scored = topCandidates
+        .map(c => ({ ...c, score: c.sharedWatched * 3 + c.mutualFriends * 10 }))
+        .filter(c => c.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+
+      if (!scored.length) return;
+      this.state.recommended = scored;
+      this.drawRecommended();
+    } catch (_) {}
+  },
+
+  drawRecommended() {
+    const el = document.getElementById('recommended-friends');
+    if (!el || !this.state.recommended.length) return;
+    const friendIds = new Set(this.state.friends.map(f => f.friendId || f.uid || f.docId));
+    el.innerHTML = `
+      <div class="recommended-section">
+        <div class="recommended-header">
+          ${UI.icon('user-check', 16)} <span>Recommended Friends</span>
+          <span class="recommended-subtitle">Based on your taste & mutual connections</span>
+        </div>
+        <div class="recommended-list">${this.state.recommended.map(c => {
+          if (friendIds.has(c.uid)) return '';
+          const avatarHtml = c.photoURL
+            ? `<img src="${UI.escapeHtml(c.photoURL)}" class="friend-avatar friend-avatar-img" alt="">`
+            : `<div class="friend-avatar">${(c.username || '?')[0].toUpperCase()}</div>`;
+          const reasons = [];
+          if (c.mutualFriends > 0) reasons.push(`${c.mutualFriends} mutual friend${c.mutualFriends > 1 ? 's' : ''}`);
+          if (c.sharedWatched > 0) reasons.push(`${c.sharedWatched} shows in common`);
+          return `<div class="friend-item recommended-item" onclick="App.navigate('friend-profile',{id:'${c.uid}',name:'${UI.escapeHtml(c.username)}'})">
+            ${avatarHtml}
+            <div class="friend-info">
+              <p class="friend-name">${UI.escapeHtml(c.username || c.uid)}</p>
+              <p class="friend-reason">${reasons.join(' · ')}</p>
+            </div>
+            <button class="add-friend-btn" onclick="event.stopPropagation(); FriendsPage.addFriend('${c.uid}','${UI.escapeHtml(c.username || '')}')">${UI.icon('user-plus', 16)} Add</button>
+          </div>`;
+        }).join('')}</div>
+      </div>
+      <div class="friends-section-header">My Friends</div>
+    `;
   },
 
   drawFriends() {
@@ -94,40 +188,41 @@ const FriendsPage = {
 };
 
 const FriendProfilePage = {
-  state: { id: '', name: '', photoURL: null, watchlist: [], watched: [], ratings: [], activity: [], badges: [] },
+  state: { id: '', name: '', photoURL: null, watchlist: [], watched: [], ratings: [], activity: [], badges: [], activeTab: 'activity', myWatchedIds: new Set() },
 
   async render(params) {
     this.state.id = params.id;
     this.state.name = params.name || '';
     this.state.photoURL = null;
+    this.state.activeTab = params.tab || 'activity';
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="friend-profile-page">${UI.pageHeader('', true)}<div id="fp-content">${UI.loading()}</div></div>`;
     try {
       const uid = this.state.id;
-      const [wl, w, r, profile] = await Promise.all([
+      const myUid = auth.currentUser?.uid;
+      const [wl, w, r, profile, myW, actResult] = await Promise.all([
         Services.getWatchlist(uid), Services.getWatched(uid), Services.getRatings(uid),
-        Services.getUserProfile(uid).catch(() => null)
+        Services.getUserProfile(uid).catch(() => null),
+        myUid ? Services.getWatched(myUid).catch(() => []) : Promise.resolve([]),
+        Services.getActivityFeed([uid], {}, 30).catch(() => ({ items: [] }))
       ]);
       this.state.watchlist = wl;
       this.state.watched = w;
       this.state.ratings = r;
       this.state.photoURL = profile?.photoURL || null;
       if (profile?.username) this.state.name = profile.username;
+      this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
+      this.state.activity = (actResult?.items || []).filter(a => {
+        if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return false;
+        return true;
+      });
 
-      // Build stats + badges
       const friendStats = {
-        watchlistCount: wl.length,
-        watchedCount: w.length,
-        ratingsCount: r.length,
-        friendsCount: 0,
+        watchlistCount: wl.length, watchedCount: w.length, ratingsCount: r.length, friendsCount: 0,
         movies: w.filter(x => x.mediaType === 'movie').length,
-        episodes: w.filter(x => x.seasonNumber).length
+        episodes: w.filter(x => x.seasonNumber != null).length
       };
-      this.state.badges = calculateBadges(friendStats).filter(b => b.earned);
-
-      // Try to load activity
-      try { const act = await Services.getActivityFeed([uid]); this.state.activity = act.slice(0, 20); } catch (_) {}
-
+      this.state.badges = typeof calculateBadges === 'function' ? calculateBadges(friendStats).filter(b => b.earned) : [];
       this.draw(document.getElementById('fp-content'));
     } catch (e) {
       document.getElementById('fp-content').innerHTML = UI.emptyState('Error', e.message);
@@ -135,21 +230,18 @@ const FriendProfilePage = {
   },
 
   draw(container) {
-    const { name, photoURL, watchlist, watched, ratings, activity, badges, id } = this.state;
+    if (!container) return;
+    const { name, photoURL, watchlist, watched, ratings, activity, badges, id, activeTab } = this.state;
     const avatarHtml = photoURL
       ? `<img src="${UI.escapeHtml(photoURL)}" class="fp-avatar-img" alt="">`
       : `<div class="fp-avatar-initial">${(name || '?')[0].toUpperCase()}</div>`;
 
-    const recentWatched = [...watched].sort((a, b) => (b.watchedAt || b.createdAt || 0) - (a.watchedAt || a.createdAt || 0)).slice(0, 10);
-    const topRated = [...ratings].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 10);
-    const recentActivity = activity.filter(a => {
-      if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return false;
-      return true;
-    }).slice(0, 5);
-
-    // Taste compatibility: find overlap in top-rated genres
-    const myWatched = []; // not loaded here; skip for now — the shared actors btn remains
-    const totalContent = watchlist.length + watched.length;
+    const tabs = [
+      { key: 'activity', label: UI.icon('activity', 14) + ' Activity' },
+      { key: 'watched',  label: UI.icon('eye', 14) + ' Watched' },
+      { key: 'ratings',  label: UI.icon('star', 14) + ' Rated' },
+      { key: 'watchlist',label: UI.icon('bookmark', 14) + ' Watchlist' }
+    ];
 
     container.innerHTML = `
       <div class="fp-hero">
@@ -157,74 +249,144 @@ const FriendProfilePage = {
         <div class="fp-hero-info">
           <h2 class="fp-name">${UI.escapeHtml(name)}</h2>
           <div class="fp-quick-stats">
-            <span>${UI.icon('eye', 14)} ${watched.length} watched</span>
-            <span>${UI.icon('star', 14)} ${ratings.length} rated</span>
-            <span>${UI.icon('bookmark', 14)} ${watchlist.length} saved</span>
+            <span>${UI.icon('eye', 14)} ${watched.length}</span>
+            <span>${UI.icon('star', 14)} ${ratings.length}</span>
+            <span>${UI.icon('bookmark', 14)} ${watchlist.length}</span>
           </div>
         </div>
-      </div>
-
-      <div class="fp-body">
-        ${badges.length ? `
-        <div class="fp-section">
-          <h3 class="fp-section-title">${UI.icon('award', 16)} Badges</h3>
-          <div class="fp-badges-row">${badges.slice(0, 8).map(b => {
-            const t = BADGE_TIERS[b.tier] || BADGE_TIERS.bronze;
-            return `<div class="fp-badge-chip" style="border-color:${t.color}40;background:${t.bg}" title="${UI.escapeHtml(b.name)}">
-              <span>${b.icon}</span>
-              <span class="fp-badge-tier-dot" style="background:${t.color}"></span>
-              <span class="fp-badge-chip-name">${UI.escapeHtml(b.name)}</span>
-            </div>`;
-          }).join('')}</div>
-        </div>
-        ` : ''}
-
-        ${recentActivity.length ? `
-        <div class="fp-section">
-          <h3 class="fp-section-title">${UI.icon('activity', 16)} Recent Activity</h3>
-          <div class="fp-activity-list">${recentActivity.map(a => {
-            const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
-            const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
-            let verb = a.type === 'watched' ? 'watched' : a.type === 'rated' ? `rated ${a.rating}/10` : a.type === 'added_to_watchlist' ? 'saved' : a.type;
-            return `<div class="fp-act-row" onclick="App.navigate('details',{id:${a.mediaId||a.showId},type:'${aType}'})">
-              ${poster ? `<img src="${poster}" class="fp-act-thumb" alt="">` : `<div class="fp-act-thumb fp-act-thumb-ph">${UI.icon('film', 14)}</div>`}
-              <div class="fp-act-info">
-                <p class="fp-act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
-                <p class="fp-act-verb">${verb}${a.createdAt ? ` · ${UI.timeAgo(a.createdAt)}` : ''}</p>
-              </div>
-            </div>`;
-          }).join('')}</div>
-        </div>
-        ` : ''}
-
-        ${recentWatched.length ? `
-        <div class="fp-section">
-          <h3 class="fp-section-title">${UI.icon('eye', 16)} Recently Watched</h3>
-          <div class="horizontal-scroll">${this.renderItems(recentWatched)}</div>
-        </div>
-        ` : ''}
-
-        ${topRated.length ? `
-        <div class="fp-section">
-          <h3 class="fp-section-title">${UI.icon('star', 16)} Top Rated</h3>
-          <div class="horizontal-scroll">${this.renderItems(topRated)}</div>
-        </div>
-        ` : ''}
-
-        ${watchlist.length ? `
-        <div class="fp-section">
-          <h3 class="fp-section-title">${UI.icon('bookmark', 16)} Watchlist</h3>
-          <div class="horizontal-scroll">${this.renderItems(watchlist.slice(0, 10))}</div>
-        </div>
-        ` : ''}
-
-        <div class="fp-actions">
-          <button class="detail-action-btn" onclick="App.navigate('shared-actors',{friendId:'${id}',friendName:'${UI.escapeHtml(name)}'})">
-            ${UI.icon('users', 18)} Shared Actors
+        <div class="fp-hero-actions">
+          <button class="fp-action-btn" onclick="App.navigate('friend-analytics',{id:'${id}',name:'${UI.escapeHtml(name)}'})">
+            ${UI.icon('bar-chart-2', 16)} Analytics
+          </button>
+          <button class="fp-action-btn" onclick="App.navigate('shared-actors',{friendId:'${id}',friendName:'${UI.escapeHtml(name)}'})">
+            ${UI.icon('users', 16)} Shared Actors
+          </button>
+          <button class="fp-action-btn" onclick="App.navigate('matcher-setup')">
+            ${UI.icon('zap', 16)} Match
+          </button>
+          <button class="fp-action-btn fp-report-btn" onclick="UI.showReportUserModal('${id}','${UI.escapeHtml(name)}')">
+            ${UI.icon('flag', 16)} Report
           </button>
         </div>
       </div>
+
+      ${badges.length ? `
+      <div class="fp-badges-section">
+        <div class="fp-badges-scroll">${badges.map(b => {
+          const t = (typeof BADGE_TIERS !== 'undefined' ? BADGE_TIERS[b.tier] : null) || { color: '#d97706', bg: 'rgba(217,119,6,.1)' };
+          return `<div class="fp-badge-pill" style="--badge-color:${t.color};--badge-bg:${t.bg}" title="${UI.escapeHtml(b.name + ' · ' + (b.description || ''))}">
+            <span class="fp-badge-pill-icon">${b.icon}</span>
+            <div class="fp-badge-pill-info">
+              <span class="fp-badge-pill-name">${UI.escapeHtml(b.name)}</span>
+              <span class="fp-badge-pill-tier">${b.tier || 'bronze'}</span>
+            </div>
+            <span class="fp-badge-tier-ring" style="border-color:${t.color}"></span>
+          </div>`;
+        }).join('')}</div>
+      </div>` : ''}
+
+      <div class="fp-tabs">
+        ${tabs.map(t => `<button class="fp-tab ${activeTab === t.key ? 'active' : ''}" onclick="FriendProfilePage.setTab('${t.key}')">${t.label}</button>`).join('')}
+      </div>
+      <div id="fp-tab-content"></div>
     `;
+    this.renderTab(activeTab);
+  },
+
+  setTab(tab) {
+    this.state.activeTab = tab;
+    document.querySelectorAll('.fp-tab').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase().includes(tab.substring(0, 4).toLowerCase())));
+    // Simpler: re-match by onclick
+    document.querySelectorAll('.fp-tab').forEach(b => {
+      const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
+      b.classList.toggle('active', m && m[1] === tab);
+    });
+    this.renderTab(tab);
+  },
+
+  renderTab(tab) {
+    const el = document.getElementById('fp-tab-content');
+    if (!el) return;
+    const { watched, watchlist, ratings, activity, id, name, myWatchedIds } = this.state;
+
+    if (tab === 'activity') {
+      if (!activity.length) { el.innerHTML = `<div class="fp-empty">${UI.icon('activity', 28)}<p>No recent activity</p></div>`; return; }
+      el.innerHTML = `<div class="fp-activity-list">${activity.slice(0, 20).map(a => {
+        const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
+        const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
+        let verb = a.type === 'watched' ? 'watched' : a.type === 'watched_episode' ? `watched S${a.seasonNumber}E${a.episodeNumber}` : a.type === 'rated' ? `rated ${a.rating}/10` : a.type === 'rated_episode' ? `rated S${a.seasonNumber}E${a.episodeNumber} ${a.rating}/10` : a.type === 'added_to_watchlist' ? 'saved to watchlist' : a.type;
+        return `<div class="fp-act-row" onclick="App.navigate('details',{id:${a.mediaId||a.showId},type:'${aType}'})">
+          ${poster ? `<img src="${poster}" class="fp-act-thumb" alt="">` : `<div class="fp-act-thumb fp-act-thumb-ph">${UI.icon('film', 14)}</div>`}
+          <div class="fp-act-info">
+            <p class="fp-act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
+            <p class="fp-act-verb">${verb}${a.createdAt ? ` · ${UI.timeAgo(a.createdAt)}` : ''}</p>
+          </div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+
+    if (tab === 'watched') {
+      const sorted = [...watched].sort((a, b) => (b.watchedAt || b.createdAt || 0) - (a.watchedAt || a.createdAt || 0));
+      const preview = sorted.slice(0, 15);
+      el.innerHTML = `
+        <div class="fp-section-header-row">
+          <span class="fp-section-count">${watched.length} watched</span>
+          ${watched.length > 15 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
+        </div>
+        <div class="fp-media-list">${preview.map(i => this._renderListItem(i, myWatchedIds)).join('')}</div>`;
+    }
+
+    if (tab === 'ratings') {
+      const sorted = [...ratings].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      const preview = sorted.slice(0, 15);
+      el.innerHTML = `
+        <div class="fp-section-header-row">
+          <span class="fp-section-count">${ratings.length} rated</span>
+        </div>
+        <div class="fp-media-list">${preview.map(i => {
+          const posterPath = i.posterPath || i.mediaPosterPath || '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const fpType = (i.mediaType || 'tv') === 'show' ? 'tv' : (i.mediaType || 'tv');
+          const bothWatched = myWatchedIds.has(String(i.tmdbId || i.id));
+          return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
+            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
+            <div class="fp-list-info">
+              <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
+              <div class="fp-list-meta">
+                ${UI.icon('star', 12)} <strong>${i.rating || '—'}/10</strong>
+                ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+    }
+
+    if (tab === 'watchlist') {
+      el.innerHTML = `
+        <div class="fp-section-header-row">
+          <span class="fp-section-count">${watchlist.length} saved</span>
+          ${watchlist.length > 15 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watchlist-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
+        </div>
+        <div class="fp-media-list">${watchlist.slice(0, 15).map(i => this._renderListItem(i, myWatchedIds)).join('')}</div>`;
+    }
+  },
+
+  _renderListItem(i, myWatchedIds) {
+    const posterPath = i.posterPath || i.mediaPosterPath || i.poster_path || '';
+    const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+    const fpType = (i.mediaType || i.type || 'tv') === 'movie' ? 'movie' : 'tv';
+    const tmdbId = i.tmdbId || i.id;
+    const bothWatched = myWatchedIds.has(String(tmdbId));
+    return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
+      ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
+      <div class="fp-list-info">
+        <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || i.title || '')}</p>
+        <div class="fp-list-meta">
+          <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
+          ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
+        </div>
+      </div>
+    </div>`;
   },
 
   renderItems(items) {
@@ -241,30 +403,270 @@ const FriendProfilePage = {
   }
 };
 
+// Full searchable watched list for a friend
+const FriendWatchedAllPage = {
+  state: { id: '', name: '', items: [], filtered: [], query: '', filter: 'all' },
+  async render(params) {
+    this.state.id = params.id;
+    this.state.name = params.name || 'Friend';
+    this.state.query = '';
+    this.state.filter = 'all';
+    const el = document.getElementById('page-content');
+    el.innerHTML = `<div class="fp-all-page">${UI.pageHeader(`${UI.escapeHtml(this.state.name)}'s Watched`, true)}<div id="fw-content">${UI.loading()}</div></div>`;
+    try {
+      const [items, myW] = await Promise.all([
+        Services.getWatched(this.state.id),
+        Services.getWatched(auth.currentUser?.uid).catch(() => [])
+      ]);
+      this.state.items = items.sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
+      this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
+      this.state.filtered = [...this.state.items];
+      this.draw();
+    } catch (e) { document.getElementById('fw-content').innerHTML = UI.emptyState('Error', e.message); }
+  },
+  draw() {
+    const el = document.getElementById('fw-content');
+    if (!el) return;
+    const { filtered, items, query, filter, id, name, myWatchedIds } = this.state;
+    el.innerHTML = `
+      <div class="fw-controls">
+        <div class="search-bar" style="margin-bottom:8px">
+          ${UI.icon('search', 18)}
+          <input type="text" placeholder="Search ${UI.escapeHtml(name)}'s watched list..." value="${UI.escapeHtml(query)}" oninput="FriendWatchedAllPage.search(this.value)" id="fw-search">
+        </div>
+        <div class="filter-tabs">
+          ${['all','movie','tv'].map(f => `<button class="filter-tab ${filter===f?'active':''}" onclick="FriendWatchedAllPage.setFilter('${f}')">${f==='all'?'All':f==='movie'?'Movies':'TV'}</button>`).join('')}
+          <button class="filter-tab ${filter==='both'?'active':''}" onclick="FriendWatchedAllPage.setFilter('both')">${UI.icon('check', 12)} Both Watched</button>
+        </div>
+      </div>
+      <p class="fw-count">${filtered.length} item${filtered.length !== 1 ? 's' : ''}</p>
+      <div class="fp-media-list">
+        ${filtered.map(i => {
+          const posterPath = i.posterPath || i.mediaPosterPath || '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+          const tmdbId = i.tmdbId;
+          const bothWatched = myWatchedIds && myWatchedIds.has(String(tmdbId));
+          return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
+            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
+            <div class="fp-list-info">
+              <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
+              <div class="fp-list-meta">
+                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
+                ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
+                ${i.watchedAt ? `<span class="fp-list-date">${UI.timeAgo(i.watchedAt)}</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted)">No results</div>`}
+      </div>
+    `;
+  },
+  search(q) {
+    this.state.query = q;
+    this._applyFilter();
+  },
+  setFilter(f) {
+    this.state.filter = f;
+    this._applyFilter();
+  },
+  _applyFilter() {
+    const { items, query, filter, myWatchedIds } = this.state;
+    let result = [...items];
+    if (query) result = result.filter(i => (i.name || i.mediaTitle || '').toLowerCase().includes(query.toLowerCase()));
+    if (filter === 'movie') result = result.filter(i => i.mediaType === 'movie');
+    if (filter === 'tv') result = result.filter(i => i.mediaType !== 'movie');
+    if (filter === 'both') result = result.filter(i => myWatchedIds && myWatchedIds.has(String(i.tmdbId)));
+    this.state.filtered = result;
+    this.draw();
+  }
+};
+
+// Full searchable watchlist for a friend
+const FriendWatchlistAllPage = {
+  state: { id: '', name: '', items: [], filtered: [], query: '', filter: 'all' },
+  async render(params) {
+    this.state.id = params.id;
+    this.state.name = params.name || 'Friend';
+    this.state.query = '';
+    this.state.filter = 'all';
+    const el = document.getElementById('page-content');
+    el.innerHTML = `<div class="fp-all-page">${UI.pageHeader(`${UI.escapeHtml(this.state.name)}'s Watchlist`, true)}<div id="fwl-content">${UI.loading()}</div></div>`;
+    try {
+      const [items, myW] = await Promise.all([
+        Services.getWatchlist(this.state.id),
+        Services.getWatched(auth.currentUser?.uid).catch(() => [])
+      ]);
+      this.state.items = items;
+      this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
+      this.state.filtered = [...items];
+      this.draw();
+    } catch (e) { document.getElementById('fwl-content').innerHTML = UI.emptyState('Error', e.message); }
+  },
+  draw() {
+    const el = document.getElementById('fwl-content');
+    if (!el) return;
+    const { filtered, query, filter, name, myWatchedIds } = this.state;
+    el.innerHTML = `
+      <div class="fw-controls">
+        <div class="search-bar" style="margin-bottom:8px">
+          ${UI.icon('search', 18)}
+          <input type="text" placeholder="Search ${UI.escapeHtml(name)}'s watchlist..." value="${UI.escapeHtml(query)}" oninput="FriendWatchlistAllPage.search(this.value)">
+        </div>
+        <div class="filter-tabs">
+          ${['all','movie','tv'].map(f => `<button class="filter-tab ${filter===f?'active':''}" onclick="FriendWatchlistAllPage.setFilter('${f}')">${f==='all'?'All':f==='movie'?'Movies':'TV'}</button>`).join('')}
+          <button class="filter-tab ${filter==='watched'?'active':''}" onclick="FriendWatchlistAllPage.setFilter('watched')">${UI.icon('eye', 12)} Already Watched</button>
+        </div>
+      </div>
+      <p class="fw-count">${filtered.length} item${filtered.length !== 1 ? 's' : ''}</p>
+      <div class="fp-media-list">
+        ${filtered.map(i => {
+          const posterPath = i.posterPath || '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+          const alreadyWatched = myWatchedIds && myWatchedIds.has(String(i.tmdbId || i.id));
+          return `<div class="fp-list-item ${alreadyWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
+            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
+            <div class="fp-list-info">
+              <p class="fp-list-title">${UI.escapeHtml(i.name || '')}</p>
+              <div class="fp-list-meta">
+                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
+                ${alreadyWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} You watched this</span>` : ''}
+              </div>
+            </div>
+            <button class="fp-add-wl-btn" onclick="event.stopPropagation();FriendWatchlistAllPage.addToMyWatchlist(${i.tmdbId||i.id},'${fpType}','${UI.escapeHtml(i.name||'').replace(/'/g,"\\'")}','${posterPath}')" title="Add to my watchlist">${UI.icon('plus', 16)}</button>
+          </div>`;
+        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted)">No results</div>`}
+      </div>`;
+  },
+  search(q) { this.state.query = q; this._apply(); },
+  setFilter(f) { this.state.filter = f; this._apply(); },
+  _apply() {
+    const { items, query, filter, myWatchedIds } = this.state;
+    let r = [...items];
+    if (query) r = r.filter(i => (i.name || '').toLowerCase().includes(query.toLowerCase()));
+    if (filter === 'movie') r = r.filter(i => i.mediaType === 'movie');
+    if (filter === 'tv') r = r.filter(i => i.mediaType !== 'movie');
+    if (filter === 'watched') r = r.filter(i => myWatchedIds && myWatchedIds.has(String(i.tmdbId || i.id)));
+    this.state.filtered = r;
+    this.draw();
+  },
+  async addToMyWatchlist(tmdbId, type, name, posterPath) {
+    try {
+      await Services.addToWatchlist({ id: tmdbId, name, mediaType: type, posterPath });
+      UI.toast(`Added "${name}" to your watchlist!`, 'success');
+    } catch (e) { UI.toast('Failed: ' + e.message, 'error'); }
+  }
+};
+
+// Friend's watch analytics page
+const FriendAnalyticsPage = {
+  async render(params) {
+    const el = document.getElementById('page-content');
+    const friendId = params.id;
+    const friendName = params.name || 'Friend';
+    el.innerHTML = `<div class="fp-analytics-page">${UI.pageHeader(`${UI.escapeHtml(friendName)}'s Stats`, true)}<div id="fa-content">${UI.loading()}</div></div>`;
+    try {
+      const [watched, ratings, myWatched] = await Promise.all([
+        Services.getWatched(friendId),
+        Services.getRatings(friendId),
+        Services.getWatched(auth.currentUser?.uid).catch(() => [])
+      ]);
+      const myWatchedIds = new Set(myWatched.map(x => String(x.tmdbId)));
+      const movies = watched.filter(x => x.mediaType === 'movie');
+      const tv = watched.filter(x => x.mediaType !== 'movie');
+      const bothWatched = watched.filter(x => myWatchedIds.has(String(x.tmdbId)));
+      const avgRating = ratings.length ? (ratings.reduce((s, r) => s + (r.rating || 0), 0) / ratings.length).toFixed(1) : '—';
+      const topRated = [...ratings].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 5);
+      const recentWatched = [...watched].sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0)).slice(0, 5);
+
+      document.getElementById('fa-content').innerHTML = `
+        <div class="fa-stats-grid">
+          <div class="fa-stat"><span class="fa-stat-num">${watched.length}</span><span class="fa-stat-label">Total Watched</span></div>
+          <div class="fa-stat"><span class="fa-stat-num">${movies.length}</span><span class="fa-stat-label">Movies</span></div>
+          <div class="fa-stat"><span class="fa-stat-num">${tv.length}</span><span class="fa-stat-label">TV Shows</span></div>
+          <div class="fa-stat"><span class="fa-stat-num">${ratings.length}</span><span class="fa-stat-label">Rated</span></div>
+          <div class="fa-stat"><span class="fa-stat-num">${avgRating}</span><span class="fa-stat-label">Avg Rating</span></div>
+          <div class="fa-stat accent"><span class="fa-stat-num">${bothWatched.length}</span><span class="fa-stat-label">Both Watched</span></div>
+        </div>
+        ${topRated.length ? `
+        <div class="fa-section">
+          <h3 class="fa-section-title">${UI.icon('star', 16)} Top Rated by ${UI.escapeHtml(friendName)}</h3>
+          <div class="fp-media-list">${topRated.map(i => {
+            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w92') : '';
+            const t = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+            return `<div class="fp-list-item" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${t}'})">
+              ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph"></div>`}
+              <div class="fp-list-info">
+                <p class="fp-list-title">${UI.escapeHtml(i.name || '')}</p>
+                <p class="fp-list-meta">${UI.icon('star', 12)} <strong>${i.rating}/10</strong></p>
+              </div>
+            </div>`;
+          }).join('')}</div>
+        </div>` : ''}
+        ${bothWatched.length ? `
+        <div class="fa-section">
+          <h3 class="fa-section-title">${UI.icon('check-circle', 16)} Both Watched</h3>
+          <div class="horizontal-scroll">${bothWatched.slice(0, 12).map(i => {
+            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w185') : '';
+            const t = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+            return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId},type:'${t}'})">
+              ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
+              <p class="card-title">${UI.escapeHtml(i.name || '')}</p>
+            </div>`;
+          }).join('')}</div>
+        </div>` : ''}
+        <div class="fa-actions">
+          <button class="btn-secondary" onclick="App.navigate('friend-watched-all',{id:'${friendId}',name:'${UI.escapeHtml(friendName)}'})">
+            ${UI.icon('list', 16)} View Full Watch List
+          </button>
+          <button class="btn-secondary" onclick="App.navigate('matcher-setup')">
+            ${UI.icon('zap', 16)} Start Matcher Session
+          </button>
+        </div>
+      `;
+    } catch (e) { document.getElementById('fa-content').innerHTML = UI.emptyState('Error', e.message); }
+  }
+};
 
 const ActivityPage = {
   state: {
-    feed: [],
+    friendItems: [],
     seen: new Map(),
     cursors: {},
     friendUids: [],
     loading: false,
     allLoaded: false,
-    _observer: null
+    _observer: null,
+    plexGroups: [],
+    plexLoaded: false,
+    filter: 'all'
   },
+
+  _plexLogoSm: `<svg width="10" height="10" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg>`,
 
   async render() {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="activity-page">
       ${UI.pageHeader('Activity Feed', true)}
-      <div id="feed-content"><div class="activity-feed-v2" id="feed-list"></div><div id="feed-sentinel" style="height:1px"></div><div id="feed-spinner" style="display:none">${UI.loading()}</div></div>
+      <div class="act-filter-row">
+        <button class="act-filter-pill active" id="afp-all" onclick="ActivityPage.setFilter('all')">All</button>
+        <button class="act-filter-pill" id="afp-friends" onclick="ActivityPage.setFilter('friends')">${UI.icon('users', 12)} Friends</button>
+        <button class="act-filter-pill" id="afp-plex" onclick="ActivityPage.setFilter('plex')"><svg width="12" height="12" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg>My Plex</button>
+      </div>
+      <div class="activity-feed-v2" id="act-feed-list"></div>
+      <div id="feed-sentinel" style="height:1px"></div>
+      <div id="feed-spinner" style="display:none;padding:16px;text-align:center">${UI.loading()}</div>
     </div>`;
     // Reset state
-    this.state.feed = [];
+    this.state.friendItems = [];
     this.state.seen = new Map();
     this.state.cursors = {};
     this.state.allLoaded = false;
     this.state.loading = false;
+    this.state.plexGroups = [];
+    this.state.plexLoaded = false;
+    this.state.filter = 'all';
     if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
 
     try {
@@ -277,61 +679,160 @@ const ActivityPage = {
       this.state.friendUids = auth.currentUser?.uid ? [auth.currentUser.uid] : [];
     }
 
-    await this._loadPage();
+    // Load both in parallel — plex is loaded all at once, friends paginates
+    await Promise.all([this._loadFriendPage(), this._loadPlexItems()]);
+    this._redrawFeed();
     this._setupObserver();
   },
 
-  async _loadPage() {
+  setFilter(filter) {
+    this.state.filter = filter;
+    ['all', 'friends', 'plex'].forEach(f => {
+      document.getElementById(`afp-${f}`)?.classList.toggle('active', f === filter);
+    });
+    this._redrawFeed();
+  },
+
+  _groupPlexItems(items) {
+    // Group TV show episodes together by show; keep movies as singles
+    const showMap = new Map();
+    const result = [];
+    items.forEach(a => {
+      if (a.mediaType === 'tv' && a.mediaId) {
+        if (!showMap.has(a.mediaId)) showMap.set(a.mediaId, []);
+        showMap.get(a.mediaId).push(a);
+      } else {
+        result.push({ _plex: true, _group: false, item: a, time: a.createdAt || 0 });
+      }
+    });
+    showMap.forEach(eps => {
+      const latest = Math.max(...eps.map(e => e.createdAt || 0));
+      result.push({ _plex: true, _group: true, entries: eps, time: latest });
+    });
+    return result;
+  },
+
+  _redrawFeed() {
+    const list = document.getElementById('act-feed-list');
+    if (!list) return;
+    const currentUid = auth.currentUser?.uid;
+    const { filter, friendItems, plexGroups } = this.state;
+    const friendSource = filter !== 'plex' ? friendItems : [];
+    const plexSource = filter !== 'friends' ? plexGroups : [];
+
+    const all = [
+      ...friendSource.map(a => ({ _src: 'friend', a, time: a.createdAt || 0 })),
+      ...plexSource.map(g => ({ _src: 'plex', g, time: g.time || 0 }))
+    ].sort((a, b) => b.time - a.time);
+
+    if (!all.length && this.state.allLoaded && this.state.plexLoaded) {
+      list.innerHTML = `<div style="padding:40px 20px;text-align:center">
+        <p style="color:var(--text-secondary);margin-bottom:16px">Nothing here yet — rate episodes, watch something, or sync Plex!</p>
+        <button class="btn-secondary btn-sm" onclick="App.navigate('discover')">${UI.icon('search',14)} Discover content</button>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = all.map(item => {
+      if (item._src === 'friend') return this._renderCard(item.a, currentUid);
+      return item.g._group ? this._renderPlexGroupCard(item.g) : this._renderPlexSingleCard(item.g.item);
+    }).join('');
+  },
+
+  _renderPlexSingleCard(a) {
+    const poster = a.mediaPosterPath ? API.imageUrl(a.mediaPosterPath, 'w185') : '';
+    const isMovie = a.mediaType === 'movie';
+    const navCall = a.mediaId ? `App.navigate('details',{id:${a.mediaId},type:'${a.mediaType || 'tv'}'})` : '';
+    const epLabel = !isMovie && a.seasonNumber != null ? `S${a.seasonNumber}E${a.episodeNumber} watched` : (isMovie ? 'movie watched' : 'watched');
+    return `<div class="activity-card-v2 plex-activity-card" ${navCall ? `onclick="${navCall}"` : ''}>
+      <div class="act-avatar-col">
+        ${poster ? `<img src="${poster}" class="act-plex-poster" alt="">` : `<div class="act-avatar-initial act-plex-avatar">${(a.mediaTitle||'?')[0]}</div>`}
+        <div class="act-type-dot dot-plex">${this._plexLogoSm}</div>
+      </div>
+      <div class="act-body">
+        <p class="act-headline"><span class="act-plex-badge">Plex</span> ${UI.escapeHtml(a.mediaTitle || '')}</p>
+        <p class="act-verb">${epLabel}</p>
+        ${a.createdAt ? `<p class="act-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
+      </div>
+      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
+    </div>`;
+  },
+
+  _renderPlexGroupCard(g) {
+    const first = g.entries[0];
+    const poster = first.mediaPosterPath ? API.imageUrl(first.mediaPosterPath, 'w185') : '';
+    const epCount = g.entries.length;
+    const sorted = [...g.entries].sort((a, b) => {
+      const ai = (a.seasonNumber || 0) * 1000 + (a.episodeNumber || 0);
+      const bi = (b.seasonNumber || 0) * 1000 + (b.episodeNumber || 0);
+      return ai - bi;
+    });
+    const epList = sorted.slice(0, 5)
+      .map(ep => ep.seasonNumber != null ? `S${ep.seasonNumber}E${ep.episodeNumber}` : '').filter(Boolean).join(', ');
+    const moreEps = epCount > 5 ? ` +${epCount - 5} more` : '';
+    return `<div class="activity-card-v2 plex-activity-card" onclick="${first.mediaId ? `App.navigate('details',{id:${first.mediaId},type:'tv'})` : ''}">
+      <div class="act-avatar-col">
+        ${poster ? `<img src="${poster}" class="act-plex-poster" alt="">` : `<div class="act-avatar-initial act-plex-avatar">${(first.mediaTitle||'?')[0]}</div>`}
+        <div class="act-type-dot dot-plex">${this._plexLogoSm}</div>
+      </div>
+      <div class="act-body">
+        <p class="act-headline"><span class="act-plex-badge">Plex</span> ${UI.escapeHtml(first.mediaTitle || '')}</p>
+        <p class="act-verb">${epCount} episode${epCount !== 1 ? 's' : ''} watched</p>
+        ${epList ? `<p class="act-ep-name">${UI.escapeHtml(epList)}${moreEps}</p>` : ''}
+        ${g.time ? `<p class="act-time">${UI.timeAgo(g.time)}</p>` : ''}
+      </div>
+      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
+    </div>`;
+  },
+
+  async _loadFriendPage() {
     if (this.state.loading || this.state.allLoaded || !this.state.friendUids.length) return;
     this.state.loading = true;
     const spinner = document.getElementById('feed-spinner');
     if (spinner) spinner.style.display = '';
     try {
-      const { items, cursors } = await Services.getActivityFeed(this.state.friendUids, this.state.cursors, 30);
+      const { items, cursors } = await Services.getActivityFeed(this.state.friendUids, this.state.cursors, 40);
       this.state.cursors = cursors;
-
-      // Deduplicate globally
       const newItems = [];
       items.forEach(a => {
         const key = `${a.userId}_${a.mediaId || a.showId}_${(a.type === 'rated_episode' || a.type === 'watched_episode') ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
         if (!this.state.seen.has(key)) {
           this.state.seen.set(key, true);
-          // Filter out unrated items logged as rating=0
           if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return;
           newItems.push(a);
         }
       });
-
       if (!items.length) this.state.allLoaded = true;
-
-      this.state.feed.push(...newItems);
-      this._appendItems(newItems);
+      this.state.friendItems.push(...newItems);
     } catch (e) {
-      const fc = document.getElementById('feed-content');
-      if (fc && !this.state.feed.length) fc.innerHTML = UI.emptyState('Error', e.message);
+      if (!this.state.friendItems.length) {
+        const list = document.getElementById('act-feed-list');
+        if (list) list.innerHTML = UI.emptyState('Error', e.message);
+      }
     } finally {
       this.state.loading = false;
       const spinner = document.getElementById('feed-spinner');
       if (spinner) spinner.style.display = 'none';
-      if (!this.state.feed.length && !this.state.loading) {
-        const list = document.getElementById('feed-list');
-        if (list) list.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here');
-      }
     }
   },
 
-  _appendItems(items) {
-    const list = document.getElementById('feed-list');
-    if (!list) return;
-    const currentUid = auth.currentUser?.uid;
-    list.insertAdjacentHTML('beforeend', items.map(a => this._renderCard(a, currentUid)).join(''));
+  async _loadPlexItems() {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) { this.state.plexLoaded = true; return; }
+      const items = await Services.getPlexHistoryAsActivity(uid);
+      this.state.plexGroups = this._groupPlexItems(items);
+      this.state.plexLoaded = true;
+    } catch (_) { this.state.plexLoaded = true; }
   },
 
   _setupObserver() {
     const sentinel = document.getElementById('feed-sentinel');
     if (!sentinel) return;
     this.state._observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) this._loadPage();
+      if (entries[0].isIntersecting && !this.state.loading && !this.state.allLoaded) {
+        this._loadFriendPage().then(() => this._redrawFeed());
+      }
     }, { rootMargin: '300px' });
     this.state._observer.observe(sentinel);
   },

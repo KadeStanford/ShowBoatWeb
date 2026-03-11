@@ -14,7 +14,7 @@ const AuthPages = {
         <div class="landing-nav-brand">${UI.icon('tv', 24)}<span>ShowBoat</span></div>
         <div class="landing-nav-links">
           <button class="landing-nav-login" onclick="App.navigate('login')">Sign In</button>
-          <button class="btn-primary landing-nav-cta" onclick="App.navigate('signup')">Get Started Free</button>
+          <button class="btn-primary landing-nav-cta" onclick="document.getElementById('waitlist-section').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
         </div>
       </nav>
 
@@ -22,12 +22,12 @@ const AuthPages = {
       <section class="landing-hero">
         <div class="landing-hero-glow"></div>
         <div class="landing-hero-content">
-          <div class="landing-badge">${UI.icon('zap', 14)} Free to use &middot; No ads</div>
-          <h1 class="landing-h1">Track shows.<br>Rate episodes.<br><span class="landing-h1-accent">Watch together.</span></h1>
-          <p class="landing-tagline">ShowBoat is the social TV &amp; movie tracker you've been waiting for — rate every episode, sync your Plex history, and see exactly what your friends are watching.</p>
+          <div class="landing-badge">${UI.icon('zap', 14)} Now invite-only &middot; Join the waitlist</div>
+          <h1 class="landing-h1">Rate every episode.<br>Sync your Plex.<br><span class="landing-h1-accent">Watch as a crew.</span></h1>
+          <p class="landing-tagline">ShowBoat is the social tracker built for people who actually care about what they watch. Episode-level ratings, Plex sync, a live friend activity feed, and a Group Matcher to end the "what should we watch" debate forever.</p>
           <div class="landing-cta-row">
-            <button class="btn-primary landing-cta-main" onclick="App.navigate('signup')">${UI.icon('user-plus', 18)} Create Free Account</button>
-            <button class="landing-cta-secondary" onclick="App.navigate('login')">Already have an account? Sign in</button>
+            <button class="btn-primary landing-cta-main" onclick="document.getElementById('waitlist-section').scrollIntoView({behavior:'smooth'})">${UI.icon('mail', 18)} Join the Waitlist</button>
+            <button class="landing-cta-secondary" onclick="App.navigate('login')">Have an invite code? Sign up →</button>
           </div>
         </div>
         <div class="landing-hero-mockup">
@@ -44,59 +44,74 @@ const AuthPages = {
         </div>
       </section>
 
-      <!-- Features Grid -->
+      <!-- Feature Highlights -->
       <section class="landing-features">
-        <h2 class="landing-section-title">Everything you need to track your watching life</h2>
+        <h2 class="landing-section-title">Built for the way you actually watch</h2>
         <div class="landing-features-grid">
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('tv', 28)}</div>
-            <h3>TV &amp; Movies</h3>
-            <p>Track every show, season, episode, and movie. Mark watched, build watchlists, browse trending.</p>
-          </div>
-          <div class="landing-feature-card">
             <div class="landing-feature-icon">${UI.icon('star', 28)}</div>
-            <h3>Episode Ratings</h3>
-            <p>Rate individual episodes, not just whole shows. Build your own ranking of the best episodes ever made.</p>
-          </div>
-          <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('users', 28)}</div>
-            <h3>Social Activity Feed</h3>
-            <p>See what friends are watching in real time. The iMessage-style feed keeps you connected on-screen.</p>
-          </div>
-          <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('alert-triangle', 28)}</div>
-            <h3>Wall of Shame</h3>
-            <p>Call out friends who still haven't watched the classics. A lighthearted way to nudge binge-worthy shows.</p>
+            <h3>Episode-Level Ratings</h3>
+            <p>Rate individual episodes out of 10, not just whole seasons. Build your own all-time episode ranking across every show you've seen.</p>
           </div>
           <div class="landing-feature-card">
             <div class="landing-feature-icon">${UI.icon('activity', 28)}</div>
             <h3>Plex Sync</h3>
-            <p>Connect your Plex server to automatically import your entire watch history — no manual entry needed.</p>
+            <p>Connect your Plex server and your entire watch history is imported automatically. No manual logging — your history just appears.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">${UI.icon('users', 28)}</div>
+            <h3>Social Activity Feed</h3>
+            <p>A live iMessage-style feed showing exactly what your friends are watching and rating right now. Stay in the loop effortlessly.</p>
           </div>
           <div class="landing-feature-card">
             <div class="landing-feature-icon">${UI.icon('shuffle', 28)}</div>
             <h3>Group Matcher</h3>
-            <p>Can't decide what to watch together? The Matcher finds shows everyone in your group actually wants to see.</p>
+            <p>Tinder for movie night. You and a friend both swipe on titles and the Matcher surfaces what you both want to watch together.</p>
           </div>
           <div class="landing-feature-card">
             <div class="landing-feature-icon">${UI.icon('bar-chart-2', 28)}</div>
-            <h3>Analytics</h3>
-            <p>Deep stats on your watching habits — top shows, genres, episode ratings, monthly activity and more.</p>
+            <h3>Deep Analytics</h3>
+            <p>See your top genres, most-watched directors, average episode score by show, and monthly viewing trends in rich visual charts.</p>
           </div>
           <div class="landing-feature-card">
             <div class="landing-feature-icon">${UI.icon('award', 28)}</div>
-            <h3>Badges</h3>
-            <p>Earn badges as you hit milestones. The completionist in you will love unlocking every one.</p>
+            <h3>Badges & Milestones</h3>
+            <p>Earn badges as you hit watching milestones — completionist runs, rating streaks, genre mastery, and more. Show them off on your profile.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">${UI.icon('alert-triangle', 28)}</div>
+            <h3>Wall of Shame</h3>
+            <p>Publicly call out friends who still haven't watched the classics you keep recommending. A little peer pressure never hurt anyone.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">${UI.icon('list', 28)}</div>
+            <h3>Shared Watchlists</h3>
+            <p>Build collaborative watchlists with friends — curated date-night lineups, genre challenges, or "you have to see this" collections.</p>
           </div>
         </div>
       </section>
 
-      <!-- CTA Banner -->
-      <section class="landing-cta-section">
-        <h2>Ready to start tracking?</h2>
-        <p>Free forever. No credit card. Sign up in 30 seconds.</p>
-        <button class="btn-primary landing-cta-main" onclick="App.navigate('signup')">${UI.icon('user-plus', 18)} Create Your Free Account</button>
-        <p class="landing-cta-signin">Already a member? <a href="#" onclick="App.navigate('login'); return false;">Sign in</a></p>
+      <!-- Social Proof / Tagline -->
+      <section class="landing-proof-section">
+        <div class="landing-proof-inner">
+          <p class="landing-proof-quote">"Finally, a tracker that treats episodes like first-class citizens."</p>
+          <p class="landing-proof-attr">— ShowBoat beta user</p>
+        </div>
+      </section>
+
+      <!-- Waitlist -->
+      <section class="landing-cta-section" id="waitlist-section">
+        <h2>Get early access</h2>
+        <p>ShowBoat is invite-only right now. Join the waitlist and we'll send you a code when a spot opens up.</p>
+        <div class="waitlist-form" id="waitlist-form-wrap">
+          <input type="text" id="waitlist-name" class="waitlist-input" placeholder="Your name (optional)">
+          <input type="email" id="waitlist-email" class="waitlist-input" placeholder="Your email address" required>
+          <button class="btn-primary landing-cta-main" onclick="AuthPages.joinWaitlist()">${UI.icon('mail', 18)} Request Invite</button>
+        </div>
+        <div id="waitlist-success" style="display:none;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:16px 20px;margin-top:12px;color:#34d399;font-weight:500">
+          ${UI.icon('check-circle', 18)} You're on the list! We'll reach out when a spot opens.
+        </div>
+        <p style="margin-top:20px;color:var(--text-secondary);font-size:13px">Already have an invite code? <a href="#" onclick="App.navigate('signup'); return false;">Create your account →</a></p>
       </section>
 
       <!-- Footer -->
@@ -107,6 +122,20 @@ const AuthPages = {
         </div>
       </footer>
     </div>`;
+  },
+
+  async joinWaitlist() {
+    const email = document.getElementById('waitlist-email')?.value?.trim();
+    const name = document.getElementById('waitlist-name')?.value?.trim() || '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { UI.toast('Please enter a valid email address', 'error'); return; }
+    try {
+      // Check for duplicate
+      const existing = await db.collection('waitlist').where('email', '==', email.toLowerCase()).limit(1).get();
+      if (!existing.empty) { UI.toast('You\'re already on the waitlist!', 'info'); return; }
+      await db.collection('waitlist').add({ email: email.toLowerCase(), name, createdAt: Date.now() });
+      document.getElementById('waitlist-form-wrap').style.display = 'none';
+      document.getElementById('waitlist-success').style.display = 'block';
+    } catch (e) { UI.toast('Something went wrong. Please try again.', 'error'); }
   },
 
   renderLogin() {
@@ -160,7 +189,7 @@ const AuthPages = {
       <div class="auth-split-left">
         <div class="auth-split-brand">${UI.icon('tv', 32)}<span>ShowBoat</span></div>
         <h2 class="auth-split-headline">Join the crew.<br>Start tracking.</h2>
-        <p class="auth-split-sub">Free forever. No credit card. Takes 30 seconds.</p>
+        <p class="auth-split-sub">ShowBoat is invite-only right now. Have a code? You're in.</p>
         <div class="auth-features-list">${this._featureHighlights}</div>
         <a href="#" class="auth-split-back" onclick="App.navigate('landing'); return false;">${UI.icon('arrow-left', 16)} Back to home</a>
       </div>
@@ -169,9 +198,16 @@ const AuthPages = {
           <div class="auth-form-header">
             <div class="auth-logo-sm">${UI.icon('user-plus', 28)}</div>
             <h1 class="auth-title">Create Account</h1>
-            <p class="auth-subtitle">Join ShowBoat — it's totally free</p>
+            <p class="auth-subtitle">You'll need an invite code to join</p>
           </div>
           <form class="auth-form" onsubmit="AuthPages.handleSignup(event)">
+            <div class="input-group">
+              <label>Invite Code</label>
+              <div class="input-wrapper">
+                ${UI.icon('key', 18)}
+                <input type="text" id="signup-code" placeholder="XXXX-XXXX" autocomplete="off" required style="text-transform:uppercase;letter-spacing:2px">
+              </div>
+            </div>
             <div class="input-group">
               <label>Username</label>
               <div class="input-wrapper">
@@ -226,32 +262,43 @@ const AuthPages = {
 
   async handleSignup(e) {
     e.preventDefault();
+    const code = document.getElementById('signup-code').value.trim();
     const username = document.getElementById('signup-username').value.trim();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirm = document.getElementById('signup-confirm').value;
 
-    if (!username || !email || !password || !confirm) { UI.toast('Please fill in all fields', 'error'); return; }
+    if (!code || !username || !email || !password || !confirm) { UI.toast('Please fill in all fields', 'error'); return; }
     if (password.length < 8) { UI.toast('Password must be at least 8 characters', 'error'); return; }
     if (!/\d/.test(password)) { UI.toast('Password must contain at least one number', 'error'); return; }
     if (password !== confirm) { UI.toast('Passwords do not match', 'error'); return; }
 
     const btn = document.getElementById('signup-btn');
-    btn.disabled = true; btn.textContent = 'Creating account...';
+    btn.disabled = true; btn.textContent = 'Verifying code...';
     try {
+      // Validate invite code first
+      const validCode = await Services.validateInviteCode(code);
+      if (!validCode) { UI.toast('Invalid or already used invite code', 'error'); btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account'; return; }
+
+      btn.textContent = 'Creating account...';
       // Check username uniqueness
       const snap = await db.collection('users').where('username_lowercase', '==', username.toLowerCase()).get();
-      if (!snap.empty) { UI.toast('Username is already taken', 'error'); btn.disabled = false; btn.textContent = 'Sign Up'; return; }
+      if (!snap.empty) { UI.toast('Username is already taken', 'error'); btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account'; return; }
 
       const cred = await auth.createUserWithEmailAndPassword(email, password);
       await cred.user.updateProfile({ displayName: username });
+      // Mark code as used, provision user with 5 tickets and 3 invite codes of their own
+      await Services.useInviteCode(code, cred.user.uid);
       await db.collection('users').doc(cred.user.uid).set({
         username, username_lowercase: username.toLowerCase(),
-        email: email.toLowerCase(), createdAt: Date.now()
+        email: email.toLowerCase(), createdAt: Date.now(),
+        tickets: 5, invitedWith: validCode.code
       });
+      // Generate 3 invite codes for the new user to share
+      await Services.generateUserInviteCodes(cred.user.uid, 3);
     } catch (err) {
       UI.toast(err.message, 'error');
-      btn.disabled = false; btn.textContent = 'Sign Up';
+      btn.disabled = false; btn.innerHTML = UI.icon('user-plus', 18) + ' Create Account';
     }
   },
 

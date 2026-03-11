@@ -31,7 +31,11 @@ const App = {
     'actor-details':      { render: (p) => ActorDetailsPage.render(p), auth: true, nav: true },
     'cast-list':          { render: (p) => CastListPage.render(p), auth: true, nav: true },
     'shared-actors':      { render: (p) => SharedActorsPage.render(p), auth: true, nav: true },
-    'youtube':            { render: (p) => YouTubePage.render(p), auth: true, nav: true }
+    'youtube':            { render: (p) => YouTubePage.render(p), auth: true, nav: true },
+    'friend-watched-all': { render: (p) => FriendWatchedAllPage.render(p), auth: true, nav: true },
+    'watched-history':    { render: () => WatchedHistoryPage.render(), auth: true, nav: true },
+    'friend-watchlist-all': { render: (p) => FriendWatchlistAllPage.render(p), auth: true, nav: true },
+    'friend-analytics':   { render: (p) => FriendAnalyticsPage.render(p), auth: true, nav: true }
   },
 
   init() {
@@ -42,6 +46,8 @@ const App = {
         this.showNav(true);
         // Restore Plex connection + library cache from Firestore (runs in background)
         Services.restorePlexOnLogin().catch(() => {});
+        // Ensure Plex watch history is backported into activity collection
+        Services.ensurePlexActivityBackfill().catch(() => {});
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);
@@ -111,8 +117,12 @@ const App = {
 
     // Track history
     if (this.currentPage && this.currentPage !== page) {
-      this.history.push(this.currentPage);
-      if (this.history.length > 50) this.history.shift();
+      // Navigating to a root page clears the history to prevent pileup
+      if (this._rootPages.has(page)) {
+        this.history = [];
+      } else {
+        this._pushHistory(this.currentPage);
+      }
     }
 
     this.currentPage = page;
@@ -159,15 +169,29 @@ const App = {
     }
   },
 
+  // Root pages that clear navigation pileup — going to these always resets history
+  _rootPages: new Set(['home', 'friends', 'discover', 'watchlist', 'profile', 'activity']),
+
   back() {
-    if (this.history.length > 0) {
-      const prev = this.history.pop();
-      this.navigate(prev);
-      // Remove the extra history entry added by navigate
-      this.history.pop();
-    } else {
-      this.navigate('home');
+    if (this.history.length === 0) { this.navigate('home'); return; }
+    // Pop past any duplicate of the current page to prevent single-click stalls
+    let prev = this.history.pop();
+    while (prev === this.currentPage && this.history.length > 0) {
+      prev = this.history.pop();
     }
+    if (!prev || prev === this.currentPage) { this.navigate('home'); return; }
+    // Navigate to prev, then remove the re-entry that navigate() will push
+    this.navigate(prev);
+    // navigate() just pushed this.currentPage (which was prev's predecessor) — pop that
+    this.history.pop();
+  },
+
+  _pushHistory(page) {
+    if (!page) return;
+    // Avoid consecutive duplicate entries to prevent back-button pileup
+    if (this.history.length && this.history[this.history.length - 1] === page) return;
+    this.history.push(page);
+    if (this.history.length > 50) this.history.shift();
   },
 
   onHashChange() {

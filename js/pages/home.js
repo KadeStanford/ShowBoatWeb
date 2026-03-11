@@ -9,6 +9,7 @@ const HomePage = {
       await this.loadData();
       this.draw(el);
       this.startCarousel();
+      if (auth.currentUser) this.loadKeepWatching();
     } catch (e) { el.innerHTML = UI.emptyState('Error loading home', e.message); }
   },
 
@@ -45,7 +46,7 @@ const HomePage = {
       this.state.plexIds = ids;
       document.querySelectorAll('.media-card-sm[data-media-id]').forEach(card => {
         if (ids.has(card.dataset.mediaId) && !card.querySelector('.plex-card-badge')) {
-          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge">▶</span>');
+          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>');
         }
       });
     } catch (_) {}
@@ -169,6 +170,25 @@ const HomePage = {
     }
   },
 
+  async loadKeepWatching() {
+    try {
+      const shows = await Services.getKeepWatching(8);
+      if (!shows.length) return;
+      const sec = document.getElementById('keep-watching-section');
+      const list = document.getElementById('keep-watching-list');
+      if (!sec || !list) return;
+      list.innerHTML = shows.map(show => {
+        const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w185') : '';
+        const sub = `S${show.latestSeason} · E${show.latestEpisode}`;
+        return `<div class="media-card-sm" onclick="App.navigate('details',{id:${show.tmdbId},type:'tv'})" style="cursor:pointer">
+          ${poster ? `<img src="${UI.escapeHtml(poster)}" alt="" class="card-poster">` : '<div class="poster-placeholder"></div>'}
+          <div class="card-info"><p class="card-title">${UI.escapeHtml(show.name || '')}</p><p class="card-subtitle">${sub}</p></div>
+        </div>`;
+      }).join('');
+      sec.style.display = '';
+    } catch (_) {}
+  },
+
   async loadPersonalRecs() {
     try {
       const uid = auth.currentUser?.uid;
@@ -246,6 +266,10 @@ const HomePage = {
         <div class="section" id="plex-now-playing-home" style="display:none"></div>
         ${this.renderMenuGrid()}
         ${this.renderDynamicSection()}
+        <div class="section" id="keep-watching-section" style="display:none">
+          <div class="section-header"><h3>${UI.icon('play-circle', 16)} Keep Watching</h3><button class="see-all-btn" onclick="App.navigate('watched-history')">View All</button></div>
+          <div class="horizontal-scroll" id="keep-watching-list"></div>
+        </div>
         ${s.shames.length ? this.renderShameSection() : ''}
         ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll"><p class="empty-text">Loading...</p></div></div>`}
         <div class="section">
@@ -306,21 +330,47 @@ const HomePage = {
       { icon: 'activity', label: 'Activity', page: 'activity', color: 'var(--blue-500)' },
       { icon: 'list', label: 'Lists', page: 'shared-lists', color: 'var(--teal-500)' },
       { icon: 'zap', label: 'Matcher', page: 'matcher-setup', color: 'var(--orange-500)' },
-      { icon: 'bar-chart-2', label: 'Stats', page: 'analytics', color: 'var(--teal-500)' }
+      { icon: 'bar-chart-2', label: 'Stats', page: 'analytics', color: 'var(--teal-500)' },
+      { icon: 'users', label: 'Friends', page: 'friends', color: 'var(--violet-500)' },
+      { icon: 'play-circle', label: 'Watched', page: 'watched-history', color: 'var(--sky-500)' },
+      { icon: 'award', label: 'Badges', page: 'badges', color: 'var(--yellow-500)' },
+      { icon: 'alert-circle', label: 'Report Bug', page: '__bug__', color: 'var(--rose-400)' }
     ];
-    return `<div class="menu-grid">${items.map(i => `<button class="menu-item" onclick="App.navigate('${i.page}')"><div class="menu-icon" style="background:${i.color}20;color:${i.color}">${UI.icon(i.icon, 22)}</div><span>${i.label}</span></button>`).join('')}</div>`;
+    return `<div class="menu-grid">${items.map(i => {
+      const onclick = i.page === '__bug__' ? 'onclick="UI.showBugReportModal()"' : `onclick="App.navigate('${i.page}')"`;
+      return `<button class="menu-item" ${onclick}><div class="menu-icon" style="background:${i.color}20;color:${i.color}">${UI.icon(i.icon, 22)}</div><span>${i.label}</span></button>`;
+    }).join('')}</div>`;
   },
 
   renderDynamicSection() {
-    // Rotating "Top Picks" section — shows top-rated from trending with variety
     const s = this.state;
-    const pool = [...s.trending.shows.slice(0, 5), ...s.trending.movies.slice(0, 5)]
-      .filter(i => i.vote_average >= 7.5 && i.backdrop_path);
+    const pool = [...(s.trending.shows || []), ...(s.trending.movies || [])].filter(i => i.backdrop_path);
     if (!pool.length) return '';
-    const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, 6);
+
+    // Pick a random carousel flavor once per home render session (stable via state)
+    if (!s._dynLabel) {
+      const flavors = [
+        { label: 'Top Picks Right Now', icon: 'zap', filter: i => i.vote_average >= 7.5 },
+        { label: 'Critically Acclaimed', icon: 'star', filter: i => i.vote_average >= 8.0 && i.vote_count > 300 },
+        { label: 'Popular Right Now', icon: 'trending-up', filter: i => i.popularity > 100 },
+        { label: 'Hidden Gems', icon: 'compass', filter: i => i.vote_average >= 7.5 && i.popularity < 80 },
+        { label: 'International Hits', icon: 'globe', filter: i => i.original_language !== 'en' && i.vote_average >= 6.8 },
+        { label: 'Highly Rated Drama', icon: 'award', filter: i => (i.genre_ids || []).some(g => [18, 36].includes(g)) && i.vote_average >= 7.5 },
+        { label: 'Action & Adventure', icon: 'activity', filter: i => (i.genre_ids || []).some(g => [28, 12, 10759].includes(g)) },
+        { label: 'Comedies Worth Watching', icon: 'smile', filter: i => (i.genre_ids || []).includes(35) && i.vote_average >= 7.0 }
+      ];
+      const pick = flavors[Math.floor(Math.random() * flavors.length)];
+      s._dynLabel = pick.label;
+      s._dynIcon = pick.icon;
+      s._dynFilter = pick.filter;
+    }
+
+    let filtered = pool.filter(s._dynFilter);
+    if (filtered.length < 4) filtered = pool; // fallback to full pool
+    const items = filtered.sort(() => Math.random() - 0.5).slice(0, 10);
     return `<div class="section">
-      <div class="section-header"><h3>${UI.icon('zap', 16)} Top Picks Right Now</h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div>
-      <div class="horizontal-scroll">${this.renderHorizontalList(shuffled)}</div>
+      <div class="section-header"><h3>${UI.icon(s._dynIcon, 16)} ${s._dynLabel}</h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div>
+      <div class="horizontal-scroll">${this.renderHorizontalList(items)}</div>
     </div>`;
   },
 
@@ -349,7 +399,7 @@ const HomePage = {
       const hasPlex = this.state.plexIds.has(String(id));
       return `<div class="media-card-sm" data-media-id="${id}" onclick="App.navigate('details',{id:${id},type:'${type}'})">
         ${hasDot ? '<span class="activity-dot"></span>' : ''}
-        ${hasPlex ? '<span class="plex-card-badge">▶</span>' : ''}
+        ${hasPlex ? '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>' : ''}
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
         <p class="card-title">${UI.escapeHtml(title)}</p>
         ${isFriend && item.friendName ? `<p class="card-subtitle">${UI.escapeHtml(item.friendName)}</p>` : ''}

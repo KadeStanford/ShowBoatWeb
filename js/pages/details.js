@@ -32,13 +32,18 @@ const DetailsPage = {
       this.state.logoUrl = logo ? API.imageUrl(logo, 'w500') : null;
       this.state.plexItem = plexItem || null;
       if (this.state.type === 'tv' && details.seasons?.length) {
-        const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
+        const targetSeasonNum = params.season ? Number(params.season) : null;
+        const matchedSeason = targetSeasonNum ? details.seasons.find(s => s.season_number === targetSeasonNum) : null;
+        const firstSeason = matchedSeason || details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
         this.state.seasonNum = firstSeason.season_number;
         await this.loadEpisodes(this.state.seasonNum);
       }
       this.loadFriendActivity();
       this.state.loading = false;
       this.draw(el);
+      if (params.episode && this.state.type === 'tv') {
+        requestAnimationFrame(() => this._scrollToEpisode(Number(params.episode)));
+      }
       if (this.state.type === 'tv') this.loadFriendEpAvatars();
     } catch (e) { el.innerHTML = UI.pageHeader('Details', true) + UI.emptyState('Error loading details', e.message); }
   },
@@ -73,7 +78,7 @@ const DetailsPage = {
                 ${runtime ? `<span class="meta-chip">${runtime}m</span>` : ''}
                 ${status ? `<span class="status-badge">${status}</span>` : ''}
                 ${d.vote_average ? `<span class="meta-chip rating-chip">${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
-                ${this.state.plexItem ? `<span class="plex-badge" onclick="event.stopPropagation();DetailsPage._openInPlex()">▶ Play on Plex</span>` : ''}
+                ${this.state.plexItem ? `<span class="plex-badge" onclick="event.stopPropagation();DetailsPage._openInPlex()"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Play on Plex</span>` : ''}
               </div>
               ${genres.length ? `<div class="details-genres">${genres.map(g => `<span class="genre-tag">${UI.escapeHtml(g)}</span>`).join('')}</div>` : ''}
               <div class="details-stats-row">
@@ -207,7 +212,7 @@ const DetailsPage = {
       const desc = ep.overview ? (ep.overview.length > 120 ? ep.overview.substring(0, 120) + '...' : ep.overview) : '';
       const epKey = `s${ep.season_number}_e${ep.episode_number}`;
       const friends = this.state.friendEpRatings[epKey] || [];
-      return `<div class="episode-item" onclick="DetailsPage.showEpisodeDetails(${i})">
+      return `<div class="episode-item" data-ep="${ep.episode_number}" onclick="DetailsPage.showEpisodeDetails(${i})">
         ${still ? `<img src="${still}" class="episode-still" alt="" loading="lazy">` : `<div class="episode-still placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="episode-info">
           <p class="ep-number">E${ep.episode_number}</p>
@@ -484,10 +489,17 @@ const DetailsPage = {
     if (ep) this._loadFriendEpisodeRatings(ep.season_number, ep.episode_number);
   },
 
+  _scrollToEpisode(epNum) {
+    const el = document.querySelector(`.episode-item[data-ep="${epNum}"]`);
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ep-highlight'); }
+  },
+
   _openInPlex() {
     const p = this.state.plexItem;
-    if (p?.machineId && p?.plexKey) {
-      window.open(`https://app.plex.tv/desktop/#!/server/${encodeURIComponent(p.machineId)}/details?key=${encodeURIComponent(p.plexKey)}`, '_blank');
+    const machineId = (p?.machineId || Services.plex.machineId || '').trim();
+    const plexKey = (p?.plexKey || Services.findInPlexLibrary(this.state.id)?.plexKey || '').trim();
+    if (machineId && plexKey) {
+      window.open(`https://app.plex.tv/desktop/#!/server/${machineId}/details?key=${encodeURIComponent(plexKey)}`, '_blank');
     } else {
       const title = this.state.details?.name || this.state.details?.title || '';
       window.open(`https://app.plex.tv/desktop/#!/search?query=${encodeURIComponent(title)}`, '_blank');

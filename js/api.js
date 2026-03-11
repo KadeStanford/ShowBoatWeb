@@ -108,6 +108,12 @@ const API = {
     return data || { cast: [], crew: [] };
   },
 
+  // --- Aggregate Credits (TV shows only — includes episode_count and roles array) ---
+  async getAggregateCredits(id) {
+    const data = await this.tmdb(`/tv/${id}/aggregate_credits`);
+    return data || { cast: [], crew: [] };
+  },
+
   // --- Person Details (raw with combined_credits) ---
   async getPersonDetails(id) {
     return this.tmdb(`/person/${id}`, { append_to_response: 'combined_credits' });
@@ -189,7 +195,10 @@ const PlexAPI = {
           signal: controller.signal
         });
         clearTimeout(timeout);
-        if (res.ok) return res.json();
+        if (res.ok) {
+          this._lastWorkingUri = conn.uri;
+          return res.json();
+        }
       } catch (_) { /* try next connection */ }
     }
     return null;

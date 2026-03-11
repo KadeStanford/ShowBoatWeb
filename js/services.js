@@ -260,8 +260,8 @@ const Services = {
   },
 
   // ==================== FRIENDS ====================
-  async getFriends() {
-    const uid = this._uid(); if (!uid) return [];
+  async getFriends(targetUid) {
+    const uid = targetUid || this._uid(); if (!uid) return [];
     const snap = await db.collection('users').doc(uid).collection('friends').get();
     return snap.docs.map(d => ({ docId: d.id, uid: d.id, ...d.data() }));
   },
@@ -559,6 +559,72 @@ const Services = {
     return { items: activities, cursors: nextCursors };
   },
 
+  // Get ALL plex history for a user formatted as activity items (for activity feed display).
+  async getPlexHistoryAsActivity(uid) {
+    const targetUid = uid || this._uid();
+    if (!targetUid) return [];
+    try {
+      const snap = await db.collection('users').doc(targetUid).collection('plexHistory')
+        .orderBy('lastViewedAt', 'desc').get();
+      const profile = this._user();
+      return snap.docs.map(d => {
+        const item = d.data();
+        return {
+          id: d.id,
+          type: item.type === 'movie' ? 'watched' : (item.season != null ? 'watched_episode' : 'watched'),
+          source: 'plex',
+          mediaId: item.tmdbId || null,
+          mediaTitle: item.tmdbTitle || item.title || '',
+          mediaType: item.type === 'movie' ? 'movie' : 'tv',
+          mediaPosterPath: item.posterPath || null,
+          seasonNumber: item.season || null,
+          episodeNumber: item.episode || null,
+          userId: targetUid,
+          userName: profile?.displayName || '',
+          userPhoto: profile?.photoURL || null,
+          createdAt: item.lastViewedAt ? item.lastViewedAt * 1000 : (item.savedAt || Date.now()),
+          _plexOnly: true
+        };
+      });
+    } catch (_) {
+      try {
+        const snap = await db.collection('users').doc(targetUid).collection('plexHistory').get();
+        const profile = this._user();
+        return snap.docs.map(d => {
+          const item = d.data();
+          return {
+            id: d.id,
+            type: item.type === 'movie' ? 'watched' : (item.season != null ? 'watched_episode' : 'watched'),
+            source: 'plex',
+            mediaId: item.tmdbId || null,
+            mediaTitle: item.tmdbTitle || item.title || '',
+            mediaType: item.type === 'movie' ? 'movie' : 'tv',
+            mediaPosterPath: item.posterPath || null,
+            seasonNumber: item.season || null,
+            episodeNumber: item.episode || null,
+            userId: targetUid,
+            userName: profile?.displayName || '',
+            userPhoto: profile?.photoURL || null,
+            createdAt: item.lastViewedAt ? item.lastViewedAt * 1000 : (item.savedAt || Date.now()),
+            _plexOnly: true
+          };
+        });
+      } catch (_2) { return []; }
+    }
+  },
+
+  // Ensure plex history has been backported to the activity collection (idempotent).
+  async ensurePlexActivityBackfill() {
+    const uid = this._uid(); if (!uid) return;
+    // Only run once per session
+    if (this._plexBackfillDone) return;
+    this._plexBackfillDone = true;
+    try {
+      const items = await this.getPlexHistory();
+      if (items.length) await this.backportPlexActivity(items);
+    } catch (_) {}
+  },
+
   // ==================== USER PROFILE ====================
   async getUserProfile(uid) {
     const doc = await db.collection('users').doc(uid).get();
@@ -589,20 +655,29 @@ const Services = {
   plex: {
     get serverUrl() { return localStorage.getItem('plex_server_url'); },
     get token() { return localStorage.getItem('plex_token'); },
+    get machineId() { return localStorage.getItem('plex_machine_id'); },
     get isConnected() { return !!(this.serverUrl && this.token); },
     connect(url, token) {
       localStorage.setItem('plex_server_url', url);
       localStorage.setItem('plex_token', token);
     },
+    setMachineId(id) { if (id) localStorage.setItem('plex_machine_id', id); },
     disconnect() {
       localStorage.removeItem('plex_server_url');
       localStorage.removeItem('plex_token');
       localStorage.removeItem('plex_library');
+      localStorage.removeItem('plex_machine_id');
     },
     getLibrary() {
       try { return JSON.parse(localStorage.getItem('plex_library') || '[]'); } catch { return []; }
     },
     setLibrary(lib) { localStorage.setItem('plex_library', JSON.stringify(lib)); }
+  },
+
+  findInPlexLibrary(tmdbId) {
+    const lib = this.plex.getLibrary();
+    const id = Number(tmdbId);
+    return lib.find(item => item.tmdbId === id) || null;
   },
 
   // ==================== PLEX CREDENTIALS (Firestore) ====================
@@ -748,5 +823,257 @@ const Services = {
     }
 
     if (count > 0) await batch.commit();
+  },
+
+  // Mark all Plex-synced episodes as watched in the main watched collection.
+  // Only processes items that have a tmdbId match. Idempotent (uses stable docIds).
+  async markWatchedFromPlexHistory(onProgress) {
+    const uid = this._uid(); if (!uid) return { total: 0, marked: 0 };
+    const items = await this.getPlexHistory();
+    const withTmdb = items.filter(i => i.tmdbId);
+    if (!withTmdb.length) return { total: 0, marked: 0 };
+
+    const watchedRef = db.collection('users').doc(uid).collection('watched');
+    const BATCH_LIMIT = 499;
+    let batch = db.batch();
+    let count = 0;
+    let marked = 0;
+
+    const flush = async () => { if (count > 0) { await batch.commit(); batch = db.batch(); count = 0; } };
+
+    for (let i = 0; i < withTmdb.length; i++) {
+      const item = withTmdb[i];
+      if (onProgress) onProgress(i + 1, withTmdb.length);
+
+      if (item.type === 'movie') {
+        const docId = `movie:${item.tmdbId}`;
+        batch.set(watchedRef.doc(docId), {
+          tmdbId: Number(item.tmdbId),
+          mediaType: 'movie',
+          watchedAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now(),
+          name: item.tmdbTitle || item.title || '',
+          posterPath: item.posterPath || null
+        }, { merge: true });
+        count++; marked++;
+      } else if (item.type === 'show' && item.season != null && item.episode != null) {
+        const docId = `tv:${item.tmdbId}:s${item.season}:e${item.episode}`;
+        batch.set(watchedRef.doc(docId), {
+          tmdbId: Number(item.tmdbId),
+          mediaType: 'tv',
+          watchedAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now(),
+          seasonNumber: item.season,
+          episodeNumber: item.episode,
+          name: item.tmdbTitle || item.title || '',
+          posterPath: item.posterPath || null
+        }, { merge: true });
+        count++; marked++;
+      } else if (item.type === 'show') {
+        // Show-level (no episode info)
+        const docId = `tv:${item.tmdbId}`;
+        batch.set(watchedRef.doc(docId), {
+          tmdbId: Number(item.tmdbId),
+          mediaType: 'tv',
+          watchedAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now(),
+          name: item.tmdbTitle || item.title || '',
+          posterPath: item.posterPath || null
+        }, { merge: true });
+        count++; marked++;
+      }
+
+      if (count >= BATCH_LIMIT) await flush();
+    }
+
+    await flush();
+    return { total: withTmdb.length, marked };
+  },
+
+  // ==================== INVITE CODES ====================
+  _generateCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      if (i === 4) code += '-';
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  },
+
+  async validateInviteCode(code) {
+    if (!code) return null;
+    const clean = code.trim().toUpperCase();
+    const doc = await db.collection('inviteCodes').doc(clean).get();
+    if (!doc.exists) return null;
+    const data = doc.data();
+    if (!data.active || data.usedBy) return null;
+    return { code: clean, ...data };
+  },
+
+  async useInviteCode(code, newUserUid) {
+    const clean = code.trim().toUpperCase();
+    await db.collection('inviteCodes').doc(clean).update({
+      usedBy: newUserUid,
+      usedAt: Date.now(),
+      active: false
+    });
+  },
+
+  async generateUserInviteCodes(uid, count = 3) {
+    const batch = db.batch();
+    const codes = [];
+    for (let i = 0; i < count; i++) {
+      const code = this._generateCode();
+      codes.push(code);
+      batch.set(db.collection('inviteCodes').doc(code), {
+        code,
+        createdBy: uid,
+        usedBy: null,
+        usedAt: null,
+        active: true,
+        createdAt: Date.now()
+      });
+    }
+    await batch.commit();
+    await db.collection('users').doc(uid).update({ inviteCodes: codes });
+    return codes;
+  },
+
+  async getUserInviteCodes() {
+    const uid = this._uid(); if (!uid) return [];
+    const doc = await db.collection('users').doc(uid).get();
+    return doc.data()?.inviteCodes || [];
+  },
+
+  // ==================== TICKET REQUESTS ====================
+  async submitTicketRequest(postUrl, message) {
+    const uid = this._uid(); if (!uid) return;
+    const user = this._user();
+    await db.collection('ticketRequests').add({
+      uid,
+      username: user?.displayName || '',
+      postUrl: postUrl.trim(),
+      message: message.trim(),
+      status: 'pending',
+      createdAt: Date.now()
+    });
+  },
+
+  async getMyTickets() {
+    const uid = this._uid(); if (!uid) return 0;
+    const doc = await db.collection('users').doc(uid).get();
+    return doc.data()?.tickets || 0;
+  },
+
+  // ==================== USER REPORTS / FLAGGING ====================
+  async reportUser(targetUid, reason, message) {
+    const uid = this._uid(); if (!uid) throw new Error('Not signed in');
+    const user = this._user();
+    await db.collection('userReports').add({
+      reporterUid: uid,
+      reporterName: user?.displayName || '',
+      targetUid,
+      reason,
+      message: (message || '').trim(),
+      status: 'pending',
+      createdAt: Date.now()
+    });
+  },
+
+  async getUserReports(status) {
+    let q = db.collection('userReports').orderBy('createdAt', 'desc');
+    if (status) q = q.where('status', '==', status);
+    const snap = await q.limit(100).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async updateReportStatus(reportId, status) {
+    await db.collection('userReports').doc(reportId).update({ status, reviewedAt: Date.now() });
+  },
+
+  // ==================== BUG REPORTS ====================
+  async submitBugReport(category, description, screenshotUrl) {
+    const uid = this._uid();
+    const user = this._user();
+    await db.collection('bugReports').add({
+      uid: uid || null,
+      username: user?.displayName || 'Anonymous',
+      category,
+      description: description.trim(),
+      screenshotUrl: (screenshotUrl || '').trim() || null,
+      status: 'open',
+      createdAt: Date.now()
+    });
+  },
+
+  async getBugReports(status) {
+    let q = db.collection('bugReports').orderBy('createdAt', 'desc');
+    if (status) q = q.where('status', '==', status);
+    const snap = await q.limit(100).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async updateBugStatus(bugId, status) {
+    await db.collection('bugReports').doc(bugId).update({ status, updatedAt: Date.now() });
+  },
+
+  // ==================== KEEP WATCHING ====================
+  // Returns shows with episode-level tracking, most recently watched first.
+  async getKeepWatching(limit = 8) {
+    const uid = this._uid(); if (!uid) return [];
+    try {
+      const snap = await db.collection('users').doc(uid).collection('watched').get();
+      const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      // Find episode-level docs: tv:ID:s#:e#
+      const epPattern = /^tv:(\d+):s(\d+):e(\d+)$/;
+      const showMap = new Map();
+      docs.forEach(doc => {
+        const m = doc.docId?.match(epPattern);
+        if (!m) return;
+        const showId = Number(m[1]);
+        const s = Number(m[2]), ep = Number(m[3]);
+        const existing = showMap.get(showId);
+        const ts = doc.watchedAt || 0;
+        if (!existing || ts > (existing.latestAt || 0)) {
+          showMap.set(showId, {
+            tmdbId: showId,
+            name: doc.name || '',
+            posterPath: doc.posterPath || null,
+            latestSeason: s,
+            latestEpisode: ep,
+            latestAt: ts,
+            episodeCount: (existing?.episodeCount || 0) + 1
+          });
+        } else {
+          existing.episodeCount = (existing.episodeCount || 0) + 1;
+        }
+      });
+      // Sort by most recently watched
+      return [...showMap.values()]
+        .sort((a, b) => b.latestAt - a.latestAt)
+        .slice(0, limit);
+    } catch (_) { return []; }
+  },
+
+  // ==================== ANNOUNCEMENTS ====================
+  async createAnnouncement(title, body) {
+    const user = this._user();
+    await db.collection('announcements').add({
+      title: title.trim(),
+      body: body.trim(),
+      createdBy: user?.displayName || '',
+      createdAt: Date.now(),
+      active: true
+    });
+  },
+
+  async getAnnouncements(activeOnly) {
+    let q = db.collection('announcements').orderBy('createdAt', 'desc');
+    if (activeOnly) q = q.where('active', '==', true);
+    const snap = await q.limit(50).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async deleteAnnouncement(id) {
+    await db.collection('announcements').doc(id).delete();
   }
 };
+

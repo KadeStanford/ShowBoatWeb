@@ -1,6 +1,6 @@
 /* ShowBoat — Media Pages: ActorDetails, CastList, SharedActors, YouTube */
 const ActorDetailsPage = {
-  state: { credits: [], watchlistIds: new Set(), showWatchlistFirst: false },
+  state: { credits: [], watchlistIds: new Set(), showWatchlistFirst: false, _personId: null, activeTab: 'all' },
 
   async render(params) {
     const el = document.getElementById('page-content');
@@ -11,6 +11,7 @@ const ActorDetailsPage = {
         Services.getWatchlist().catch(() => [])
       ]);
       this.state.watchlistIds = new Set(watchlist.map(w => Number(w.id)));
+      this.state._personId = params.id;
       const photo = person.profile_path ? API.imageUrl(person.profile_path, 'w342') : '';
       const credits = [...(person.combined_credits?.cast || [])];
       // Default sort: newest to oldest by release/air date
@@ -21,6 +22,7 @@ const ActorDetailsPage = {
       });
       this.state.credits = credits;
       this.state.showWatchlistFirst = false;
+      this.state.activeTab = 'all';
       const birthYear = person.birthday ? new Date(person.birthday).getFullYear() : '';
       const age = person.birthday && !person.deathday ? new Date().getFullYear() - new Date(person.birthday).getFullYear() : '';
 
@@ -41,11 +43,24 @@ const ActorDetailsPage = {
             <h3>Filmography (${credits.length})</h3>
             <button class="filter-tab" id="wl-toggle-btn" onclick="ActorDetailsPage.toggleWatchlistFirst()">${UI.icon('bookmark', 14)} Watchlist First</button>
           </div>
+          <div class="act-type-tabs">
+            <button class="filter-tab active" id="actor-tab-all" onclick="ActorDetailsPage.setTab('all')">All</button>
+            <button class="filter-tab" id="actor-tab-tv" onclick="ActorDetailsPage.setTab('tv')">TV Shows</button>
+            <button class="filter-tab" id="actor-tab-movie" onclick="ActorDetailsPage.setTab('movie')">Movies</button>
+          </div>
           <div id="actor-credits-list"></div>
         </div>` : ''}
       </div>`;
       this.drawCredits();
     } catch (e) { el.innerHTML = UI.pageHeader('Actor', true) + UI.emptyState('x', 'Error', e.message); }
+  },
+
+  setTab(tab) {
+    this.state.activeTab = tab;
+    ['all', 'tv', 'movie'].forEach(t => {
+      document.getElementById(`actor-tab-${t}`)?.classList.toggle('active', t === tab);
+    });
+    this.drawCredits();
   },
 
   toggleWatchlistFirst() {
@@ -64,9 +79,10 @@ const ActorDetailsPage = {
       const notWl = credits.filter(c => !this.state.watchlistIds.has(Number(c.id)));
       credits = [...inWl, ...notWl];
     }
-    // Split into Movies and TV Shows
+    // Split into Movies and TV Shows, filter by activeTab
     const movies = credits.filter(c => (c.media_type || 'movie') === 'movie');
     const tvShows = credits.filter(c => (c.media_type || 'movie') === 'tv');
+    const tab = this.state.activeTab || 'all';
 
     const renderSection = (title, items) => {
       if (!items.length) return '';
@@ -77,11 +93,20 @@ const ActorDetailsPage = {
           const type = c.media_type || 'movie';
           const year = (c.first_air_date || c.release_date || '').slice(0, 4);
           const inWl = this.state.watchlistIds.has(Number(c.id));
-          return `<div class="cast-list-item" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
+          const epCount = c.episode_count;
+          const isTV = type === 'tv';
+          return `<div class="cast-list-item filmography-item" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
             ${poster ? `<img src="${poster}" style="width:48px;height:72px;border-radius:8px;object-fit:cover;background:var(--slate-800);flex-shrink:0" alt="" loading="lazy">` : `<div style="width:48px;height:72px;border-radius:8px;background:var(--slate-800);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--slate-600)">${UI.icon('film', 20)}</div>`}
-            <div class="cast-info" style="flex:1">
+            <div class="cast-info" style="flex:1;min-width:0">
               <p class="cast-name">${UI.escapeHtml(c.name || c.title || '')}</p>
-              <p class="cast-char">${UI.escapeHtml(c.character || '')}${year ? ` · ${year}` : ''}</p>
+              <p class="cast-char">${UI.escapeHtml(c.character || '')}${year ? `<span class="fi-year">· ${year}</span>` : ''}</p>
+              ${isTV && epCount ? `<div class="fi-ep-row">
+                <span class="cast-ep-chip">${epCount} ep${epCount !== 1 ? 's' : ''}</span>
+                <button class="fi-expand-btn" onclick="event.stopPropagation();ActorDetailsPage.toggleEpisodeList(this,${c.id})" data-show-id="${c.id}" data-person-id="${this.state._personId}">
+                  ${UI.icon('chevron-down', 14)} Episodes
+                </button>
+              </div>` : ''}
+              <div class="fi-ep-detail" id="fi-ep-${c.id}" style="display:none"></div>
             </div>
             ${inWl ? `<span style="color:var(--emerald-400);flex-shrink:0" title="In your watchlist">${UI.icon('bookmark-filled', 18)}</span>` : ''}
           </div>`;
@@ -90,30 +115,109 @@ const ActorDetailsPage = {
     };
 
     el.innerHTML = `<div style="padding:0 32px">
-      ${renderSection('Movies', movies)}
-      ${renderSection('TV Shows', tvShows)}
+      ${tab !== 'tv' ? renderSection('Movies', movies) : ''}
+      ${tab !== 'movie' ? renderSection('TV Shows', tvShows) : ''}
     </div>`;
+  },
+
+  async toggleEpisodeList(btn, showId) {
+    const container = document.getElementById(`fi-ep-${showId}`);
+    if (!container) return;
+    const isOpen = container.style.display !== 'none';
+    if (isOpen) {
+      container.style.display = 'none';
+      btn.querySelector('svg')?.classList.remove('rotate-180');
+      return;
+    }
+    btn.querySelector('svg')?.classList.add('rotate-180');
+    container.style.display = 'block';
+    if (container.dataset.loaded) return;
+    container.dataset.loaded = '1';
+    const personId = btn.dataset.personId || this.state._personId;
+    container.innerHTML = `<p class="fi-loading">${UI.icon('loader', 14)} Loading episodes…</p>`;
+    try {
+      const agg = await API.getAggregateCredits(showId);
+      const person = (agg.cast || []).find(c => String(c.id) === String(personId));
+      if (!person || !person.roles?.length) {
+        container.innerHTML = `<p class="fi-empty">No episode details found</p>`;
+        return;
+      }
+      container.innerHTML = person.roles.map(role => `
+        <div class="fi-role-block">
+          <p class="fi-role-char">${UI.icon('user', 12)} ${UI.escapeHtml(role.character || 'Unknown character')}</p>
+          <p class="fi-role-eps">${role.episode_count} episode${role.episode_count !== 1 ? 's' : ''}</p>
+        </div>`).join('');
+    } catch (_) {
+      container.innerHTML = `<p class="fi-empty">Could not load episode details</p>`;
+    }
   }
 };
 
 const CastListPage = {
+  state: { cast: [], query: '', id: null, type: null },
+
   async render(params) {
+    this.state = { cast: [], query: '', id: params.id, type: params.type };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
-      const credits = await API.getMediaCredits(params.id, params.type);
-      const cast = credits?.cast || [];
+      let cast;
+      if (params.type === 'tv') {
+        // Use aggregate credits for TV — includes episode_count and roles per actor
+        const agg = await API.getAggregateCredits(params.id);
+        // Normalise: map roles[0].character → character, and episode_count stays
+        cast = (agg.cast || []).map(c => ({
+          ...c,
+          character: c.roles?.map(r => r.character).filter(Boolean).join(' / ') || c.character || ''
+        }));
+      } else {
+        const credits = await API.getMediaCredits(params.id, params.type);
+        cast = credits?.cast || [];
+      }
+      this.state.cast = cast;
       el.innerHTML = `<div class="cast-page">
-        ${UI.pageHeader('Full Cast', true)}
-        ${cast.length ? `<div class="cast-list">${cast.map(c => {
-          const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w185') : '';
-          return `<div class="cast-list-item" onclick="App.navigate('actor-details',{id:${c.id}})">
-            ${photo ? `<img src="${photo}" class="cast-photo" alt="" loading="lazy">` : `<div class="cast-photo placeholder">${UI.icon('user', 20)}</div>`}
-            <div class="cast-info"><p class="cast-name">${UI.escapeHtml(c.name || '')}</p><p class="cast-char">${UI.escapeHtml(c.character || '')}</p></div>
-          </div>`;
-        }).join('')}</div>` : UI.emptyState('No cast info', '')}
+        ${UI.pageHeader(`Full Cast (${cast.length})`, true)}
+        <div class="cast-search-bar">
+          <input
+            type="search"
+            id="cast-search-input"
+            class="cast-search-input"
+            placeholder="Search cast..."
+            oninput="CastListPage.filterCast(this.value)"
+            autocomplete="off"
+          >
+        </div>
+        <div id="cast-list-results"></div>
       </div>`;
+      this.drawCast();
     } catch (e) { el.innerHTML = UI.pageHeader('Cast', true) + UI.emptyState('Error', e.message); }
+  },
+
+  filterCast(q) {
+    this.state.query = q.toLowerCase();
+    this.drawCast();
+  },
+
+  drawCast() {
+    const el = document.getElementById('cast-list-results');
+    if (!el) return;
+    const q = this.state.query;
+    const list = q
+      ? this.state.cast.filter(c => (c.name || '').toLowerCase().includes(q) || (c.character || '').toLowerCase().includes(q))
+      : this.state.cast;
+    if (!list.length) { el.innerHTML = `<p class="cast-empty">${q ? `No results for "${UI.escapeHtml(q)}"` : 'No cast info available'}</p>`; return; }
+    el.innerHTML = `<div class="cast-list">${list.map(c => {
+      const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w185') : '';
+      const epCount = c.total_episode_count || c.episode_count;
+      return `<div class="cast-list-item" onclick="App.navigate('actor-details',{id:${c.id}})">
+        ${photo ? `<img src="${photo}" class="cast-photo" alt="" loading="lazy">` : `<div class="cast-photo placeholder">${UI.icon('user', 20)}</div>`}
+        <div class="cast-info">
+          <p class="cast-name">${UI.escapeHtml(c.name || '')}</p>
+          <p class="cast-char">${UI.escapeHtml(c.character || '')}</p>
+        </div>
+        ${epCount ? `<span class="cast-ep-chip">${epCount} ep${epCount !== 1 ? 's' : ''}</span>` : ''}
+      </div>`;
+    }).join('')}</div>`;
   }
 };
 

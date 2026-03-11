@@ -3,12 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShowBoat — Track Shows & Movies with Friends</title>
-  <meta name="description" content="ShowBoat — Track shows and movies, rate episodes, connect with friends, and discover the next thing to watch. Your personal media tracker at showboat.me.">
-  <meta property="og:title" content="ShowBoat — Track Shows & Movies with Friends">
-  <meta property="og:description" content="Track shows and movies, rate episodes, connect with friends, and discover the next thing to watch.">
+  <title>ShowBoat — Rate Episodes. Track Shows. Watch Together.</title>
+  <meta name="description" content="ShowBoat is the social TV & movie tracker for people who take their watching seriously. Rate every episode, sync Plex, see what friends are watching, and find what to watch next together.">
+  <meta name="keywords" content="TV tracker, movie tracker, episode ratings, Plex sync, social media tracker, what to watch, ShowBoat">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://showboat.me">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ShowBoat — Rate Episodes. Track Shows. Watch Together.">
+  <meta property="og:description" content="The social TV & movie tracker for people who take their watching seriously. Rate episodes, sync Plex, see what friends are watching.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://showboat.me">
+  <meta property="og:image" content="https://showboat.me/img/og-image.png">
+  <meta property="og:site_name" content="ShowBoat">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ShowBoat — Rate Episodes. Track Shows. Watch Together.">
+  <meta name="twitter:description" content="The social TV & movie tracker for people who take their watching seriously. Rate episodes, sync Plex, see what friends are watching.">
+  <meta name="twitter:image" content="https://showboat.me/img/og-image.png">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ShowBoat",
+    "url": "https://showboat.me",
+    "applicationCategory": "EntertainmentApplication",
+    "operatingSystem": "Web",
+    "description": "Social TV and movie tracker. Rate every episode, sync your Plex library, see what friends are watching, and find your next binge together.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+
   <meta name="theme-color" content="#020617">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="img/icon.svg">
@@ -137,6 +165,7 @@
   <script src="js/pages/plex.js"></script>
   <script src="js/pages/lists.js"></script>
   <script src="js/pages/media.js"></script>
+  <script src="js/pages/history.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

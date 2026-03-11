@@ -21,12 +21,32 @@ const SharedListsPage = {
   drawLists() {
     const el = document.getElementById('lists-content');
     if (!this.state.lists.length) {
-      el.innerHTML = `<div class="lists-empty-state">
-        <div class="lists-empty-icon">${UI.icon('list', 48)}</div>
-        <h3>No lists yet</h3>
-        <p>Create a shared list to track and share shows with friends</p>
-        <button class="btn-primary" onclick="SharedListsPage.showCreate()">${UI.icon('plus', 16)} Create Your First List</button>
-      </div>`;
+      el.innerHTML = `
+        <div class="lists-empty-state">
+          <div class="lists-empty-hero">
+            <div class="lists-empty-icon">${UI.icon('list', 36)}</div>
+            <h3>Build Your Perfect List</h3>
+            <p>Curate and share collections of shows and movies with friends. Use lists to plan watchnights, track must-sees, or build genre collections.</p>
+            <button class="btn-primary lists-create-cta" onclick="SharedListsPage.showCreate()">${UI.icon('plus', 16)} Create a List</button>
+          </div>
+          <p class="lists-inspiration-label">List ideas to get you started</p>
+          <div class="lists-inspiration-grid">
+            ${[
+              { icon: 'moon', label: 'Weekend Binge', desc: 'Queue up a whole run to watch over the weekend', tag: 'Mixed', color: '#8b5cf6' },
+              { icon: 'star', label: 'All-Time Favourites', desc: 'Your personal hall of fame — share it with friends', tag: 'TV', color: '#e5a00d' },
+              { icon: 'compass', label: 'Genre Deep Dive', desc: 'Explore a genre from cult classics to new releases', tag: 'Movie', color: '#3b82f6' },
+              { icon: 'users', label: 'Watch Together', desc: 'Co-created list — everyone adds what they want to see', tag: 'Mixed', color: '#10b981' }
+            ].map(t => `
+              <button class="lists-inspiration-card" onclick="SharedListsPage.showCreate('${t.label}')">
+                <div class="lic-icon" style="background:${t.color}20;color:${t.color}">${UI.icon(t.icon, 22)}</div>
+                <div class="lic-text">
+                  <strong>${t.label}</strong>
+                  <span>${t.desc}</span>
+                </div>
+                <span class="lic-tag" style="background:${t.color}22;color:${t.color}">${t.tag}</span>
+              </button>`).join('')}
+          </div>
+        </div>`;
       return;
     }
     el.innerHTML = `<div class="lists-grid">${this.state.lists.map(l => this.renderListCard(l)).join('')}</div>`;
@@ -38,6 +58,17 @@ const SharedListsPage = {
     const memberCount = l.members?.length || 1;
     const uid = auth.currentUser?.uid;
     const isOwner = l.createdBy === uid;
+
+    // Determine list type mix
+    const types = items.map(i => (i.mediaType || i.showType || 'tv') === 'movie' ? 'movie' : 'tv');
+    const movieCount = types.filter(t => t === 'movie').length;
+    const tvCount = types.length - movieCount;
+    const typeLabel = types.length === 0 ? 'Empty' : movieCount === types.length ? 'Movies' : tvCount === types.length ? 'TV Shows' : 'Mixed';
+    const typeColor = typeLabel === 'Movies' ? '#3b82f6' : typeLabel === 'TV Shows' ? '#8b5cf6' : typeLabel === 'Mixed' ? '#e5a00d' : 'var(--text-muted)';
+
+    // Preview chips (first 2 item names)
+    const previewNames = items.slice(0, 2).map(i => UI.escapeHtml(i.name || i.showName || '')).filter(Boolean);
+
     return `<div class="list-card" onclick="App.navigate('shared-list-detail',{id:'${l.id}'})">
       <div class="list-card-cover">
         ${posters.length
@@ -46,6 +77,7 @@ const SharedListsPage = {
               : '<div class="list-cover-cell empty"></div>').join('')}</div>`
           : `<div class="list-cover-placeholder">${UI.icon('list', 32)}</div>`}
         <span class="list-role-badge ${isOwner ? 'owner' : 'shared'}">${isOwner ? 'Owner' : 'Shared'}</span>
+        ${items.length > 0 ? `<span class="list-type-badge" style="background:${typeColor}22;color:${typeColor};border-color:${typeColor}44">${typeLabel}</span>` : ''}
       </div>
       <div class="list-card-info">
         <h4 class="list-card-name">${UI.escapeHtml(l.name || 'Untitled')}</h4>
@@ -53,20 +85,28 @@ const SharedListsPage = {
           <span>${UI.icon('film', 12)} ${items.length} item${items.length !== 1 ? 's' : ''}</span>
           <span>${UI.icon('users', 12)} ${memberCount} member${memberCount !== 1 ? 's' : ''}</span>
         </div>
+        ${previewNames.length ? `<div class="list-preview-chips">${previewNames.map(n => `<span class="list-preview-chip">${n}</span>`).join('')}${items.length > 2 ? `<span class="list-preview-chip more">+${items.length - 2}</span>` : ''}</div>` : ''}
         ${l.createdAt ? `<p class="list-card-date">${UI.timeAgo(l.createdAt)}</p>` : ''}
       </div>
     </div>`;
   },
 
-  showCreate() {
+  showCreate(prefill = '') {
     UI.showModal('New List', `<div>
-      <input type="text" id="new-list-name" class="modal-input" placeholder="E.g. Weekend Binge, Sci-Fi Must Watch..." maxlength="50" style="width:100%;box-sizing:border-box;margin-bottom:16px">
-      <div class="modal-buttons" style="display:flex;gap:10px;justify-content:flex-end">
+      <input type="text" id="new-list-name" class="modal-input" placeholder="E.g. Weekend Binge, Sci-Fi Must Watch..." maxlength="50" value="${UI.escapeHtml(prefill)}" style="width:100%;box-sizing:border-box;margin-bottom:12px">
+      <div class="create-list-suggestions">
+        <p class="create-suggestions-label">Quick picks</p>
+        <div class="create-suggestions-chips">
+          ${['Weekend Binge','Must Watch','Comfort TV','Hidden Gems','Watch Together'].map(n =>
+            `<button class="suggestion-chip" onclick="document.getElementById('new-list-name').value='${n}'">${n}</button>`).join('')}
+        </div>
+      </div>
+      <div class="modal-buttons" style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
         <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
         <button class="btn-primary" onclick="SharedListsPage.createList()">Create</button>
       </div>
     </div>`);
-    setTimeout(() => document.getElementById('new-list-name')?.focus(), 100);
+    setTimeout(() => { const el = document.getElementById('new-list-name'); if (el) { el.focus(); el.select(); } }, 100);
   },
 
   async createList() {

@@ -265,7 +265,6 @@ ul, ol { list-style: none; }
   display: flex; align-items: center; justify-content: center;
   color: var(--emerald-400); flex-shrink: 0;
 }
-.auth-feature-text {}
 .auth-feature-title { color: white; font-weight: 600; font-size: .875rem; margin-bottom: 2px; }
 .auth-feature-desc { color: var(--slate-400); font-size: .8rem; line-height: 1.45; }
 .auth-split-back {
@@ -560,7 +559,7 @@ ul, ol { list-style: none; }
 }
 .hero-overview {
   color: rgba(255,255,255,.6); font-size: .9rem; line-height: 1.6;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-shadow: 0 1px 6px rgba(0,0,0,.5);
   max-width: 550px;
 }
@@ -890,7 +889,7 @@ ul, ol { list-style: none; }
 .ep-number { color: var(--emerald-400); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .ep-name { color: white; font-weight: 600; font-size: 1rem; }
 .ep-date { color: var(--slate-500); font-size: .8125rem; }
-.ep-desc { color: var(--slate-400); font-size: .8125rem; line-height: 1.5; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ep-desc { color: var(--slate-400); font-size: .8125rem; line-height: 1.5; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ep-watched-btn {
   align-self: center; flex-shrink: 0;
   width: 40px; height: 40px; border-radius: 50%;
@@ -1585,14 +1584,14 @@ ul, ol { list-style: none; }
   50% { box-shadow: 0 0 12px rgba(16,185,129,.8); }
 }
 .plex-card-badge {
-  position: absolute; bottom: 30px; right: 5px; z-index: 3;
-  background: rgba(229,160,13,.85);
-  color: #1a1200;
-  font-size: .55rem; font-weight: 800; letter-spacing: .03em;
-  padding: 2px 5px; border-radius: 4px;
+  position: absolute; bottom: 6px; right: 6px; z-index: 3;
+  width: 24px; height: 24px;
+  background: rgba(18, 14, 0, 0.72);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
   pointer-events: none;
-  backdrop-filter: blur(2px);
-  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 1px 6px rgba(0,0,0,.5);
 }
 
 /* =============================================
@@ -1660,7 +1659,7 @@ img.ep-friend-av { background: var(--slate-800); }
 .swipe-poster { width: 80px; height: 120px; border-radius: var(--radius-sm); object-fit: cover; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 .swipe-title { color: white; font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
 .swipe-meta { display: flex; align-items: center; gap: 4px; color: var(--amber-400); font-weight: 600; margin-bottom: 6px; }
-.swipe-overview { color: var(--slate-300); font-size: .8125rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.swipe-overview { color: var(--slate-300); font-size: .8125rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .swipe-buttons { display: flex; justify-content: center; gap: 28px; }
 .swipe-btn {
   width: 68px; height: 68px; border-radius: 50%;
@@ -2246,7 +2245,7 @@ img.ep-friend-av { background: var(--slate-800); }
   .hero-carousel { height: 460px; }
   .hero-slide-content { padding: 0 20px 44px; max-width: none; }
   .hero-title { font-size: 2rem; }
-  .hero-overview { font-size: .8125rem; -webkit-line-clamp: 2; }
+  .hero-overview { font-size: .8125rem; -webkit-line-clamp: 2; line-clamp: 2; }
   .hero-logo-img { max-height: 56px; max-width: 200px; }
 
   /* Menu 2-col */
@@ -2286,7 +2285,7 @@ img.ep-friend-av { background: var(--slate-800); }
   .episode-item { padding: 10px; gap: 12px; }
   .episode-still { width: 120px; height: 68px; }
   .ep-name { font-size: .875rem; }
-  .ep-desc { -webkit-line-clamp: 1; font-size: .75rem; }
+  .ep-desc { -webkit-line-clamp: 1; line-clamp: 1; font-size: .75rem; }
 
   /* Watchlist */
   .watchlist-items { padding: 0 16px; }
@@ -2484,7 +2483,7 @@ img.ep-friend-av { background: var(--slate-800); }
 .swipe-meta-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .swipe-meta-chip { background: rgba(255,255,255,.15); backdrop-filter: blur(4px); color: white; font-size: .75rem; padding: 3px 8px; border-radius: 4px; }
 .swipe-meta-chip.rating { color: var(--amber-400); }
-.swipe-overview { font-size: .8125rem; color: rgba(255,255,255,.8); line-height: 1.4; -webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.swipe-overview { font-size: .8125rem; color: rgba(255,255,255,.8); line-height: 1.4; -webkit-line-clamp: 3; line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .swipe-buttons { display: flex; gap: 16px; padding: 16px; justify-content: center; }
 .swipe-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 80px; height: 80px; border-radius: 50%; border: 2px solid; cursor: pointer; justify-content: center; font-size: .75rem; font-weight: 600; transition: all var(--transition); background: none; }
 .swipe-btn.dislike { border-color: var(--rose-500); color: var(--rose-400); background: rgba(244,63,94,.1); }
@@ -2700,6 +2699,224 @@ img.ep-friend-av { background: var(--slate-800); }
 /* ============================================================
    MOBILE HERO FIX — subject centering
    ============================================================ */
+
+/* ============================================================
+   RECOMMENDED FRIENDS
+   ============================================================ */
+.recommended-section { margin-bottom: 6px; }
+.recommended-header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); padding: 0 2px 10px; }
+.recommended-header svg { flex-shrink: 0; }
+.recommended-subtitle { color: var(--text-secondary); font-weight: 400; font-size: 12px; margin-left: 4px; }
+.recommended-item { background: linear-gradient(135deg, rgba(52,211,153,0.05) 0%, transparent 60%); border: 1px solid rgba(52,211,153,0.15) !important; }
+.recommended-item:hover { border-color: rgba(52,211,153,0.35) !important; }
+.friend-reason { font-size: 11px; color: var(--accent); margin-top: 2px; opacity: 0.85; }
+.add-friend-btn { display: flex; align-items: center; gap: 5px; padding: 7px 12px; background: rgba(52,211,153,0.15); color: var(--accent); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+.add-friend-btn:hover { background: rgba(52,211,153,0.25); }
+.friends-section-header { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 2px 10px; margin-top: 4px; border-top: 1px solid var(--border); }
+.friend-avatar-img { object-fit: cover; border-radius: 50%; }
+
+/* ============================================================
+   PROFILE — INVITE CODES & TICKETS
+   ============================================================ */
+.invite-section { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin: 16px 0; }
+.invite-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.invite-section-header > span { display: flex; align-items: center; gap: 8px; }
+.ticket-badge { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); border-radius: 999px; font-size: 11px; font-weight: 600; padding: 2px 9px; }
+.invite-request-btn { display: flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.invite-request-btn:hover { border-color: var(--accent); color: var(--accent); }
+.invite-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+.invite-codes-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.invite-code-chip { display: flex; align-items: center; gap: 7px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 13px; font-family: monospace; font-size: 14px; letter-spacing: 2px; color: var(--accent); cursor: pointer; transition: all 0.15s; user-select: none; }
+.invite-code-chip:hover { border-color: var(--accent); background: rgba(52,211,153,0.08); }
+.invite-empty { color: var(--text-secondary); font-size: 13px; }
+
+/* ============================================================
+   LANDING PAGE — WAITLIST & UPDATES
+   ============================================================ */
+.waitlist-form { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 540px; margin: 0 auto 12px; }
+.waitlist-input { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 16px; border-radius: 10px; font-size: 14px; min-width: 200px; flex: 1; transition: border-color 0.15s; }
+.waitlist-input:focus { outline: none; border-color: var(--accent); }
+.landing-proof-section { padding: 60px 24px; text-align: center; background: linear-gradient(135deg, rgba(52,211,153,0.04) 0%, transparent 60%); }
+.landing-proof-inner { max-width: 640px; margin: 0 auto; }
+.landing-proof-quote { font-size: 1.25rem; font-style: italic; color: var(--text-primary); line-height: 1.6; margin-bottom: 12px; }
+.landing-proof-attr { color: var(--text-secondary); font-size: 13px; }
+
+/* ============================================================
+   ACTIVITY PAGE — PLEX HISTORY TAB
+   ============================================================ */
+.activity-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.act-tab { background: none; border: none; color: var(--text-secondary); padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.act-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.plex-history-search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
+.plex-search-input { background: none; border: none; color: var(--text-primary); font-size: 14px; flex: 1; outline: none; }
+.plex-show-group { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+.plex-show-group-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.act-plex-poster { width: 40px; height: 56px; border-radius: 6px; object-fit: cover; background: var(--surface-2); flex-shrink: 0; }
+.act-plex-badge { display: inline-block; background: rgba(52,211,153,0.12); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; }
+.dot-plex { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.plex-watched-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+/* ============================================================
+   FRIEND PROFILE — BADGES, TABS, SECTIONS
+   ============================================================ */
+.fp-badges-section { margin: 14px 0; }
+.fp-badges-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.fp-badges-scroll::-webkit-scrollbar { display: none; }
+.fp-badge-pill { display: flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px 7px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; position: relative; }
+.fp-badge-pill:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+.fp-badge-pill-icon { font-size: 18px; flex-shrink: 0; }
+.fp-badge-pill-info { display: flex; flex-direction: column; }
+.fp-badge-pill-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.fp-badge-pill-tier { font-size: 10px; color: var(--text-secondary); }
+.fp-badge-tier-ring { position: absolute; inset: -1px; border-radius: 999px; border: 2px solid transparent; pointer-events: none; }
+.fp-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.fp-action-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.fp-action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(52,211,153,0.06); }
+.fp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.fp-tab { background: none; border: none; color: var(--text-secondary); padding: 9px 14px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.fp-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.fp-section-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.fp-section-count { font-size: 12px; color: var(--text-secondary); }
+.fp-see-all-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-weight: 600; }
+.fp-media-list { display: flex; flex-direction: column; gap: 10px; }
+.fp-list-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--surface-1); border-radius: 10px; cursor: pointer; transition: background 0.15s; }
+.fp-list-item:hover { background: var(--surface-2); }
+.fp-list-poster { width: 36px; height: 50px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+.fp-list-poster-ph { width: 36px; height: 50px; border-radius: 5px; background: var(--surface-2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+.fp-list-info { flex: 1; min-width: 0; }
+.fp-list-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-list-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.fp-list-date { font-size: 11px; color: var(--text-secondary); flex-shrink: 0; }
+.fp-both-watched { position: relative; }
+.fp-both-badge { position: absolute; top: 2px; right: 2px; background: var(--accent); color: #000; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 4px; }
+.fp-type-tag { display: inline-block; background: var(--surface-2); color: var(--text-secondary); font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-top: 2px; }
+.fp-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 20px; }
+.fp-add-wl-btn { padding: 6px 10px; background: rgba(52,211,153,0.12); color: var(--accent); border: none; border-radius: 7px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+
+/* Full friend list / watchlist pages */
+.fp-all-page { padding: 0; }
+.fw-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.fw-count { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+
+/* Analytics page */
+.fp-analytics-page {}
+.fa-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.fa-stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+
+/* ============================================================
+   Activity Feed — Filter Pills
+   ============================================================ */
+.act-filter-row { display: flex; gap: 8px; padding: 0 16px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.act-filter-row::-webkit-scrollbar { display: none; }
+.act-filter-pill { flex-shrink: 0; background: var(--surface-1); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.act-filter-pill.active { background: var(--indigo-600, #4f46e5); color: #fff; border-color: transparent; }
+
+/* Plex activity cards */
+.act-plex-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05)); cursor: pointer; }
+.act-plex-card:active { background: var(--surface-1); }
+.act-plex-poster { width: 44px; height: 66px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+.act-plex-poster-placeholder { width: 44px; height: 66px; border-radius: 6px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.act-plex-info { flex: 1; min-width: 0; }
+.act-plex-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-plex-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.act-plex-badge { display: inline-flex; align-items: center; gap: 3px; background: #E5A00D; color: #1a1a1a; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 999px; margin-top: 4px; }
+.dot-plex { background: #E5A00D !important; }
+.act-plex-group-list { padding: 0 16px 4px 72px; }
+.act-plex-ep-item { font-size: 12px; color: var(--text-secondary); padding: 2px 0; border-bottom: none; }
+
+/* ============================================================
+   Back to Top Button
+   ============================================================ */
+.back-to-top-btn { position: fixed; bottom: 80px; right: 20px; z-index: 200; width: 44px; height: 44px; border-radius: 50%; background: var(--indigo-600, #4f46e5); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.4); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; transform: translateY(8px); }
+.back-to-top-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+/* ============================================================
+   Plex Calendar
+   ============================================================ */
+.plex-calendar { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0 16px 16px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cal-nav-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 18px; line-height: 1; }
+.cal-nav-btn:hover { background: var(--surface-2); }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px; }
+.cal-weekday { font-size: 10px; font-weight: 600; color: var(--text-muted, #64748b); text-align: center; padding: 4px 0; text-transform: uppercase; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 32px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); position: relative; padding: 2px 0; }
+.cal-day.has-items { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+.cal-day.has-items:hover { background: var(--surface-2); }
+.cal-day.today { color: var(--accent, #6366f1); font-weight: 700; }
+.cal-day.selected { background: var(--indigo-600, #4f46e5); color: #fff !important; border-radius: 6px; }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--emerald-400, #34d399); margin-top: 2px; }
+.cal-selected-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface-1); border-top: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); margin: 0 16px 8px; border-radius: 0 0 10px 10px; }
+.cal-clear-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; padding: 2px 8px; }
+
+/* Plex history search bar */
+.plex-search-bar-wrap { padding: 8px 16px; }
+.plex-search-bar { width: 100%; box-sizing: border-box; background: var(--surface-1); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 14px; border-radius: 10px; font-size: 14px; font-family: inherit; }
+.plex-search-bar:focus { outline: none; border-color: var(--accent); }
+
+/* ============================================================
+   Actor Filmography Tabs
+   ============================================================ */
+.act-type-tabs { display: flex; gap: 8px; padding: 8px 16px 12px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05)); }
+.act-tab-btn { background: var(--surface-1); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.act-tab-btn.active { background: var(--indigo-600, #4f46e5); color: #fff; border-color: transparent; }
+
+/* ============================================================
+   Watched History Page
+   ============================================================ */
+.watched-history-page { padding-bottom: 80px; }
+.wh-summary { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.wh-stat { flex: 1; text-align: center; padding: 14px 8px; }
+.wh-stat-num { display: block; font-size: 1.5rem; font-weight: 800; color: var(--accent, #6366f1); }
+.wh-stat-label { display: block; font-size: 11px; color: var(--text-secondary); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.wh-tabs { border-bottom: 1px solid var(--border); }
+.wh-list { padding: 0 0 16px; }
+.wh-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05)); cursor: pointer; transition: background 0.12s; }
+.wh-card:active { background: var(--surface-1); }
+.wh-poster { width: 48px; height: 72px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.wh-poster-placeholder { width: 48px; height: 72px; border-radius: 8px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-muted, #64748b); }
+.wh-card-info { flex: 1; min-width: 0; }
+.wh-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wh-card-sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 2px; }
+.wh-card-date { font-size: 11px; color: var(--text-muted, #64748b); margin: 0; }
+.wh-ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+.wh-ring { width: 40px; height: 40px; }
+.wh-ring-bg { stroke: var(--surface-2, #1e293b); }
+.wh-ring-fill { stroke: var(--emerald-400, #34d399); stroke-linecap: round; transition: stroke-dasharray 0.4s; }
+.wh-ring-complete { stroke: var(--indigo-500, #6366f1); }
+.wh-ring-text { font-size: 10px; font-weight: 700; fill: var(--text-primary); }
+.wh-ring-text-sm { font-size: 9px; font-weight: 700; fill: var(--text-primary); }
+.wh-ring-text-tiny { font-size: 7px; fill: var(--text-secondary); }
+.wh-ring-label { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ============================================================
+   Modal form fields
+   ============================================================ */
+.modal-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.modal-input { display: block; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); padding: 9px 12px; border-radius: 8px; font-size: 14px; font-family: inherit; }
+.modal-input:focus { outline: none; border-color: var(--accent); }
+.bug-report-form { display: flex; flex-direction: column; }
+
+/* ============================================================
+   Friend Profile — Report button
+   ============================================================ */
+.fp-report-btn { color: var(--rose-400, #f87171) !important; border-color: rgba(248,113,113,0.3) !important; }
+.fp-report-btn:hover { background: rgba(248,113,113,0.1) !important; }
+
+/* ============================================================
+   Keep Watching — home section
+   ============================================================ */
+#keep-watching-section .card-poster { width: 80px; height: 120px; object-fit: cover; border-radius: 8px; }
+#keep-watching-section .media-card-sm { min-width: 90px; max-width: 90px; }
+#keep-watching-section .card-subtitle { font-size: 10px; color: var(--accent); font-weight: 600; }
+.fa-stat.accent { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); }
+.fa-stat-num { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); }
+.fa-stat.accent .fa-stat-num { color: var(--accent); }
+.fa-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.fa-section { margin-bottom: 20px; }
+.fa-section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+.fa-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
 @media (max-width: 768px) {
   .hero-slide { background-position: center top !important; }
   .hero-slide[style*="background-image"] { background-position: 50% 15% !important; }
@@ -2725,3 +2942,143 @@ img.ep-friend-av { background: var(--slate-800); }
 .plex-home-fill { height: 100%; background: #e5a00d; border-radius: 2px; transition: width .4s ease; }
 .plex-home-ep-title { font-size: .6875rem; color: var(--text-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plex-home-times { display: flex; justify-content: space-between; font-size: .625rem; color: var(--text-muted); margin-top: 3px; }
+
+/* ============================================================
+   NOW PLAYING — thumb wrap, paused overlay, Play on Plex btn
+   ============================================================ */
+.np-thumb-wrap { position: relative; flex-shrink: 0; width: 130px; height: 195px; }
+.np-thumb-wrap .np-thumb { width: 100%; height: 100%; }
+.np-thumb-paused-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.48);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.85);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.np-card-paused { opacity: 0.88; border-color: rgba(245,158,11,.35) !important; }
+.np-plex-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 10px;
+  font-size: .75rem; font-weight: 600;
+  color: #e5a00d;
+  background: rgba(229,160,13,.1);
+  border: 1px solid rgba(229,160,13,.3);
+  border-radius: 7px;
+  padding: 5px 11px;
+  text-decoration: none;
+  transition: background var(--transition), border-color var(--transition);
+  cursor: pointer;
+}
+.np-plex-btn:hover { background: rgba(229,160,13,.2); border-color: rgba(229,160,13,.55); }
+
+/* ============================================================
+   LISTS PAGE — empty state redesign, type badge, preview chips
+   ============================================================ */
+.lists-empty-state { display: flex; flex-direction: column; align-items: stretch; padding: 24px 20px 40px; gap: 0; }
+.lists-empty-icon { color: var(--text-muted); margin-bottom: 8px; }
+.lists-empty-hero {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 32px 20px 28px;
+  gap: 10px;
+}
+.lists-empty-hero h3 { font-size: 1.3125rem; font-weight: 800; margin: 0; color: var(--text-primary); }
+.lists-empty-hero p { font-size: .9375rem; color: var(--text-secondary); max-width: 340px; margin: 0; line-height: 1.5; }
+.lists-create-cta { margin-top: 6px; }
+.lists-inspiration-label {
+  font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-muted); padding: 0 4px 10px;
+}
+.lists-inspiration-grid { display: flex; flex-direction: column; gap: 10px; }
+.lists-inspiration-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: 14px; padding: 14px 16px; cursor: pointer; text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+  width: 100%; color: var(--text-primary);
+}
+.lists-inspiration-card:hover { border-color: rgba(139,92,246,.4); background: rgba(139,92,246,.05); }
+.lic-icon {
+  width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.lic-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.lic-text strong { font-size: .9375rem; font-weight: 700; line-height: 1.2; }
+.lic-text span { font-size: .8125rem; color: var(--text-secondary); line-height: 1.4; }
+.lic-tag { font-size: .6875rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid; white-space: nowrap; flex-shrink: 0; }
+.list-type-badge {
+  position: absolute; bottom: 6px; left: 6px;
+  font-size: .625rem; font-weight: 700; letter-spacing: .03em;
+  padding: 2px 7px; border-radius: 5px; border: 1px solid;
+  backdrop-filter: blur(4px); pointer-events: none;
+}
+.list-role-badge { position: absolute; top: 6px; right: 6px; }
+.list-preview-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0 2px; }
+.list-preview-chip {
+  font-size: .6875rem; color: var(--text-muted);
+  background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+  border-radius: 5px; padding: 1px 6px;
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.list-preview-chip.more { color: var(--text-muted); }
+/* Create modal suggestions */
+.create-list-suggestions { margin-bottom: 4px; }
+.create-suggestions-label { font-size: .6875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 7px; }
+.create-suggestions-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.suggestion-chip {
+  font-size: .8125rem; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+  border-radius: 20px; padding: 4px 12px; cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.suggestion-chip:hover { background: rgba(139,92,246,.12); color: var(--indigo-300); border-color: rgba(139,92,246,.35); }
+
+/* ============================================================
+   CAST LIST — search bar + episode chips
+   ============================================================ */
+.cast-search-bar { padding: 0 20px 14px; position: sticky; top: 0; z-index: 10; background: var(--bg-primary); }
+.cast-search-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+  border-radius: 10px; padding: 10px 14px;
+  color: var(--text-primary); font-size: .9375rem;
+  outline: none; transition: border-color var(--transition);
+}
+.cast-search-input:focus { border-color: var(--indigo-500); }
+.cast-ep-chip {
+  font-size: .6875rem; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+  background: rgba(99,102,241,.12); color: var(--indigo-300);
+  border: 1px solid rgba(99,102,241,.25); border-radius: 6px; padding: 2px 7px;
+}
+.cast-empty { text-align: center; color: var(--text-muted); font-size: .9375rem; padding: 40px 20px; }
+
+/* ============================================================
+   ACTOR DETAILS — filmography episode expand
+   ============================================================ */
+.fi-year { color: var(--text-muted); font-size: .8125rem; margin-left: 4px; }
+.fi-ep-row { display: flex; align-items: center; gap: 7px; margin-top: 5px; flex-wrap: wrap; }
+.fi-expand-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .75rem; color: var(--text-muted);
+  background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+  border-radius: 6px; padding: 2px 8px; cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.fi-expand-btn:hover { color: var(--text-secondary); border-color: var(--indigo-500); }
+.fi-expand-btn svg { transition: transform 200ms ease; }
+.fi-expand-btn svg.rotate-180 { transform: rotate(180deg); }
+.fi-ep-detail { margin-top: 8px; padding: 8px 0 4px; border-top: 1px solid var(--border-subtle); }
+.fi-role-block { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; gap: 8px; }
+.fi-role-char { font-size: .8125rem; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; margin: 0; }
+.fi-role-eps { font-size: .75rem; color: var(--text-muted); margin: 0; white-space: nowrap; }
+.fi-loading { font-size: .8125rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 4px 0; margin: 0; }
+.fi-empty { font-size: .8125rem; color: var(--text-muted); padding: 4px 0; margin: 0; }
+
+/* ============================================================
+   EPISODE HIGHLIGHT — scroll-to effect
+   ============================================================ */
+@keyframes epHighlight {
+  0%   { background: rgba(99,102,241,.25); }
+  100% { background: transparent; }
+}
+.ep-highlight { animation: epHighlight 2s ease-out forwards; border-radius: 12px; }

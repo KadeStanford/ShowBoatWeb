@@ -205,6 +205,5 @@ const MatcherHistoryPage = {
       }).join('')}</div>`;
       if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
     } catch (e) { document.getElementById('history-list').innerHTML = UI.emptyState('Error', e.message); }
-    } catch (e) { document.getElementById('history-list').innerHTML = UI.emptyState('Error', e.message); }
   }
 };

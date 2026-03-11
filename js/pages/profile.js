@@ -7,9 +7,15 @@ const ProfilePage = {
     el.innerHTML = UI.loading();
     try {
       const uid = auth.currentUser.uid;
-      const [profile, stats] = await Promise.all([Services.getUserProfile(uid), Services.getUserStats()]);
+      const [profile, stats, inviteCodes, tickets] = await Promise.all([
+        Services.getUserProfile(uid), Services.getUserStats(),
+        Services.getUserInviteCodes().catch(() => []),
+        Services.getMyTickets().catch(() => 0)
+      ]);
       this.state.profile = profile;
       this.state.stats = stats;
+      this.state.inviteCodes = inviteCodes;
+      this.state.tickets = tickets;
       this.draw(el);
     } catch (e) { el.innerHTML = UI.emptyState('Error', e.message); }
   },
@@ -38,10 +44,10 @@ const ProfilePage = {
         ${p.createdAt ? `<p class="profile-joined">Joined ${new Date(p.createdAt).toLocaleDateString()}</p>` : ''}
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><span class="stat-number">${s.watchlistCount || 0}</span><span class="stat-label">Watchlist</span></div>
-        <div class="stat-card"><span class="stat-number">${s.watchedCount || 0}</span><span class="stat-label">Watched</span></div>
-        <div class="stat-card"><span class="stat-number">${s.ratingsCount || 0}</span><span class="stat-label">Rated</span></div>
-        <div class="stat-card"><span class="stat-number">${s.friendsCount || 0}</span><span class="stat-label">Friends</span></div>
+        <div class="stat-card"><span class="stat-number">${s.watchlist || s.watchlistCount || 0}</span><span class="stat-label">Watchlist</span></div>
+        <div class="stat-card"><span class="stat-number">${s.watched || s.watchedCount || 0}</span><span class="stat-label">Watched</span></div>
+        <div class="stat-card"><span class="stat-number">${s.ratings || s.ratingsCount || 0}</span><span class="stat-label">Rated</span></div>
+        <div class="stat-card"><span class="stat-number">${s.friends || s.friendsCount || 0}</span><span class="stat-label">Friends</span></div>
       </div>
       <div class="profile-menu">
         <button class="profile-menu-item" onclick="App.navigate('analytics')">${UI.icon('bar-chart-2', 20)} <span>Analytics & Stats</span> ${UI.icon('chevron-right', 18)}</button>
@@ -51,6 +57,14 @@ const ProfilePage = {
         <button class="profile-menu-item" onclick="App.navigate('shared-lists')">${UI.icon('list', 20)} <span>Shared Lists</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('matcher-history')">${UI.icon('zap', 20)} <span>Matcher History</span> ${UI.icon('chevron-right', 18)}</button>
       </div>
+      <div class="invite-section">
+        <div class="invite-section-header">
+          <span>${UI.icon('gift', 18)} Invite Codes <span class="ticket-badge">${this.state.tickets || 0} ticket${(this.state.tickets || 0) !== 1 ? 's' : ''}</span></span>
+          <button class="invite-request-btn" onclick="ProfilePage.showTicketRequestModal()">${UI.icon('plus-circle', 16)} Request Tickets</button>
+        </div>
+        <p class="invite-desc">Share these codes with friends to invite them. Each recruit gets 5 bonus tickets.</p>
+        <div class="invite-codes-list">${(this.state.inviteCodes || []).length ? (this.state.inviteCodes || []).map(c => `<div class="invite-code-chip" onclick="ProfilePage.copyCode('${UI.escapeHtml(c)}')"><span>${UI.escapeHtml(c)}</span>${UI.icon('copy', 14)}</div>`).join('') : '<p class="invite-empty">No invite codes yet.</p>'}</div>
+      </div>
       <button class="btn-logout" onclick="ProfilePage.logout()">${UI.icon('log-out', 18)} Sign Out</button>
       <div class="tmdb-attribution">
         <img src="img/tmdb-logo.svg" alt="TMDB" class="tmdb-attr-logo">
@@ -58,6 +72,38 @@ const ProfilePage = {
       </div>
       <p class="app-version">ShowBoat &middot; <a href="https://showboat.me" style="color:var(--accent)">showboat.me</a></p>
     </div>`;
+  },
+
+  copyCode(code) {
+    navigator.clipboard?.writeText(code).then(() => UI.toast(`Code ${code} copied!`, 'success')).catch(() => UI.toast(code, 'info'));
+  },
+
+  showTicketRequestModal() {
+    UI.showModal('Request Extra Tickets', `
+      <p style="color:var(--slate-300);margin-bottom:16px">Post about ShowBoat on social media and submit the link for review. Approved posts earn extra tickets.</p>
+      <div class="input-group">
+        <label>Post URL (Twitter/X, Instagram, TikTok, etc.)</label>
+        <div class="input-wrapper">${UI.icon('link', 16)}<input type="url" id="ticket-post-url" placeholder="https://twitter.com/..."></div>
+      </div>
+      <div class="input-group" style="margin-top:12px">
+        <label>Message (optional)</label>
+        <textarea id="ticket-message" placeholder="Tell us about the post..." style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:10px;font-family:inherit;resize:vertical;min-height:80px"></textarea>
+      </div>
+      <div class="modal-buttons" style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="ProfilePage._submitTicketRequest()">${UI.icon('send', 16)} Submit Request</button>
+      </div>`);
+  },
+
+  async _submitTicketRequest() {
+    const postUrl = document.getElementById('ticket-post-url')?.value?.trim();
+    const message = document.getElementById('ticket-message')?.value?.trim() || '';
+    if (!postUrl) { UI.toast('Please enter the post URL', 'error'); return; }
+    try {
+      await Services.submitTicketRequest(postUrl, message);
+      UI.closeModal();
+      UI.toast('Request submitted! We\'ll review it soon.', 'success');
+    } catch (e) { UI.toast('Failed to submit: ' + e.message, 'error'); }
   },
 
   triggerPhotoUpload() {

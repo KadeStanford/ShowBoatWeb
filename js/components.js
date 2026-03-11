@@ -152,5 +152,84 @@ const UI = {
     const days = Math.floor(hrs / 24);
     if (days < 7) return `${days}d ago`;
     return new Date(ts).toLocaleDateString();
+  },
+
+  // --- Bug Report Modal ---
+  showBugReportModal() {
+    this.showModal('Report a Bug', `
+      <div class="bug-report-form">
+        <label class="modal-label">Category</label>
+        <select id="bug-cat" class="modal-input">
+          <option value="UI Bug">UI Bug</option>
+          <option value="Data Error">Data Error</option>
+          <option value="Performance">Performance</option>
+          <option value="Feature Request">Feature Request</option>
+          <option value="Other">Other</option>
+        </select>
+        <label class="modal-label" style="margin-top:12px">Description <span style="color:#ef4444">*</span></label>
+        <textarea id="bug-desc" class="modal-input" rows="4" placeholder="Describe what happened and how to reproduce it..." style="resize:vertical"></textarea>
+        <label class="modal-label" style="margin-top:12px">Screenshot URL <span style="color:var(--text-secondary);font-size:12px">(optional)</span></label>
+        <input id="bug-screenshot" class="modal-input" type="url" placeholder="https://...">
+        <p style="font-size:11px;color:var(--text-secondary);margin:8px 0 0">Upload a screenshot to Imgur or similar and paste the link. Screenshots help us fix things faster!</p>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn-primary" style="flex:1" onclick="UI._submitBugReport()">Submit Report</button>
+          <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
+        </div>
+        <p id="bug-report-error" style="color:#ef4444;font-size:13px;margin-top:8px;display:none"></p>
+      </div>`);
+  },
+
+  async _submitBugReport() {
+    const cat = document.getElementById('bug-cat')?.value;
+    const desc = (document.getElementById('bug-desc')?.value || '').trim();
+    const screenshot = (document.getElementById('bug-screenshot')?.value || '').trim();
+    const errEl = document.getElementById('bug-report-error');
+    if (!desc) { if (errEl) { errEl.textContent = 'Please describe the bug.'; errEl.style.display = 'block'; } return; }
+    try {
+      await Services.submitBugReport(cat, desc, screenshot || null);
+      this.closeModal();
+      this.showModal('Thanks!', '<p style="text-align:center;padding:8px 0">Your bug report was submitted. We appreciate the help! \uD83D\uDC1B</p>');
+    } catch (e) {
+      if (errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    }
+  },
+
+  // --- Report User Modal ---
+  showReportUserModal(targetUid, targetUsername) {
+    this.showModal('Report User', `
+      <div class="bug-report-form">
+        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 12px">Reporting: <strong>${this._esc(targetUsername || targetUid)}</strong></p>
+        <label class="modal-label">Reason <span style="color:#ef4444">*</span></label>
+        <select id="report-reason" class="modal-input">
+          <option value="Inappropriate content">Inappropriate content</option>
+          <option value="Spam / bot">Spam / bot</option>
+          <option value="Harassment">Harassment</option>
+          <option value="Impersonation">Impersonation</option>
+          <option value="Hate speech">Hate speech</option>
+          <option value="Spoilers">Spoilers</option>
+          <option value="Other">Other</option>
+        </select>
+        <label class="modal-label" style="margin-top:12px">Additional details <span style="color:var(--text-secondary);font-size:12px">(optional)</span></label>
+        <textarea id="report-msg" class="modal-input" rows="3" placeholder="Any additional context..." style="resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn-primary" style="flex:1" onclick="UI._submitUserReport('${this._esc(targetUid)}')">Submit Report</button>
+          <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
+        </div>
+        <p id="report-error" style="color:#ef4444;font-size:13px;margin-top:8px;display:none"></p>
+      </div>`);
+  },
+
+  async _submitUserReport(targetUid) {
+    const reason = document.getElementById('report-reason')?.value;
+    const msg = (document.getElementById('report-msg')?.value || '').trim();
+    const errEl = document.getElementById('report-error');
+    try {
+      await Services.reportUser(targetUid, reason, msg || null);
+      this.closeModal();
+      this.showModal('Reported', '<p style="text-align:center;padding:8px 0">Your report was submitted and will be reviewed by our team.</p>');
+    } catch (e) {
+      if (errEl) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+    }
   }
 };
+

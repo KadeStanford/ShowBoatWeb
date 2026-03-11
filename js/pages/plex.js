@@ -163,6 +163,8 @@ const PlexConnectPage = {
       const resources = await PlexAPI.getResources(token);
       const server = resources?.find(r => r.provides?.includes('server'));
       if (!server) { UI.toast('No Plex server found on your account', 'error'); return; }
+      // Store machineId for direct Plex deep links
+      if (server.clientIdentifier) Services.plex.setMachineId(server.clientIdentifier);
 
       btn.innerHTML = `${UI.icon('activity', 18)} Connecting to ${UI.escapeHtml(server.name || 'server')}...`;
 
@@ -492,18 +494,54 @@ const PlexConnectPage = {
 };
 
 const PlexWatchedPage = {
-  state: { items: [], tab: 'all', loading: true },
+  state: { items: [], tab: 'all', loading: true, searchQuery: '', selectedDate: null, _calYear: null, _calMonth: null },
 
   async render() {
     const el = document.getElementById('page-content');
+    const now = new Date();
+    if (!this.state._calYear) this.state._calYear = now.getFullYear();
+    if (this.state._calMonth === null) this.state._calMonth = now.getMonth();
     el.innerHTML = `<div class="plex-watched-page">
       ${UI.pageHeader('Plex Watch History', true)}
+      <div class="plex-watched-actions">
+        <button class="btn-secondary btn-sm" id="plex-apply-watched-btn" onclick="PlexWatchedPage.applyAllAsWatched()" title="Mark all synced Plex items as watched in your ShowBoat watched list">
+          ${UI.icon('check-circle', 16)} Apply All as Watched
+        </button>
+      </div>
+      <div class="plex-search-bar-wrap">
+        <div class="search-bar plex-search-bar">
+          ${UI.icon('search', 18)}
+          <input type="text" id="plex-history-search" placeholder="Search your Plex history…" value="${UI.escapeHtml(this.state.searchQuery)}" oninput="PlexWatchedPage.onSearch(this.value)">
+          ${this.state.searchQuery ? `<button class="clear-btn" onclick="PlexWatchedPage.onSearch('');document.getElementById('plex-history-search').value=''">${UI.icon('x', 16)}</button>` : ''}
+        </div>
+      </div>
       <div class="filter-tabs" id="plex-tabs">
         ${['all', 'show', 'movie'].map(t => `<button class="filter-tab ${this.state.tab === t ? 'active' : ''}" onclick="PlexWatchedPage.setTab('${t}')">${t === 'all' ? 'All' : t === 'show' ? 'TV Shows' : 'Movies'}</button>`).join('')}
       </div>
+      <div id="plex-calendar-wrap"></div>
       <div id="plex-watched-content">${UI.loading()}</div>
     </div>`;
     await this.loadItems();
+  },
+
+  async applyAllAsWatched() {
+    const btn = document.getElementById('plex-apply-watched-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${UI.icon('loader', 16)} Applying...`; }
+    try {
+      let lastPct = 0;
+      const { total, marked } = await Services.markWatchedFromPlexHistory((done, total) => {
+        const pct = Math.round((done / total) * 100);
+        if (pct > lastPct && btn) {
+          lastPct = pct;
+          btn.innerHTML = `${UI.icon('loader', 16)} Applying ${pct}%...`;
+        }
+      });
+      UI.toast(`Marked ${marked} of ${total} Plex items as watched!`, 'success');
+    } catch (e) {
+      UI.toast('Failed: ' + e.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = `${UI.icon('check-circle', 16)} Apply All as Watched`; }
+    }
   },
 
   async loadItems() {
@@ -524,9 +562,72 @@ const PlexWatchedPage = {
 
   setTab(tab) {
     this.state.tab = tab;
+    this.state.selectedDate = null;
     document.querySelectorAll('#plex-tabs .filter-tab').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
     this.draw();
+  },
+
+  onSearch(q) {
+    this.state.searchQuery = q;
+    this.state.selectedDate = null;
+    this.draw();
+  },
+
+  prevMonth() {
+    this.state._calMonth--;
+    if (this.state._calMonth < 0) { this.state._calMonth = 11; this.state._calYear--; }
+    this.draw();
+  },
+
+  nextMonth() {
+    this.state._calMonth++;
+    if (this.state._calMonth > 11) { this.state._calMonth = 0; this.state._calYear++; }
+    this.draw();
+  },
+
+  selectCalDate(dateStr) {
+    this.state.selectedDate = this.state.selectedDate === dateStr ? null : dateStr;
+    this.draw();
+  },
+
+  _buildCalendar(items) {
+    const year = this.state._calYear;
+    const month = this.state._calMonth;
+    const now = new Date();
+    const activeDays = new Set();
+    items.forEach(item => {
+      if (!item.lastViewedAt) return;
+      const d = new Date(item.lastViewedAt * 1000);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        activeDays.add(d.getDate());
+      }
+    });
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const monthName = firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const startDow = (firstDay.getDay() + 6) % 7; // Mon=0
+    let cells = '';
+    for (let i = 0; i < startDow; i++) cells += '<div class="cal-day empty"></div>';
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const hasItems = activeDays.has(d);
+      const isSelected = this.state.selectedDate === dateStr;
+      const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
+      cells += `<div class="cal-day${hasItems ? ' has-items' : ''}${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}" ${hasItems ? `onclick="PlexWatchedPage.selectCalDate('${dateStr}')"` : ''}>${d}${hasItems ? '<span class="cal-dot"></span>' : ''}</div>`;
+    }
+    return `<div class="plex-calendar">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="PlexWatchedPage.prevMonth()">${UI.icon('chevron-left', 18)}</button>
+        <span class="cal-month-label">${monthName}</span>
+        <button class="cal-nav-btn" onclick="PlexWatchedPage.nextMonth()">${UI.icon('chevron-right', 18)}</button>
+        ${this.state.selectedDate ? `<button class="cal-clear-btn" onclick="PlexWatchedPage.selectCalDate('${this.state.selectedDate}')">${UI.icon('x', 14)} Clear day</button>` : ''}
+      </div>
+      <div class="cal-grid">
+        ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+    </div>`;
   },
 
   draw() {
@@ -539,8 +640,26 @@ const PlexWatchedPage = {
     }
     // Filter by tab
     if (this.state.tab !== 'all') items = items.filter(i => i.type === this.state.tab);
+    // Filter by search
+    const q = (this.state.searchQuery || '').toLowerCase();
+    if (q) items = items.filter(i => (i.title || '').toLowerCase().includes(q) || (i.episodeTitle || '').toLowerCase().includes(q));
+
+    // Build calendar (uses tab-filtered + search-filtered items)
+    const calWrap = document.getElementById('plex-calendar-wrap');
+    if (calWrap) calWrap.innerHTML = this._buildCalendar(items);
+
+    // Filter by selected calendar date
+    if (this.state.selectedDate) {
+      const [sy, sm, sd] = this.state.selectedDate.split('-').map(Number);
+      items = items.filter(i => {
+        if (!i.lastViewedAt) return false;
+        const d = new Date(i.lastViewedAt * 1000);
+        return d.getFullYear() === sy && d.getMonth() === sm - 1 && d.getDate() === sd;
+      });
+    }
+
     if (!items.length) {
-      content.innerHTML = UI.emptyState('monitor', `No ${this.state.tab === 'show' ? 'TV' : 'movie'} history`, 'Nothing matched this filter');
+      content.innerHTML = UI.emptyState('monitor', `No ${this.state.selectedDate ? 'items on that day' : q ? 'results' : (this.state.tab === 'show' ? 'TV' : 'movie') + ' history'}`, q || this.state.selectedDate ? 'Try a different filter' : 'Nothing matched this filter');
       return;
     }
     // Sort by lastViewedAt descending
@@ -564,7 +683,11 @@ const PlexWatchedPage = {
         const subtitle = item.type === 'show' && item.season != null
           ? `S${item.season}E${item.episode}${item.episodeTitle ? ' — ' + UI.escapeHtml(item.episodeTitle) : ''}`
           : (item.year ? `${item.year}` : '');
-        const onclick = item.tmdbId ? `onclick="App.navigate('details',{id:${item.tmdbId},type:'${item.type === 'show' ? 'tv' : 'movie'}'})"`  : '';
+        const onclick = item.tmdbId
+          ? item.type === 'show' && item.season != null
+            ? `onclick="App.navigate('details',{id:${item.tmdbId},type:'tv',season:${item.season},episode:${item.episode || 1}})"`
+            : `onclick="App.navigate('details',{id:${item.tmdbId},type:'${item.type === 'show' ? 'tv' : 'movie'}'})"` 
+          : '';
         const fixBtn = item.docId ? `<button class="fix-match-btn" onclick="event.stopPropagation(); PlexWatchedPage.showFixMatch('${item.docId}','${UI.escapeHtml(item.title || '')}','${item.type || 'show'}')" title="Fix TMDB match">${UI.icon('search', 12)} Fix Match</button>` : '';
         html += `<div class="plex-history-item" ${onclick} style="${item.tmdbId ? 'cursor:pointer' : ''}">
           ${poster ? `<img src="${poster}" class="plex-poster" alt="" loading="lazy">` : `<div class="plex-poster placeholder">${UI.icon(item.type === 'movie' ? 'film' : 'tv', 24)}</div>`}
@@ -689,8 +812,12 @@ const PlexNowPlayingPage = {
         if (!server) { document.getElementById('np-content').innerHTML = UI.emptyState('No Server', 'Could not find a Plex server on your account.'); return; }
         this.state._server = server;
         this.state._token = token;
+        // Store machineId globally for use in deep links
+        if (server.clientIdentifier) Services.plex.setMachineId(server.clientIdentifier);
       }
       const data = await PlexAPI.serverFetch(token, this.state._server, '/status/sessions');
+      // Store the working server base URL for thumbnail generation
+      if (PlexAPI._lastWorkingUri) this.state._serverBaseUrl = PlexAPI._lastWorkingUri;
       const sessions = data?.MediaContainer?.Metadata || [];
       const fetchedAt = Date.now();
       sessions.forEach(s => { this.state._fetchedAt[s.ratingKey] = fetchedAt; });
@@ -736,8 +863,10 @@ const PlexNowPlayingPage = {
     const isEpisode = s.type === 'episode';
     const title = isEpisode ? (s.grandparentTitle || s.parentTitle || s.title) : s.title;
     const subtitle = isEpisode ? `S${s.parentIndex}E${s.index} · ${s.title}` : (s.year || '');
-    const thumb = s.grandparentThumb || s.thumb || '';
-    const thumbUrl = thumb ? `${Services.plex.serverUrl || ''}/photo/:/transcode?width=130&height=195&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}` : '';
+    const thumb = (isEpisode ? (s.grandparentThumb || s.thumb) : s.thumb) || '';
+    // Use the working server base URL stored after successful serverFetch
+    const baseUrl = this.state._serverBaseUrl || '';
+    const thumbUrl = (thumb && baseUrl) ? `${baseUrl}/photo/:/transcode?width=130&height=195&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}` : '';
 
     const viewOffset = s.viewOffset || 0;
     const duration = s.duration || 1;
@@ -749,16 +878,25 @@ const PlexNowPlayingPage = {
     const user = s.User?.title || '';
     const state = s.Player?.state || 'playing';
     const stateIcon = state === 'paused' ? 'pause' : 'play';
+    const isPaused = state === 'paused';
 
     const tmdbId = this.state.details[s.ratingKey]?.tmdbId;
     const mediaType = isEpisode ? 'tv' : 'movie';
 
-    return `<div class="np-card" id="np-card-${s.ratingKey}" onclick="${tmdbId ? `App.navigate('details',{id:${tmdbId},type:'${mediaType}'})` : ''}">
+    // Build direct Plex deep link from session data
+    const machineId = this.state._server?.clientIdentifier || Services.plex.machineId || '';
+    const plexKey = `/library/metadata/${s.ratingKey}`;
+    const plexUrl = machineId ? `https://app.plex.tv/desktop/#!/server/${machineId}/details?key=${encodeURIComponent(plexKey)}` : '';
+
+    return `<div class="np-card ${isPaused ? 'np-card-paused' : ''}" id="np-card-${s.ratingKey}" onclick="${tmdbId ? (isEpisode ? `App.navigate('details',{id:${tmdbId},type:'tv',season:${s.parentIndex || 1},episode:${s.index || 1}})` : `App.navigate('details',{id:${tmdbId},type:'movie'})`) : ''}">
       <div class="np-card-top">
-        ${thumbUrl
-          ? `<div class="np-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
-          : `<div class="np-thumb np-thumb-ph">${UI.icon('film', 32)}</div>`
-        }
+        <div class="np-thumb-wrap">
+          ${thumbUrl
+            ? `<div class="np-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
+            : `<div class="np-thumb np-thumb-ph">${UI.icon('film', 32)}</div>`
+          }
+          ${isPaused ? `<div class="np-thumb-paused-overlay">${UI.icon('pause', 28)}</div>` : ''}
+        </div>
         <div class="np-card-info">
           <div class="np-state-badge ${state}"><span>${UI.icon(stateIcon, 12)}</span> ${state}</div>
           <h3 class="np-title">${UI.escapeHtml(title)}</h3>
@@ -767,6 +905,7 @@ const PlexNowPlayingPage = {
             ${user ? `<span class="np-meta-chip">${UI.icon('user', 12)} ${UI.escapeHtml(user)}</span>` : ''}
             ${player ? `<span class="np-meta-chip">${UI.icon('monitor', 12)} ${UI.escapeHtml(player)}</span>` : ''}
           </div>
+          ${plexUrl ? `<a class="np-plex-btn" href="${UI.escapeHtml(plexUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Play on Plex</a>` : ''}
         </div>
       </div>
       <div class="np-progress-section">
@@ -794,7 +933,7 @@ const PlexNowPlayingPage = {
       this.state.details[s.ratingKey] = { tmdbId: match.id };
 
       const card = document.getElementById(`np-card-${s.ratingKey}`);
-      if (card) card.onclick = () => App.navigate('details', { id: match.id, type: mediaType });
+      if (card) card.onclick = () => App.navigate('details', isEpisode ? { id: match.id, type: 'tv', season: s.parentIndex || 1, episode: s.index || 1 } : { id: match.id, type: mediaType });
 
       const detailsEl = document.getElementById(`np-details-${s.ratingKey}`);
       if (!detailsEl) return;

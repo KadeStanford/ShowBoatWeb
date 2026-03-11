@@ -9,7 +9,28 @@ const DiscoverPage = {
     castQuery: '', castId: '', castName: '', networkQuery: '', networkId: '', networkName: '',
     seasonsMin: '', seasonsMax: '', runtimeMin: '', runtimeMax: '',
     showFilters: false,
-    watchedIds: new Set(), hideWatched: false
+    watchedIds: new Set(), hideWatched: false,
+    // Scroll restore
+    _savedScrollTop: 0, _savedStateKey: '', _savedGridHTML: '', _savedPage: 1
+  },
+
+  _scrollBound: null,
+
+  _getStateKey() {
+    const s = this.state;
+    return [s.query, s.tab, s.sortBy, s.selectedGenres.join(','), s.yearFrom, s.yearTo, s.language, s.voteMin, s.voteMax, s.castId, s.networkId, s.seasonsMin, s.seasonsMax, s.runtimeMin, s.runtimeMax, s.hideWatched ? '1' : '0'].join('|');
+  },
+
+  _setupScrollListener() {
+    const pc = document.getElementById('page-content');
+    if (!pc) return;
+    if (this._scrollBound) pc.removeEventListener('scroll', this._scrollBound);
+    this._scrollBound = () => {
+      this.state._savedScrollTop = pc.scrollTop;
+      const btn = document.getElementById('discover-back-top');
+      if (btn) btn.style.display = pc.scrollTop > 300 ? '' : 'none';
+    };
+    pc.addEventListener('scroll', this._scrollBound, { passive: true });
   },
 
   languages: [
@@ -49,6 +70,9 @@ const DiscoverPage = {
     const el = document.getElementById('page-content');
     const isFilterable = this.state.tab === 'tv' || this.state.tab === 'movie';
     const activeCount = this._activeFilterCount();
+    const currentKey = this._getStateKey();
+    const hasSaved = this.state._savedStateKey === currentKey && this.state._savedGridHTML;
+
     el.innerHTML = `<div class="discover-page">
       ${UI.pageHeader('Discover', true)}
       <div class="search-container">
@@ -64,14 +88,30 @@ const DiscoverPage = {
       </div>
       <div id="genre-chips"></div>
       <div id="advanced-filters" class="${this.state.showFilters && isFilterable ? '' : 'hidden'}"></div>
-      <div id="discover-results">${UI.loading()}</div>
-    </div>`;
+      <div id="discover-results">${hasSaved ? this.state._savedGridHTML : UI.loading()}</div>
+    </div>
+    <button id="discover-back-top" class="back-to-top-btn" style="display:none" onclick="document.getElementById('page-content').scrollTo({top:0,behavior:'smooth'})">${UI.icon('arrow-up', 18)}</button>`;
     this.loadFriendActivityDots();
     this.loadWatchedIds();
     this.loadPlexDots();
     await this.loadGenres();
     if (this.state.showFilters && isFilterable) this.renderFilters();
-    await this.loadContent();
+    this._setupScrollListener();
+    if (hasSaved) {
+      this.state.page = this.state._savedPage;
+      if (this.state.page < this.state.totalPages) this._setupObserver();
+      // Restore scroll after DOM settles
+      const savedTop = this.state._savedScrollTop;
+      if (savedTop > 0) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const pc = document.getElementById('page-content');
+          if (pc) pc.scrollTop = savedTop;
+        }));
+      }
+    } else {
+      this.state._savedScrollTop = 0;
+      await this.loadContent();
+    }
   },
 
   _activeFilterCount() {
@@ -297,7 +337,7 @@ const DiscoverPage = {
       this.state.plexIds = ids;
       document.querySelectorAll('.media-card[data-media-id]').forEach(card => {
         if (ids.has(card.dataset.mediaId) && !card.querySelector('.plex-card-badge')) {
-          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge">▶</span>');
+          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>');
         }
       });
     } catch (_) {}
@@ -409,9 +449,14 @@ const DiscoverPage = {
       if (this.state.hideWatched && this.state.watchedIds.size) {
         filtered = results.filter(r => !this.state.watchedIds.has(String(r.id)));
       }
-      el.innerHTML = filtered.length
+      const gridHtml = filtered.length
         ? `<div class="media-grid" id="discover-grid">${filtered.map(item => this.renderCard(item)).join('')}</div><div id="discover-sentinel" style="height:1px;margin-bottom:20px"></div>`
         : UI.emptyState('No results', 'Try different search terms or filters');
+      el.innerHTML = gridHtml;
+      // Save state for scroll restoration
+      this.state._savedGridHTML = gridHtml;
+      this.state._savedStateKey = this._getStateKey();
+      this.state._savedPage = 1;
       if (filtered.length && this.state.totalPages > 1) this._setupObserver();
       if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
     } catch (e) {
@@ -437,6 +482,8 @@ const DiscoverPage = {
       if (this.state.page >= this.state.totalPages && this.state._observer) {
         this.state._observer.disconnect(); this.state._observer = null;
       }
+      // Keep saved page in sync for scroll restoration
+      this.state._savedPage = this.state.page;
     } catch (_) {}
     this.state.loading = false;
   },
@@ -453,7 +500,7 @@ const DiscoverPage = {
     const vote = item.vote_average;
     return `<div class="media-card${isWatched ? ' is-watched' : ''}" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
       ${hasDot ? '<span class="activity-dot"></span>' : ''}
-      ${hasPlex ? '<span class="plex-card-badge">▶</span>' : ''}
+      ${hasPlex ? '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>' : ''}
       ${isWatched ? '<div class="watched-overlay">Watched</div>' : ''}
       ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
       ${vote ? `<span class="disc-rating-chip">${UI.icon('star', 10)} ${vote.toFixed(1)}</span>` : ''}
