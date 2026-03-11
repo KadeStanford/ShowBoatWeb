@@ -130,7 +130,8 @@ const HomePage = {
     return `<div class="section"><div class="section-header"><h3>${UI.icon('thumbs-down', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
       <div class="horizontal-scroll">${this.state.shames.map(s => {
         const poster = (s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
-        return `<div class="shame-card" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${s.mediaType || s.showType || 'tv'}'})">
+        const sType = (s.mediaType || s.showType || 'tv') === 'show' ? 'tv' : (s.mediaType || s.showType || 'tv');
+        return `<div class="shame-card" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${sType}'})">
           ${poster ? `<img src="${poster}" alt="" class="shame-poster">` : `<div class="shame-poster placeholder">${UI.icon('tv', 24)}</div>`}
           <div class="shame-badge">${UI.icon('thumbs-down', 12)}</div>
           <p class="shame-name">${UI.escapeHtml(s.shamedName || s.shamedUsername || '')}</p>
@@ -141,7 +142,8 @@ const HomePage = {
   renderHorizontalList(items, isFriend) {
     return items.map(item => {
       const id = item.tmdbId || item.mediaId || item.showId || item.id;
-      const type = item.media_type || item.mediaType || item.showType || 'tv';
+      let type = item.media_type || item.mediaType || item.showType || 'tv';
+      if (type === 'show') type = 'tv';
       const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const title = item.name || item.title || item.showName || '';

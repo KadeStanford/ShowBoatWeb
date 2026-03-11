@@ -126,7 +126,8 @@ const FriendProfilePage = {
     return items.slice(0, 10).map(i => {
       const posterPath = i.poster_path || i.posterPath || i.mediaPosterPath || i.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
-      return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId || i.mediaId || i.showId || i.id},type:'${i.mediaType || i.showType || 'tv'}'})">
+      const fpType = (i.mediaType || i.showType || 'tv') === 'show' ? 'tv' : (i.mediaType || i.showType || 'tv');
+      return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId || i.mediaId || i.showId || i.id},type:'${fpType}'})">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
         <p class="card-title">${UI.escapeHtml(i.name || i.mediaTitle || i.showName || '')}</p>
         ${i.rating ? `<p class="card-subtitle">${UI.icon('star', 12)} ${i.rating}</p>` : ''}
@@ -166,7 +167,8 @@ const ActivityPage = {
       const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
       const actionText = a.type === 'watched' ? 'watched' : a.type === 'rated' ? `rated ${a.rating || '?'}/10` : a.type === 'added_to_watchlist' ? 'added to watchlist' : a.type === 'shame' ? 'shamed' : a.type;
       const displayName = a.userId === currentUid ? 'You' : (a.userName || a.username || 'Someone');
-      return `<div class="activity-item" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${a.mediaType || a.showType || 'tv'}'})">
+      const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
+      return `<div class="activity-item" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
         ${poster ? `<img src="${poster}" class="activity-poster" alt="">` : `<div class="activity-poster placeholder">${UI.icon('film', 16)}</div>`}
         <div class="activity-info">
           <p><strong>${UI.escapeHtml(displayName)}</strong> ${actionText}</p>
@@ -198,7 +200,8 @@ const WallOfShamePage = {
     if (!all.length) { el.innerHTML = UI.emptyState('No shames', 'Nobody has been shamed yet!'); return; }
     el.innerHTML = `<div class="shame-items">${all.map(s => {
       const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w185') : '';
-      return `<div class="shame-list-item" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${s.mediaType || s.showType || 'tv'}'})">
+      const shType = (s.mediaType || s.showType || 'tv') === 'show' ? 'tv' : (s.mediaType || s.showType || 'tv');
+      return `<div class="shame-list-item" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${shType}'})">
         ${poster ? `<img src="${poster}" class="shame-item-poster" alt="">` : `<div class="shame-item-poster placeholder">${UI.icon('tv', 20)}</div>`}
         <div class="shame-item-info">
           <p class="shame-show">${UI.escapeHtml(s.mediaTitle || s.showName || '')}</p>

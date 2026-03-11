@@ -44,7 +44,8 @@ const WatchlistPage = {
       const itemsToCheck = items.slice(0, 15);
       await Promise.all(itemsToCheck.map(async (item) => {
         try {
-          const type = item.mediaType || 'tv';
+          let type = item.mediaType || 'tv';
+          if (type === 'show') type = 'tv';
           const id = item.id;
           const credits = await API.getMediaCredits(id, type);
           const cast = (credits?.cast || []).slice(0, 20);
@@ -83,7 +84,7 @@ const WatchlistPage = {
     const el = document.getElementById('watchlist-content');
     if (!el) return;
     let items = this.state.items;
-    if (this.state.tab !== 'all') items = items.filter(i => (i.mediaType || i.showType || i.type) === this.state.tab);
+    if (this.state.tab !== 'all') items = items.filter(i => { let t = i.mediaType || i.showType || i.type || 'tv'; if (t === 'show') t = 'tv'; return t === this.state.tab; });
 
     if (!items.length) {
       el.innerHTML = UI.emptyState('No items', this.state.tab === 'all' ? 'Your watchlist is empty' : `No ${this.state.tab === 'tv' ? 'TV shows' : 'movies'} in your watchlist`);
@@ -92,7 +93,8 @@ const WatchlistPage = {
     el.innerHTML = `<div class="watchlist-items">${items.map(item => {
       const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
-      const type = item.mediaType || item.showType || item.type || 'tv';
+      let type = item.mediaType || item.showType || item.type || 'tv';
+      if (type === 'show') type = 'tv';
       return `<div class="watchlist-item" onclick="App.navigate('details',{id:${item.tmdbId || item.showId || item.id},type:'${type}'})">
         ${poster ? `<img src="${poster}" class="wl-poster" alt="" loading="lazy">` : `<div class="wl-poster placeholder">${UI.icon('film', 24)}</div>`}
         <div class="wl-info">

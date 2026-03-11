@@ -3,7 +3,8 @@ const DetailsPage = {
   state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true },
 
   async render(params) {
-    this.state = { id: params.id, type: params.type || 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
+    const rawType = params.type || 'tv';
+    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {

@@ -24,7 +24,7 @@ const AnalyticsPage = {
 
     // Calculate genre distribution by media type
     const genres = {};
-    watched.forEach(w => { const g = w.mediaType === 'tv' ? 'TV Show' : w.mediaType === 'movie' ? 'Movie' : (w.mediaType || 'Unknown'); genres[g] = (genres[g] || 0) + 1; });
+    watched.forEach(w => { let mt = w.mediaType || 'Unknown'; if (mt === 'show') mt = 'tv'; const g = mt === 'tv' ? 'TV Show' : mt === 'movie' ? 'Movie' : mt; genres[g] = (genres[g] || 0) + 1; });
     const genreEntries = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const maxGenre = genreEntries.length ? genreEntries[0][1] : 1;
 
@@ -43,7 +43,7 @@ const AnalyticsPage = {
     const maxMonth = monthEntries.length ? Math.max(...monthEntries.map(e => e[1])) : 1;
 
     // TV vs Movie split
-    const tvCount = watched.filter(w => w.mediaType === 'tv').length;
+    const tvCount = watched.filter(w => w.mediaType === 'tv' || w.mediaType === 'show').length;
     const movieCount = watched.filter(w => w.mediaType === 'movie').length;
 
     el.innerHTML = `

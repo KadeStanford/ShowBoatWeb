@@ -6,7 +6,12 @@ const Services = {
   // ==================== WATCHLIST ====================
   async getWatchlist(userId) {
     const uid = userId || this._uid(); if (!uid) return [];
-    const snap = await db.collection('users').doc(uid).collection('watchlist').orderBy('addedAt', 'desc').get();
+    try {
+      const snap = await db.collection('users').doc(uid).collection('watchlist').orderBy('addedAt', 'desc').get();
+      if (snap.docs.length) return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    } catch (_) {}
+    // Fallback: fetch without ordering (handles missing addedAt or missing index)
+    const snap = await db.collection('users').doc(uid).collection('watchlist').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
 
@@ -43,7 +48,11 @@ const Services = {
   // ==================== WATCHED ====================
   async getWatched(userId) {
     const uid = userId || this._uid(); if (!uid) return [];
-    const snap = await db.collection('users').doc(uid).collection('watched').orderBy('watchedAt', 'desc').get();
+    try {
+      const snap = await db.collection('users').doc(uid).collection('watched').orderBy('watchedAt', 'desc').get();
+      if (snap.docs.length) return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    } catch (_) {}
+    const snap = await db.collection('users').doc(uid).collection('watched').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
 
@@ -298,13 +307,18 @@ const Services = {
   async getActivityFeed(friendUids = []) {
     if (friendUids.length === 0) return [];
     const activities = [];
-    // Fetch recent activity from each friend (Firestore doesn't support OR across subcollections easily)
     await Promise.all(friendUids.map(async uid => {
       try {
         const snap = await db.collection('users').doc(uid).collection('activity')
           .orderBy('createdAt', 'desc').limit(50).get();
         snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
-      } catch (e) { /* skip */ }
+      } catch (_) {
+        // Fallback without ordering
+        try {
+          const snap = await db.collection('users').doc(uid).collection('activity').limit(50).get();
+          snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
+        } catch (_2) {}
+      }
     }));
     activities.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     return activities;

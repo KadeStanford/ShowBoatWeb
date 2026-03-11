@@ -80,7 +80,8 @@ const SharedListDetailPage = {
       <div id="list-items-content">
         ${this.state.items.length ? `<div class="media-grid">${this.state.items.map(item => {
           const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
-          return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${item.mediaType || item.showType || 'tv'}'})">
+          const lType1 = (item.mediaType || item.showType || 'tv') === 'show' ? 'tv' : (item.mediaType || item.showType || 'tv');
+          return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${lType1}'})">
             ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
             <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || item.showName || '')}</p></div>
             <button class="card-remove-btn" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 16)}</button>
@@ -99,7 +100,8 @@ const SharedListDetailPage = {
         if (this.state.items.length) {
           content.innerHTML = `<div class="media-grid">${this.state.items.map(item => {
             const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
-            return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${item.mediaType || item.showType || 'tv'}'})">
+            const lType2 = (item.mediaType || item.showType || 'tv') === 'show' ? 'tv' : (item.mediaType || item.showType || 'tv');
+            return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${lType2}'})">
               ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
               <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || item.showName || '')}</p></div>
               <button class="card-remove-btn" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 16)}</button>
