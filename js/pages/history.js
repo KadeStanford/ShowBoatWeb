@@ -202,7 +202,7 @@ const WatchedHistoryPage = {
   },
 
   _renderShowCard(show) {
-    const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w185') : '';
+    const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w342') : '';
     const eps = show.episodes.length;
     const total = show.totalEpisodes || null;
     const ringHtml = eps > 0 ? this._ringHtml(eps, total) : '';
@@ -222,7 +222,7 @@ const WatchedHistoryPage = {
   },
 
   _renderMovieCard(movie) {
-    const poster = movie.posterPath ? API.imageUrl(movie.posterPath, 'w185') : '';
+    const poster = movie.posterPath ? API.imageUrl(movie.posterPath, 'w342') : '';
     return `<div class="wh-card" onclick="App.navigate('details',{id:${movie.tmdbId || 0},type:'movie'})">
       ${poster
         ? `<img src="${UI.escapeHtml(poster)}" alt="" class="wh-poster">`

@@ -178,7 +178,7 @@ const HomePage = {
       const list = document.getElementById('keep-watching-list');
       if (!sec || !list) return;
       list.innerHTML = shows.map(show => {
-        const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w185') : '';
+        const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w342') : '';
         const sub = `S${show.latestSeason} · E${show.latestEpisode}`;
         return `<div class="media-card-sm" onclick="App.navigate('details',{id:${show.tmdbId},type:'tv',season:${show.latestSeason||1},episode:${show.latestEpisode||1}})" style="cursor:pointer">
           ${poster ? `<img src="${UI.escapeHtml(poster)}" alt="" class="card-poster">` : '<div class="poster-placeholder"></div>'}
@@ -377,7 +377,7 @@ const HomePage = {
   renderShameSection() {
     return `<div class="section"><div class="section-header"><h3>${UI.icon('flame', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
       <div class="horizontal-scroll">${this.state.shames.map(s => {
-        const poster = (s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
+        const poster = (s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster, 'w342') : '';
         const sType = (s.mediaType || s.showType || 'tv') === 'show' ? 'tv' : (s.mediaType || s.showType || 'tv');
         return `<div class="shame-card" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${sType}'})">
           ${poster ? `<img src="${poster}" alt="" class="shame-poster">` : `<div class="shame-poster placeholder">${UI.icon('tv', 24)}</div>`}
@@ -393,7 +393,7 @@ const HomePage = {
       let type = item.media_type || item.mediaType || item.showType || 'tv';
       if (type === 'show') type = 'tv';
       const posterPath = item.poster_path || item.posterPath || item.showPoster || '';
-      const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
+      const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
       const title = item.name || item.title || item.showName || '';
       const hasDot = this.state.friendActivityIds.has(String(id));
       const hasPlex = this.state.plexIds.has(String(id));

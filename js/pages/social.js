@@ -399,7 +399,7 @@ const FriendProfilePage = {
   renderItems(items) {
     return items.slice(0, 10).map(i => {
       const posterPath = i.poster_path || i.posterPath || i.mediaPosterPath || i.showPoster || '';
-      const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
+      const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
       const fpType = (i.mediaType || i.showType || 'tv') === 'show' ? 'tv' : (i.mediaType || i.showType || 'tv');
       return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId || i.mediaId || i.showId || i.id},type:'${fpType}'})">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
@@ -615,7 +615,7 @@ const FriendAnalyticsPage = {
         <div class="fa-section">
           <h3 class="fa-section-title">${UI.icon('check-circle', 16)} Both Watched</h3>
           <div class="horizontal-scroll">${bothWatched.slice(0, 12).map(i => {
-            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w185') : '';
+            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w342') : '';
             const t = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
             return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId},type:'${t}'})">
               ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
@@ -747,7 +747,7 @@ const ActivityPage = {
   },
 
   _renderPlexSingleCard(a) {
-    const poster = a.mediaPosterPath ? API.imageUrl(a.mediaPosterPath, 'w185') : '';
+    const poster = a.mediaPosterPath ? API.imageUrl(a.mediaPosterPath, 'w342') : '';
     const isMovie = a.mediaType === 'movie';
     const navCall = a.mediaId ? `App.navigate('details',{id:${a.mediaId},type:'${a.mediaType || 'tv'}'})` : '';
     const epLabel = !isMovie && a.seasonNumber != null ? `S${a.seasonNumber}E${a.episodeNumber} watched` : (isMovie ? 'movie watched' : 'watched');
@@ -767,7 +767,7 @@ const ActivityPage = {
 
   _renderPlexGroupCard(g) {
     const first = g.entries[0];
-    const poster = first.mediaPosterPath ? API.imageUrl(first.mediaPosterPath, 'w185') : '';
+    const poster = first.mediaPosterPath ? API.imageUrl(first.mediaPosterPath, 'w342') : '';
     const epCount = g.entries.length;
     const sorted = [...g.entries].sort((a, b) => {
       const ai = (a.seasonNumber || 0) * 1000 + (a.episodeNumber || 0);
@@ -846,7 +846,7 @@ const ActivityPage = {
 
   _renderCard(a, currentUid) {
     const isMine = a.userId === currentUid;
-    const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w185') : '';
+    const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w342') : '';
     const isEpisode = a.type === 'rated_episode';
     const isEpWatched = a.type === 'watched_episode';
     const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
@@ -968,7 +968,7 @@ const WallOfShamePage = {
   },
 
   _posterHtml(s) {
-    const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w185') : '';
+    const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w342') : '';
     return poster ? `<img src="${poster}" class="shame-item-poster" alt="">` : `<div class="shame-item-poster placeholder">${UI.icon('tv', 20)}</div>`;
   },
 
