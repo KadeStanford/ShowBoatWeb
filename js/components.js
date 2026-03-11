@@ -123,6 +123,7 @@ const UI = {
     div.textContent = String(str);
     return div.innerHTML;
   },
+  escapeHtml(str) { return this._esc(str); },
 
   // --- Time ago ---
   timeAgo(ts) {
