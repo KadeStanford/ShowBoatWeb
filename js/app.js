@@ -44,11 +44,32 @@ const App = {
 
   init() {
     // Listen for auth state changes
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged(async user => {
       this.user = user;
       if (user) {
         // If signup is still provisioning the account, skip background setup
         if (this.signupInProgress) return;
+        // Check if account is frozen or deactivated
+        try {
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            const data = userDoc.data();
+            if (data.deactivated === true) {
+              await auth.signOut();
+              this.showNav(false);
+              this.navigate('login');
+              setTimeout(() => alert('Your account has been deactivated. Contact support for help.'), 100);
+              return;
+            }
+            if (data.frozen === true) {
+              await auth.signOut();
+              this.showNav(false);
+              this.navigate('login');
+              setTimeout(() => alert('Your account has been frozen. Contact support for help.'), 100);
+              return;
+            }
+          }
+        } catch (e) { console.error('Account status check failed:', e); }
         this.showNav(true);
         // Restore Plex connection + library cache from Firestore (runs in background)
         Services.restorePlexOnLogin().catch(() => {});

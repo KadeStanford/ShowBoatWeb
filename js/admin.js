@@ -205,17 +205,75 @@ const AdminDash = {
     const users = q ? this._allUsers.filter(u => (u.username || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)) : this._allUsers;
     const tbody = document.getElementById('users-tbody');
     if (!tbody) return;
-    tbody.innerHTML = users.length ? users.map(u => `<tr>
+    tbody.innerHTML = users.length ? users.map(u => {
+      const frozen = u.frozen === true;
+      const deactivated = u.deactivated === true;
+      const statusHtml = frozen ? '<span class="status-pill" style="background:#f59e0b;color:#000">Frozen</span>'
+        : deactivated ? '<span class="status-pill" style="background:#ef4444;color:#fff">Deactivated</span>'
+        : '<span class="status-pill status-active">Active</span>';
+      return `<tr>
       <td>${this._esc(u.username || '—')}</td>
       <td style="color:var(--text-secondary);font-size:12px">${this._esc(u.email || '—')}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+      <td>${statusHtml}</td>
       <td style="text-align:center">${u.tickets || 0}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${(u.inviteCodes || []).length} codes</td>
       <td><div class="user-actions-cell">
         <input type="number" class="code-count-input" id="code-count-${this._esc(u.id)}" value="1" min="1" max="50">
         <button class="btn-sm btn-approve" onclick="AdminDash.grantCodes('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Give</button>
       </div></td>
-    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary)">No users found.</td></tr>';
+      <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${frozen
+          ? `<button class="btn-sm btn-approve" onclick="AdminDash.unfreezeUser('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Unfreeze</button>`
+          : `<button class="btn-sm" style="background:#f59e0b;color:#000" onclick="AdminDash.freezeUser('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Freeze</button>`}
+        ${deactivated
+          ? `<button class="btn-sm btn-approve" onclick="AdminDash.reactivateUser('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Reactivate</button>`
+          : `<button class="btn-sm btn-deny" onclick="AdminDash.deactivateUser('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Deactivate</button>`}
+        <button class="btn-sm" style="background:var(--surface-2);color:var(--text-secondary)" onclick="AdminDash.sendPasswordReset('${this._esc(u.email || '')}','${this._esc(u.username || u.email || '')}')">Reset PW</button>
+      </div></td>
+    </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary)">No users found.</td></tr>';
+  },
+
+  async freezeUser(userId, displayName) {
+    if (!confirm(`Freeze account for ${displayName}? They will be unable to use the app.`)) return;
+    try {
+      await db.collection('users').doc(userId).update({ frozen: true, frozenAt: Date.now() });
+      await this.loadUsers();
+    } catch (e) { alert('Error: ' + e.message); }
+  },
+
+  async unfreezeUser(userId, displayName) {
+    if (!confirm(`Unfreeze account for ${displayName}?`)) return;
+    try {
+      await db.collection('users').doc(userId).update({ frozen: false });
+      await this.loadUsers();
+    } catch (e) { alert('Error: ' + e.message); }
+  },
+
+  async deactivateUser(userId, displayName) {
+    if (!confirm(`Deactivate account for ${displayName}? This will block their access.`)) return;
+    try {
+      await db.collection('users').doc(userId).update({ deactivated: true, deactivatedAt: Date.now(), frozen: false });
+      await this.loadUsers();
+    } catch (e) { alert('Error: ' + e.message); }
+  },
+
+  async reactivateUser(userId, displayName) {
+    if (!confirm(`Reactivate account for ${displayName}?`)) return;
+    try {
+      await db.collection('users').doc(userId).update({ deactivated: false });
+      await this.loadUsers();
+    } catch (e) { alert('Error: ' + e.message); }
+  },
+
+  async sendPasswordReset(email, displayName) {
+    if (!email) { alert('No email on file for this user.'); return; }
+    if (!confirm(`Send password reset email to ${displayName} (${email})?`)) return;
+    try {
+      await auth.sendPasswordResetEmail(email);
+      alert(`Password reset email sent to ${email}.`);
+    } catch (e) { alert('Error: ' + e.message); }
   },
 
   async grantCodes(userId, displayName) {

@@ -326,6 +326,14 @@ const DetailsPage = {
       });
       btn.classList.add('active');
       this.state.watchedEps.add(`s${season}_e${episode}`);
+      // Auto-mark show as watched if all episodes are now watched
+      const totalEps = d.number_of_episodes || 0;
+      if (totalEps > 0 && this.state.watchedEps.size >= totalEps && !this.state.isWatched) {
+        await Services.markWatched(this.state.id, this.state.type, null, null, { name: d.name || d.title, posterPath: d.poster_path });
+        this.state.isWatched = true;
+        const showBtn = document.querySelectorAll('.actions-row .action-btn')[1];
+        if (showBtn) { showBtn.classList.add('active'); showBtn.querySelector('span').textContent = 'Watched'; }
+      }
     }
   },
 
