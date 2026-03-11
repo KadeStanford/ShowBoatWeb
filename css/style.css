@@ -25,6 +25,7 @@
   --pink-500: #ec4899; --fuchsia-500: #d946ef; --violet-500: #8b5cf6;
   --teal-500: #14b8a6; --cyan-500: #06b6d4; --lime-500: #84cc16;
   --green-600: #16a34a; --red-400: #f87171; --red-500: #ef4444;
+  --bg-primary: #020617;
 }
 
 /* --- Reset & Base --- */
@@ -626,6 +627,133 @@ ul, ol { list-style: none; }
 .shared-actor-row img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--slate-800); }
 .shared-actor-row .name { color: white; font-weight: 600; }
 .shared-actor-row .roles { color: var(--slate-400); font-size: .8125rem; }
+
+/* ============================================
+   Home Page — Classes used by home.js
+   ============================================ */
+.home-page { padding-bottom: 80px; }
+
+/* --- Hero (single-div with background-image) --- */
+.hero {
+  position: relative; width: 100%; height: 500px;
+  background-size: cover; background-position: center top;
+  cursor: pointer; margin-bottom: 0;
+}
+.hero-profile-btn {
+  position: absolute; top: 48px; right: 20px; z-index: 10;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  color: white; cursor: pointer; backdrop-filter: blur(8px);
+}
+.hero-content {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 0 24px 24px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hero-logo-container { margin-bottom: 4px; }
+.hero-logo-img { max-height: 80px; max-width: 240px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,.5)); }
+.hero-title { font-size: 2rem; font-weight: 700; color: white; text-shadow: 0 2px 8px rgba(0,0,0,.6); margin: 0; }
+.hero-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero-type,
+.hero-year {
+  background: rgba(255,255,255,.12); padding: 4px 10px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.2); color: white;
+  font-size: .75rem; font-weight: 500; backdrop-filter: blur(4px);
+}
+.hero-rating {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--amber-400); font-size: .8125rem; font-weight: 600;
+}
+.hero-overview {
+  color: var(--slate-300); font-size: .875rem; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-shadow: 0 1px 4px rgba(0,0,0,.5);
+}
+.carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+.carousel-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,.3); cursor: pointer;
+  transition: all .3s; border: none;
+}
+.carousel-dot.active { background: white; transform: scale(1.3); }
+
+/* --- Quick Actions Menu Grid --- */
+.menu-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  padding: 16px; margin-bottom: 8px;
+}
+@media (max-width: 480px) { .menu-grid { grid-template-columns: repeat(2, 1fr); } }
+.menu-item {
+  background: var(--slate-900); padding: 14px 12px; border-radius: 16px;
+  border: 1px solid var(--slate-800); display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: background .2s, border-color .2s, transform .15s;
+  color: white; font-weight: 600; font-size: .8125rem;
+}
+.menu-item:hover { background: var(--slate-800); border-color: var(--slate-700); transform: translateY(-1px); }
+.menu-item:active { transform: translateY(0); }
+.menu-item .menu-icon {
+  width: 40px; height: 40px; border-radius: 12px; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* --- Section headers (with h3 used in home.js) --- */
+.section-header h3 {
+  font-size: 1.25rem; font-weight: 700; color: white; margin: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.see-all-btn {
+  color: var(--emerald-400); font-size: .875rem; font-weight: 600;
+  cursor: pointer; background: none; border: none; white-space: nowrap;
+  transition: color .2s;
+}
+.see-all-btn:hover { color: var(--emerald-300); }
+
+/* --- Small Media Cards (horizontal lists) --- */
+.media-card-sm {
+  flex-shrink: 0; width: 128px; cursor: pointer;
+  transition: transform .2s;
+}
+.media-card-sm:hover { transform: scale(1.04); }
+.media-card-sm img {
+  width: 128px; height: 192px; border-radius: 12px;
+  object-fit: cover; background: var(--slate-800);
+  margin-bottom: 8px; display: block;
+}
+.card-title {
+  color: white; font-weight: 500; font-size: .8125rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 128px;
+}
+.card-subtitle {
+  color: var(--slate-400); font-size: .75rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 128px;
+}
+
+/* --- Poster Placeholder --- */
+.poster-placeholder {
+  width: 128px; height: 192px; border-radius: 12px;
+  background: var(--slate-800); display: flex;
+  align-items: center; justify-content: center;
+  color: var(--slate-500); margin-bottom: 8px;
+  border: 1px solid var(--slate-700);
+}
+
+/* --- Empty text --- */
+.empty-text {
+  color: var(--slate-500); font-size: .875rem; padding: 16px;
+  text-align: center;
+}
+
+/* --- Responsive hero --- */
+@media (max-width: 480px) {
+  .hero { height: 420px; }
+  .hero-title { font-size: 1.5rem; }
+}
+@media (min-width: 768px) {
+  .hero { height: 560px; }
+}
 
 /* Plex watched items */
 .plex-watched-item {
