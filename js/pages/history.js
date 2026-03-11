@@ -27,12 +27,17 @@ const WatchedHistoryPage = {
 
     // Group TV episodes by show
     const showMap = new Map();
-    const movies = [];
+    const movieMap = new Map();
     const epPattern = /^tv:(\d+):s(\d+):e(\d+)$/;
 
     for (const doc of watched) {
       if (doc.mediaType === 'movie' || doc.docId?.startsWith('movie:')) {
-        movies.push(doc);
+        // Deduplicate movies by tmdbId — keep the most recent entry
+        const mid = doc.tmdbId || Number((doc.docId || '').replace('movie:', '')) || doc.docId;
+        const existing = movieMap.get(mid);
+        if (!existing || (doc.watchedAt || 0) > (existing.watchedAt || 0)) {
+          movieMap.set(mid, doc);
+        }
         continue;
       }
       const m = doc.docId?.match(epPattern);
@@ -67,7 +72,7 @@ const WatchedHistoryPage = {
     }
 
     this.state.tvShows = [...showMap.values()].sort((a, b) => b.latestAt - a.latestAt);
-    this.state.movies = movies.sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
+    this.state.movies = [...movieMap.values()].sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
     this.state.items = watched;
   },
 
