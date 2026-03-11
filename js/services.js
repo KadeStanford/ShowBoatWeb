@@ -84,7 +84,13 @@ const Services = {
       name: meta.title || meta.name || '', posterPath: meta.posterPath || null,
       backdropPath: meta.backdropPath || null, overview: meta.overview || ''
     }, { merge: true });
-    this._logActivity('watched', { id: tmdbId, name: meta.title || meta.name, mediaType, posterPath: meta.posterPath });
+    const actType = (season != null && episode != null) ? 'watched_episode' : 'watched';
+    this._logActivity(actType, {
+      id: tmdbId, name: meta.title || meta.name, mediaType, posterPath: meta.posterPath,
+      ...(season != null && { seasonNumber: season }),
+      ...(episode != null && { episodeNumber: episode }),
+      episodeName: meta.episodeName || ''
+    });
     // Remove active shames for this media
     await this._resolveShames(tmdbId, mediaType);
   },
@@ -95,6 +101,32 @@ const Services = {
     const docId = mediaType === 'movie' ? `movie:${tmdbId}` :
       (season != null && episode != null) ? `tv:${tmdbId}:s${season}:e${episode}` : `tv:${tmdbId}`;
     await ref.doc(docId).delete();
+  },
+
+  // Batch-mark all episodes in a series as watched (uses episode_count per season, no extra API calls)
+  async markAllEpisodesWatched(tmdbId, meta, seasons) {
+    const uid = this._uid(); if (!uid) return;
+    const ref = db.collection('users').doc(uid).collection('watched');
+    const now = Date.now();
+    const BATCH_LIMIT = 499;
+    let batch = db.batch();
+    let count = 0;
+    for (const season of (seasons || [])) {
+      const sNum = season.season_number;
+      if (sNum < 1) continue; // skip specials/season 0
+      const epCount = season.episode_count || 0;
+      for (let e = 1; e <= epCount; e++) {
+        const docId = `tv:${tmdbId}:s${sNum}:e${e}`;
+        batch.set(ref.doc(docId), {
+          tmdbId: Number(tmdbId), mediaType: 'tv',
+          seasonNumber: sNum, episodeNumber: e, watchedAt: now,
+          name: meta.name || '', posterPath: meta.posterPath || null,
+        }, { merge: true });
+        count++;
+        if (count >= BATCH_LIMIT) { await batch.commit(); batch = db.batch(); count = 0; }
+      }
+    }
+    if (count > 0) await batch.commit();
   },
 
   // ==================== RATINGS ====================
@@ -563,34 +595,49 @@ const Services = {
     if (!byTmdb.size) return;
 
     const activityRef = db.collection('users').doc(uid).collection('activity');
-    const BATCH_LIMIT = 499; // Firestore max is 500 ops per batch
+    const BATCH_LIMIT = 499;
     let batch = db.batch();
     let count = 0;
 
+    const flush = async () => { if (count > 0) { await batch.commit(); batch = db.batch(); count = 0; } };
+
+    // Show/movie-level watched entries (deduplicated)
     for (const item of byTmdb.values()) {
-      // Stable ID prevents duplicate entries on re-sync
       const docId = `plex_watched_${item.tmdbId}`;
-      const data = {
-        type: 'watched',
-        source: 'plex',
-        mediaId: item.tmdbId,
-        mediaTitle: item.tmdbTitle || item.title,
+      batch.set(activityRef.doc(docId), {
+        type: 'watched', source: 'plex',
+        mediaId: item.tmdbId, mediaTitle: item.tmdbTitle || item.title,
         mediaType: item.type === 'movie' ? 'movie' : 'tv',
         mediaPosterPath: item.posterPath || null,
-        userId: uid,
-        userName: me?.displayName || '',
-        userPhoto: me?.photoURL || null,
+        userId: uid, userName: me?.displayName || '', userPhoto: me?.photoURL || null,
         createdAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now()
-      };
-      // merge: false so the createdAt is never overwritten on re-sync
-      batch.set(activityRef.doc(docId), data);
+      });
       count++;
-      if (count >= BATCH_LIMIT) {
-        await batch.commit();
-        batch = db.batch();
-        count = 0;
-      }
+      if (count >= BATCH_LIMIT) await flush();
     }
+
+    // Episode-level watched entries for recent episodes (last 90 days)
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const episodeItems = items.filter(item =>
+      item.type === 'show' && item.tmdbId && item.season != null && item.episode != null &&
+      (item.lastViewedAt ? item.lastViewedAt * 1000 : 0) >= cutoff
+    ).slice(0, 150); // cap to avoid spamming
+
+    for (const item of episodeItems) {
+      const docId = `plex_ep_${item.tmdbId}_s${item.season}e${item.episode}`;
+      batch.set(activityRef.doc(docId), {
+        type: 'watched_episode', source: 'plex',
+        mediaId: item.tmdbId, mediaTitle: item.tmdbTitle || item.title,
+        mediaType: 'tv', mediaPosterPath: item.posterPath || null,
+        seasonNumber: item.season, episodeNumber: item.episode,
+        episodeName: item.episodeTitle || '',
+        userId: uid, userName: me?.displayName || '', userPhoto: me?.photoURL || null,
+        createdAt: item.lastViewedAt ? item.lastViewedAt * 1000 : Date.now()
+      });
+      count++;
+      if (count >= BATCH_LIMIT) await flush();
+    }
+
     if (count > 0) await batch.commit();
   }
 };

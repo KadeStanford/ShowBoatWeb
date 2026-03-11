@@ -5,6 +5,7 @@ const App = {
   user: null,
 
   routes: {
+    'landing':            { render: () => AuthPages.renderLanding(), auth: false, nav: false },
     'login':              { render: () => AuthPages.renderLogin(), auth: false, nav: false },
     'signup':             { render: () => AuthPages.renderSignup(), auth: false, nav: false },
     'home':               { render: (p) => HomePage.render(p), auth: true, nav: true, navIdx: 0 },
@@ -39,12 +40,18 @@ const App = {
       if (user) {
         this.showNav(true);
         // If on auth page or no page, go home
-        if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup') {
+        if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           this.navigate('home');
         }
       } else {
         this.showNav(false);
-        this.navigate('login');
+        // Show landing page for unauthenticated visitors; if they were already on login/signup keep that
+        const cur = this.currentPage;
+        if (!cur || (cur !== 'login' && cur !== 'signup' && cur !== 'landing')) {
+          this.navigate('landing');
+        } else if (!cur) {
+          this.navigate('landing');
+        }
       }
       // Hide loading screen
       const loading = document.getElementById('loading-screen');
@@ -78,8 +85,8 @@ const App = {
     if (!route) { console.warn('Unknown route:', page); return; }
 
     // Auth guard
-    if (route.auth && !this.user) { this.navigate('login'); return; }
-    if (!route.auth && this.user && (page === 'login' || page === 'signup')) { this.navigate('home'); return; }
+    if (route.auth && !this.user) { this.navigate('landing'); return; }
+    if (!route.auth && this.user && (page === 'login' || page === 'signup' || page === 'landing')) { this.navigate('home'); return; }
 
     // Cleanup previous page
     if (this.currentPage === 'home') HomePage.destroy?.();

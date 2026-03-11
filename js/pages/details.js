@@ -282,6 +282,13 @@ const DetailsPage = {
       await Services.markWatched(this.state.id, this.state.type, null, null, { name: d.name || d.title, posterPath: d.poster_path });
       this.state.isWatched = true;
       UI.toast('Marked as watched!', 'success');
+      // For TV shows, also mark all episodes as watched in the background
+      if (this.state.type === 'tv' && d.seasons?.length) {
+        const seasons = d.seasons.filter(s => s.season_number >= 1);
+        Services.markAllEpisodesWatched(this.state.id, { name: d.name, posterPath: d.poster_path }, seasons).catch(() => {});
+        // Update all visible episode watch buttons
+        document.querySelectorAll('.ep-watched-btn').forEach(b => b.classList.add('active'));
+      }
     }
     const btn = document.querySelectorAll('.actions-row .action-btn')[1];
     if (btn) { btn.classList.toggle('active', this.state.isWatched); btn.querySelector('span').textContent = this.state.isWatched ? 'Watched' : 'Mark Watched'; }
@@ -290,11 +297,14 @@ const DetailsPage = {
   async toggleEpisodeWatched(season, episode, btn) {
     const d = this.state.details;
     const isWatched = btn.classList.contains('active');
+    const epObj = this.state.episodes.find(e => e.season_number === season && e.episode_number === episode);
     if (isWatched) {
       await Services.markUnwatched(this.state.id, 'tv', season, episode);
       btn.classList.remove('active');
     } else {
-      await Services.markWatched(this.state.id, 'tv', season, episode, { name: d.name || d.title, posterPath: d.poster_path });
+      await Services.markWatched(this.state.id, 'tv', season, episode, {
+        name: d.name || d.title, posterPath: d.poster_path, episodeName: epObj?.name || ''
+      });
       btn.classList.add('active');
     }
   },

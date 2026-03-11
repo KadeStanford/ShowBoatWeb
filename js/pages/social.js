@@ -174,7 +174,7 @@ const ActivityPage = {
       const seen = new Map();
       const deduped = [];
       for (const a of all) {
-        const key = `${a.userId}_${a.mediaId || a.showId}_${a.type === 'rated_episode' ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
+        const key = `${a.userId}_${a.mediaId || a.showId}_${(a.type === 'rated_episode' || a.type === 'watched_episode') ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
         if (!seen.has(key)) { seen.set(key, true); deduped.push(a); }
       }
       this.state.feed = deduped;
@@ -198,9 +198,12 @@ const ActivityPage = {
       const isMine = a.userId === currentUid;
       const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
       const isEpisode = a.type === 'rated_episode';
+      const isEpWatched = a.type === 'watched_episode';
       let actionText;
       if (isEpisode) {
         actionText = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'} ${a.rating}/10`;
+      } else if (isEpWatched) {
+        actionText = `watched S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`;
       } else if (a.type === 'watched') {
         actionText = 'watched';
       } else if (a.type === 'rated') {
@@ -226,7 +229,7 @@ const ActivityPage = {
             ${poster ? `<img src="${poster}" class="activity-bubble-poster" alt="">` : ''}
             <div class="activity-bubble-body">
               <p class="activity-action">${actionText}</p>
-              <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${isEpisode && a.episodeName ? `<br><span class="activity-ep-name">${UI.escapeHtml(a.episodeName)}</span>` : ''}</p>
+              <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${(isEpisode || isEpWatched) && a.episodeName ? `<br><span class="activity-ep-name">${UI.escapeHtml(a.episodeName)}</span>` : ''}</p>
               ${a.comment ? `<p class="activity-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
             </div>
           </div>

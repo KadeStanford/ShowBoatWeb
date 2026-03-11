@@ -7,6 +7,14 @@ const PlexConnectPage = {
     this.state.connected = Services.plex.isConnected;
     this.state.server = Services.plex.serverUrl || null;
     this.draw(el);
+    // Resume pending Plex auth (e.g. mobile redirect flow returned to app)
+    const pendingPin = localStorage.getItem('plex_pending_pin');
+    if (pendingPin && !this.state.connected) {
+      try {
+        const { id } = JSON.parse(pendingPin);
+        this._pollPin(id, true);
+      } catch (_) { localStorage.removeItem('plex_pending_pin'); }
+    }
   },
 
   draw(el) {
@@ -19,6 +27,15 @@ const PlexConnectPage = {
   },
 
   renderDisconnected() {
+    const pendingPin = localStorage.getItem('plex_pending_pin');
+    if (pendingPin) {
+      return `<div class="plex-status disconnected">
+        <div class="plex-icon">${UI.icon('loader', 48)}</div>
+        <h3>Waiting for Plex Login…</h3>
+        <p>Complete sign-in on Plex, then return to this page. Or cancel and try again.</p>
+        <button class="btn-secondary" onclick="localStorage.removeItem('plex_pending_pin'); PlexConnectPage.render()">Cancel</button>
+      </div>`;
+    }
     return `<div class="plex-status disconnected">
       <div class="plex-icon">${UI.icon('monitor', 48)}</div>
       <h3>Connect to Plex</h3>
@@ -42,50 +59,76 @@ const PlexConnectPage = {
 
   async startAuth() {
     const btn = document.getElementById('plex-connect-btn');
-    btn.disabled = true; btn.textContent = 'Connecting...';
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting...'; }
     try {
       const pin = await PlexAPI.createPin();
       const authUrl = PlexAPI.getAuthUrl(pin.code);
-      window.open(authUrl, '_blank');
-      UI.toast('Authenticate in the new tab, then wait for confirmation', 'info');
-      btn.textContent = 'Waiting for auth...';
-      let attempts = 0;
-      const poll = setInterval(async () => {
-        attempts++;
-        try {
-          const result = await PlexAPI.checkPin(pin.id);
-          if (result && result.authToken) {
-            clearInterval(poll);
-            let serverName = '';
-            try {
-              const resources = await PlexAPI.getResources(result.authToken);
-              const server = resources?.find(r => r.provides === 'server');
-              if (server) {
-                serverName = server.name || '';
-                Services.plex.connect(serverName, result.authToken);
-              } else {
-                Services.plex.connect('', result.authToken);
-              }
-            } catch (_) {
-              Services.plex.connect('', result.authToken);
-            }
-            this.state.connected = true;
-            this.state.server = serverName;
-            UI.toast('Plex connected!', 'success');
-            this.draw(document.getElementById('page-content'));
-          } else if (attempts >= 60) {
-            clearInterval(poll);
-            UI.toast('Authentication timed out', 'error');
-            btn.disabled = false; btn.textContent = 'Connect Plex Account';
-          }
-        } catch (_) {
-          if (attempts >= 60) { clearInterval(poll); btn.disabled = false; btn.textContent = 'Connect Plex Account'; }
+
+      // Store PIN so we can resume after a redirect (mobile) or page reload
+      localStorage.setItem('plex_pending_pin', JSON.stringify({ id: pin.id }));
+
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+      if (isMobile) {
+        // Mobile: redirect the current tab; resume polling when user returns
+        UI.toast('You\'ll be redirected to Plex. Return here after signing in.', 'info');
+        setTimeout(() => { window.location.href = authUrl; }, 800);
+      } else {
+        // Desktop: open popup and poll
+        const popup = window.open(authUrl, '_blank', 'width=800,height=600');
+        if (!popup) {
+          // Popup blocked — fall back to redirect
+          UI.toast('Popup blocked. Redirecting to Plex…', 'info');
+          setTimeout(() => { window.location.href = authUrl; }, 800);
+          return;
         }
-      }, 2000);
+        UI.toast('Complete sign-in in the new tab, then come back', 'info');
+        if (btn) btn.textContent = 'Waiting for auth…';
+        this._pollPin(pin.id, false);
+      }
     } catch (e) {
       UI.toast('Failed to start Plex auth', 'error');
-      btn.disabled = false; btn.textContent = 'Connect Plex Account';
+      if (btn) { btn.disabled = false; btn.textContent = 'Connect Plex Account'; }
     }
+  },
+
+  // Shared polling logic (resumable = true when called after mobile redirect return)
+  async _pollPin(pinId, resumable) {
+    const btn = document.getElementById('plex-connect-btn');
+    if (btn && !resumable) { btn.textContent = 'Waiting for auth…'; }
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const result = await PlexAPI.checkPin(pinId);
+        if (result && result.authToken) {
+          clearInterval(poll);
+          localStorage.removeItem('plex_pending_pin');
+          let serverName = '';
+          try {
+            const resources = await PlexAPI.getResources(result.authToken);
+            const server = resources?.find(r => r.provides === 'server');
+            if (server) { serverName = server.name || ''; Services.plex.connect(serverName, result.authToken); }
+            else { Services.plex.connect('', result.authToken); }
+          } catch (_) { Services.plex.connect('', result.authToken); }
+          this.state.connected = true;
+          this.state.server = serverName;
+          UI.toast('Plex connected!', 'success');
+          this.draw(document.getElementById('page-content'));
+        } else if (attempts >= 90) { // 3 minutes
+          clearInterval(poll);
+          localStorage.removeItem('plex_pending_pin');
+          UI.toast('Authentication timed out. Please try again.', 'error');
+          if (btn) { btn.disabled = false; btn.textContent = 'Connect Plex Account'; }
+        }
+      } catch (_) {
+        if (attempts >= 90) {
+          clearInterval(poll);
+          localStorage.removeItem('plex_pending_pin');
+          if (btn) { btn.disabled = false; btn.textContent = 'Connect Plex Account'; }
+        }
+      }
+    }, 2000);
   },
 
   // Paginated fetch: gets ALL items from a Plex section endpoint
