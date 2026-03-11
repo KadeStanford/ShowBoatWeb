@@ -61,10 +61,9 @@ const HomePage = {
 
   draw(el) {
     const s = this.state;
-    const heroItem = s.featured[s.current] || {};
     el.innerHTML = `
       <div class="home-page">
-        ${this.renderHero(heroItem)}
+        ${this.renderHero()}
         ${this.renderMenuGrid()}
         ${s.shames.length ? this.renderShameSection() : ''}
         ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll"><p class="empty-text">Loading...</p></div></div>`}
@@ -79,27 +78,37 @@ const HomePage = {
       </div>`;
   },
 
-  renderHero(item) {
-    if (!item.id) return '';
-    const bg = item.backdrop_path ? API.imageUrl(item.backdrop_path, 'original') : '';
-    const title = item.name || item.title || '';
-    const year = (item.first_air_date || item.release_date || '').substring(0, 4);
-    const overview = (item.overview || '').substring(0, 120);
-    const dots = this.state.featured.map((_, i) => `<span class="carousel-dot ${i === this.state.current ? 'active' : ''}" onclick="HomePage.goToSlide(${i})"></span>`).join('');
-    return `<div class="hero" onclick="App.navigate('details',{id:${item.id},type:'${item.media_type}'})" style="background-image:url('${bg}')">
+  renderHero() {
+    const s = this.state;
+    if (!s.featured.length) return '';
+    const slides = s.featured.map((item, i) => {
+      const bg = item.backdrop_path ? API.imageUrl(item.backdrop_path, 'original') : '';
+      const title = item.name || item.title || '';
+      const year = (item.first_air_date || item.release_date || '').substring(0, 4);
+      const overview = (item.overview || '').substring(0, 120);
+      return `<div class="hero-slide ${i === s.current ? 'active' : ''}" data-slide="${i}" style="background-image:url('${bg}')">
+        <div class="hero-slide-content">
+          <div id="hero-logo-${i}" class="hero-logo-container">
+            ${item.logoUrl ? `<img src="${UI.escapeHtml(item.logoUrl)}" alt="" class="hero-logo-img">` : `<h2 class="hero-title">${UI.escapeHtml(title)}</h2>`}
+          </div>
+          <div class="hero-meta">
+            <span class="hero-type">${item.media_type === 'tv' ? 'TV Show' : 'Movie'}</span>
+            ${year ? `<span class="hero-year">${year}</span>` : ''}
+            ${item.vote_average ? `<span class="hero-rating">${UI.icon('star', 14)} ${item.vote_average.toFixed(1)}</span>` : ''}
+          </div>
+          ${overview ? `<p class="hero-overview">${UI.escapeHtml(overview)}...</p>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    const dots = s.featured.map((_, i) => `<span class="carousel-dot ${i === s.current ? 'active' : ''}" onclick="event.stopPropagation(); HomePage.goToSlide(${i})"></span>`).join('');
+    return `<div class="hero-carousel" onclick="HomePage.onHeroClick()">
       <button class="hero-profile-btn" onclick="event.stopPropagation(); App.navigate('profile')">${UI.icon('user', 22)}</button>
-      <div class="hero-content">
-        <div id="hero-logo-${this.state.current}" class="hero-logo-container">
-          ${item.logoUrl ? `<img src="${UI.escapeHtml(item.logoUrl)}" alt="" class="hero-logo-img">` : `<h2 class="hero-title">${UI.escapeHtml(title)}</h2>`}
-        </div>
-        <div class="hero-meta">
-          <span class="hero-type">${item.media_type === 'tv' ? 'TV Show' : 'Movie'}</span>
-          ${year ? `<span class="hero-year">${year}</span>` : ''}
-          ${item.vote_average ? `<span class="hero-rating">${UI.icon('star', 14)} ${item.vote_average.toFixed(1)}</span>` : ''}
-        </div>
-        ${overview ? `<p class="hero-overview">${UI.escapeHtml(overview)}...</p>` : ''}
-        <div class="carousel-dots">${dots}</div>
+      ${slides}
+      <div class="carousel-controls">
+        <button class="carousel-arrow" onclick="event.stopPropagation(); HomePage.prevSlide()">${UI.icon('chevron-left', 24)}</button>
+        <button class="carousel-arrow" onclick="event.stopPropagation(); HomePage.nextSlide()">${UI.icon('chevron-right', 24)}</button>
       </div>
+      <div class="carousel-dots">${dots}</div>
     </div>`;
   },
 
