@@ -211,22 +211,33 @@ const AdminDash = {
       <td style="font-size:12px;color:var(--text-secondary)">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
       <td style="text-align:center">${u.tickets || 0}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${(u.inviteCodes || []).length} codes</td>
-      <td><button class="btn-sm btn-approve" onclick="AdminDash.grantCode('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Give Code</button></td>
+      <td><div class="user-actions-cell">
+        <input type="number" class="code-count-input" id="code-count-${this._esc(u.id)}" value="1" min="1" max="50">
+        <button class="btn-sm btn-approve" onclick="AdminDash.grantCodes('${this._esc(u.id)}','${this._esc(u.username || u.email || '')}')">Give</button>
+      </div></td>
     </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary)">No users found.</td></tr>';
   },
 
-  async grantCode(userId, displayName) {
-    if (!confirm(`Generate and assign an invite code to ${displayName}?`)) return;
+  async grantCodes(userId, displayName) {
+    const countInput = document.getElementById('code-count-' + userId);
+    const count = Math.max(1, Math.min(50, parseInt(countInput?.value) || 1));
+    if (!confirm(`Give ${count} invite code${count > 1 ? 's' : ''} to ${displayName}?`)) return;
     try {
-      const code = this._genCode();
-      await db.collection('inviteCodes').doc(code).set({
-        code, createdBy: 'admin-grant', usedBy: null, usedAt: null, active: true, createdAt: Date.now(), grantedTo: userId
-      });
-      // Add the code to the user's inviteCodes array
+      const batch = db.batch();
+      const codes = [];
+      for (let i = 0; i < count; i++) {
+        const code = this._genCode();
+        codes.push(code);
+        batch.set(db.collection('inviteCodes').doc(code), {
+          code, createdBy: 'admin-grant', usedBy: null, usedAt: null, active: true, createdAt: Date.now(), grantedTo: userId
+        });
+      }
+      await batch.commit();
+      // Add all codes to the user's inviteCodes array
       await db.collection('users').doc(userId).update({
-        inviteCodes: firebase.firestore.FieldValue.arrayUnion(code)
+        inviteCodes: firebase.firestore.FieldValue.arrayUnion(...codes)
       });
-      alert(`Code ${code} assigned to ${displayName}`);
+      alert(`${count} code${count > 1 ? 's' : ''} assigned to ${displayName}:\n${codes.join('\n')}`);
       await this.loadUsers();
       await this.loadCodes();
     } catch (e) { alert('Error: ' + e.message); }
