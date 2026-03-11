@@ -45,8 +45,9 @@ const MatcherSetupPage = {
 
   setType(type) {
     this.state.type = type;
-    document.querySelectorAll('.matcher-type-btn').forEach(b => {
-      b.classList.toggle('active', b.querySelector('span')?.textContent?.toLowerCase().startsWith(type === 'movie' ? 'movie' : 'tv'));
+    document.querySelectorAll('.filter-tab').forEach(b => {
+      const label = b.textContent.trim().toLowerCase();
+      b.classList.toggle('active', (type === 'movie' && label === 'movies') || (type === 'tv' && label === 'tv shows'));
     });
   },
 

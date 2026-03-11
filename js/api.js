@@ -18,12 +18,16 @@ const API = {
   },
 
   // --- Search (return raw TMDB results) ---
-  async searchShows(query, page = 1) {
-    const data = await this.tmdb('/search/tv', { query, page });
+  async searchShows(query, page = 1, year = null) {
+    const params = { query, page };
+    if (year) params.first_air_date_year = year;
+    const data = await this.tmdb('/search/tv', params);
     return data?.results || [];
   },
-  async searchMovies(query, page = 1) {
-    const data = await this.tmdb('/search/movie', { query, page });
+  async searchMovies(query, page = 1, year = null) {
+    const params = { query, page };
+    if (year) params.year = year;
+    const data = await this.tmdb('/search/movie', params);
     return data?.results || [];
   },
   async searchPeople(query, page = 1) {

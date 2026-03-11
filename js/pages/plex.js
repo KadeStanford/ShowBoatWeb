@@ -362,27 +362,30 @@ const PlexConnectPage = {
     else if (rTitle.startsWith(sTitle) || sTitle.startsWith(rTitle)) score += 60;
     else if (rTitle.includes(sTitle) || sTitle.includes(rTitle)) score += 30;
 
-    // Year match
+    // Year match (heavily weighted for disambiguation)
+    const rYear = parseInt((result.first_air_date || result.release_date || '').substring(0, 4));
     if (year) {
-      const rYear = parseInt((result.first_air_date || result.release_date || '').substring(0, 4));
-      if (rYear === year) score += 80;
-      else if (Math.abs(rYear - year) === 1) score += 25; // off-by-one common for Jan air dates
-      else if (rYear > 0) score -= 20; // wrong year penalises
+      if (rYear === year) score += 100;
+      else if (Math.abs(rYear - year) === 1) score += 30;
+      else if (rYear > 0) score -= 40; // wrong year penalises more heavily
     }
 
     // Region / origin country match
     if (region) {
-      // Map common Plex region codes to ISO 3166-1 alpha-2
       const regionToCountry = { US: 'US', UK: 'GB', GB: 'GB', AU: 'AU', CA: 'CA', NZ: 'NZ', IE: 'IE', IN: 'IN', ZA: 'ZA', SG: 'SG', HK: 'HK', TW: 'TW', JP: 'JP', KR: 'KR', FR: 'FR', DE: 'DE', ES: 'ES', IT: 'IT', MX: 'MX', BR: 'BR', PT: 'PT', NL: 'NL', SE: 'SE', NO: 'NO', DK: 'DK', FI: 'FI', PL: 'PL' };
       const regionToLang = { US: 'en', UK: 'en', GB: 'en', AU: 'en', CA: 'en', NZ: 'en', JP: 'ja', KR: 'ko', FR: 'fr', DE: 'de', ES: 'es', IT: 'it', PT: 'pt', NL: 'nl', SE: 'sv', NO: 'no', DK: 'da', FI: 'fi', PL: 'pl', BR: 'pt', MX: 'es', AR: 'es' };
       const iso = regionToCountry[region];
       const lang = regionToLang[region];
-      if (iso && result.origin_country?.includes(iso)) score += 50;
+      if (iso && result.origin_country?.includes(iso)) score += 70;
+      else if (iso && result.origin_country?.length && !result.origin_country.includes(iso)) score -= 30;
       if (lang && result.original_language === lang) score += 15;
     }
 
+    // Popularity tiebreaker for identical-title results
+    if (result.popularity) score += Math.min(result.popularity * 0.05, 5);
+
     // Prefer results that have a poster
-    if (result.poster_path) score += 5;
+    if (result.poster_path) score += 3;
 
     return score;
   },
@@ -397,7 +400,17 @@ const PlexConnectPage = {
 
     try {
       const searchFn = item.type === 'movie' ? API.searchMovies : API.searchShows;
-      let results = await searchFn.call(API, cleanTitle, 1);
+
+      // First search with year to narrow results for same-name shows
+      let results = searchYear ? await searchFn.call(API, cleanTitle, 1, searchYear) : [];
+
+      // Also search without year to catch results with off-by-one year differences
+      const broadResults = await searchFn.call(API, cleanTitle, 1);
+      // Merge, deduplicating by ID
+      const seen = new Set(results.map(r => r.id));
+      for (const r of (broadResults || [])) {
+        if (!seen.has(r.id)) { results.push(r); seen.add(r.id); }
+      }
 
       if ((!results || !results.length) && cleanTitle !== item.title.trim()) {
         results = await searchFn.call(API, item.title.trim(), 1);
@@ -409,9 +422,9 @@ const PlexConnectPage = {
         .map(r => ({ r, score: this._scoreTmdbMatch(r, cleanTitle, searchYear, region) }))
         .sort((a, b) => b.score - a.score);
 
-      // For TV shows: validate the top few candidates via episode title matching
+      // For TV shows: validate the top candidates via episode title matching
       if (item.type === 'show') {
-        const candidates = scored.slice(0, 3);
+        const candidates = scored.slice(0, 5);
         const validated = await this._validateTvMatch(item, candidates.map(c => c.r));
         if (validated) {
           return {
