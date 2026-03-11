@@ -3071,8 +3071,31 @@ input[type="range"]::-moz-range-track {
 .fp-list-date { font-size: 11px; color: var(--text-secondary); flex-shrink: 0; }
 .fp-both-watched { position: relative; }
 .fp-both-badge { position: absolute; top: 2px; right: 2px; background: var(--accent); color: #000; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 4px; }
+.fp-plex-badge { display: inline-flex; align-items: center; gap: 3px; background: rgba(229,160,13,.12); color: #E5A00D; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
 .fp-type-tag { display: inline-block; background: var(--surface-2); color: var(--text-secondary); font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-top: 2px; }
 .fp-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* Plex tab on friend profile */
+.fp-plex-now-playing { margin-bottom: 16px; }
+.fp-plex-sessions { display: flex; flex-direction: column; gap: 8px; }
+.fp-plex-session { background: rgba(229,160,13,.06); border: 1px solid rgba(229,160,13,.15); border-radius: var(--radius-md); padding: 10px 12px; }
+.fp-plex-session-info { display: flex; align-items: flex-start; gap: 8px; }
+.fp-plex-session-state { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(229,160,13,.15); color: #E5A00D; }
+.fp-plex-session-state.paused { background: rgba(148,163,184,.15); color: var(--slate-400); }
+.fp-plex-session-title { font-size: 13px; font-weight: 600; color: var(--slate-200); margin: 0; }
+.fp-plex-session-sub { font-size: 11px; color: var(--slate-400); margin: 2px 0 0; }
+.fp-plex-session-user { font-size: 10px; color: var(--slate-500); margin: 2px 0 0; }
+.fp-plex-session-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 8px; overflow: hidden; }
+.fp-plex-session-fill { height: 100%; border-radius: 2px; background: #E5A00D; transition: width .3s; }
+/* Plex now-playing inside activity tab */
+.fp-act-plex-live { background: rgba(229,160,13,.06); border: 1px solid rgba(229,160,13,.18); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; }
+.fp-act-plex-header { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #E5A00D; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .4px; }
+.fp-act-plex-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.fp-act-plex-row + .fp-act-plex-row { border-top: 1px solid rgba(255,255,255,.04); }
+.fp-act-plex-info { flex: 1; min-width: 0; }
+.fp-act-plex-title { font-size: 13px; font-weight: 600; color: var(--slate-200); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-act-plex-ep { font-weight: 400; color: var(--slate-400); font-size: 11px; }
+.fp-act-plex-sub { font-size: 11px; color: var(--slate-400); margin: 1px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fp-report-btn { color: var(--text-muted); border-color: rgba(239,68,68,.15); }
 .fp-report-btn:hover { color: #ef4444; border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.06); }
 .fp-add-wl-btn { padding: 6px 10px; background: rgba(52,211,153,0.12); color: var(--accent); border: none; border-radius: 7px; font-size: 12px; cursor: pointer; flex-shrink: 0; }

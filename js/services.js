@@ -820,14 +820,59 @@ const Services = {
     await batch.commit();
   },
 
-  async getPlexHistory() {
-    const uid = this._uid(); if (!uid) return [];
+  async getPlexHistory(userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
     try {
       const snap = await db.collection('users').doc(uid).collection('plexHistory').orderBy('lastViewedAt', 'desc').get();
       if (snap.docs.length) return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     } catch (_) {}
     const snap = await db.collection('users').doc(uid).collection('plexHistory').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+  },
+
+  async getPlexLibraryIds(userId) {
+    const uid = userId || this._uid(); if (!uid) return new Set();
+    const snap = await db.collection('users').doc(uid).collection('plexHistory').get();
+    const ids = new Set();
+    snap.docs.forEach(d => { const t = d.data().tmdbId; if (t) ids.add(Number(t)); });
+    return ids;
+  },
+
+  async savePlexNowPlaying(sessions) {
+    const uid = this._uid(); if (!uid) return;
+    const sanitized = sessions.map(s => ({
+      title: s.grandparentTitle || s.parentTitle || s.title || '',
+      episodeLabel: s.type === 'episode' ? `S${s.parentIndex || '?'}E${s.index || '?'}` : '',
+      episodeTitle: s.type === 'episode' ? (s.title || '') : '',
+      year: s.year || '',
+      type: s.type || '',
+      state: s.Player?.state || 'playing',
+      user: s.User?.title || '',
+      progress: s.duration ? Math.min(100, ((s.viewOffset || 0) / s.duration) * 100) : 0,
+      updatedAt: Date.now()
+    }));
+    await db.collection('users').doc(uid).set(
+      { plexNowPlaying: sanitized, plexNowPlayingAt: Date.now() },
+      { merge: true }
+    );
+  },
+
+  async clearPlexNowPlaying() {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(uid).set(
+      { plexNowPlaying: [], plexNowPlayingAt: Date.now() },
+      { merge: true }
+    );
+  },
+
+  async getPlexNowPlaying(userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
+    const snap = await db.collection('users').doc(uid).get();
+    const data = snap.data();
+    if (!data?.plexNowPlaying?.length) return [];
+    // Stale after 2 minutes
+    if (data.plexNowPlayingAt && Date.now() - data.plexNowPlayingAt > 120000) return [];
+    return data.plexNowPlaying;
   },
 
   async findInPlexHistory(tmdbId) {

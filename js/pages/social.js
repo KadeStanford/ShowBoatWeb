@@ -191,7 +191,7 @@ const FriendsPage = {
 };
 
 const FriendProfilePage = {
-  state: { id: '', name: '', photoURL: null, watchlist: [], watched: [], ratings: [], activity: [], badges: [], activeTab: 'activity', myWatchedIds: new Set() },
+  state: { id: '', name: '', photoURL: null, watchlist: [], watched: [], ratings: [], activity: [], badges: [], activeTab: 'activity', myWatchedIds: new Set(), plexHistory: [], plexNowPlaying: [], plexLibraryIds: new Set() },
 
   async render(params) {
     this.state.id = params.id;
@@ -203,15 +203,20 @@ const FriendProfilePage = {
     try {
       const uid = this.state.id;
       const myUid = auth.currentUser?.uid;
-      const [wl, w, r, profile, myW, actResult] = await Promise.all([
+      const [wl, w, r, profile, myW, actResult, plexH, plexNP] = await Promise.all([
         Services.getWatchlist(uid), Services.getWatched(uid), Services.getRatings(uid),
         Services.getUserProfile(uid).catch(() => null),
         myUid ? Services.getWatched(myUid).catch(() => []) : Promise.resolve([]),
-        Services.getActivityFeed([uid], {}, 30).catch(() => ({ items: [] }))
+        Services.getActivityFeed([uid], {}, 30).catch(() => ({ items: [] })),
+        Services.getPlexHistory(uid).catch(() => []),
+        Services.getPlexNowPlaying(uid).catch(() => [])
       ]);
       this.state.watchlist = wl;
       this.state.watched = w;
       this.state.ratings = r;
+      this.state.plexHistory = plexH;
+      this.state.plexNowPlaying = plexNP;
+      this.state.plexLibraryIds = new Set(plexH.filter(p => p.tmdbId).map(p => Number(p.tmdbId)));
       this.state.photoURL = profile?.photoURL || null;
       if (profile?.username) this.state.name = profile.username;
       this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
@@ -243,7 +248,8 @@ const FriendProfilePage = {
       { key: 'activity', label: UI.icon('activity', 15) + ' Activity' },
       { key: 'watched',  label: UI.icon('eye', 15) + ' Watched' },
       { key: 'ratings',  label: UI.icon('star', 15) + ' Rated' },
-      { key: 'watchlist',label: UI.icon('bookmark', 15) + ' Watchlist' }
+      { key: 'watchlist',label: UI.icon('bookmark', 15) + ' Watchlist' },
+      ...(this.state.plexHistory.length || this.state.plexNowPlaying.length ? [{ key: 'plex', label: UI.icon('monitor', 15) + ' Plex' }] : [])
     ];
 
     const movies = watched.filter(x => x.mediaType === 'movie').length;
@@ -317,8 +323,23 @@ const FriendProfilePage = {
     const { watched, watchlist, ratings, activity, id, name, myWatchedIds } = this.state;
 
     if (tab === 'activity') {
-      if (!activity.length) { el.innerHTML = `<div class="fp-empty">${UI.icon('activity', 28)}<p>No recent activity</p></div>`; return; }
-      el.innerHTML = `<div class="fp-activity-list">${activity.slice(0, 20).map(a => {
+      const np = this.state.plexNowPlaying;
+      const npHtml = np.length ? `<div class="fp-act-plex-live">
+        <div class="fp-act-plex-header">${UI.icon('play-circle', 14)} <span>Now Playing on Plex</span></div>
+        ${np.map(s => {
+          const stateIcon = s.state === 'paused' ? UI.icon('pause', 10) : UI.icon('play', 10);
+          return `<div class="fp-act-plex-row">
+            <span class="fp-plex-session-state ${s.state || ''}">${stateIcon}</span>
+            <div class="fp-act-plex-info">
+              <p class="fp-act-plex-title">${UI.escapeHtml(s.title)}${s.episodeLabel ? ` <span class="fp-act-plex-ep">${UI.escapeHtml(s.episodeLabel)}</span>` : ''}</p>
+              ${s.episodeTitle ? `<p class="fp-act-plex-sub">${UI.escapeHtml(s.episodeTitle)}</p>` : ''}
+            </div>
+            <div class="fp-plex-session-bar" style="width:60px"><div class="fp-plex-session-fill" style="width:${(s.progress || 0).toFixed(1)}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+      if (!activity.length && !np.length) { el.innerHTML = `<div class="fp-empty">${UI.icon('activity', 28)}<p>No recent activity</p></div>`; return; }
+      el.innerHTML = `${npHtml}<div class="fp-activity-list">${activity.slice(0, 20).map(a => {
         const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
         const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
         let verb = a.type === 'watched' ? 'watched' : a.type === 'watched_episode' ? `watched S${a.seasonNumber}E${a.episodeNumber}` : a.type === 'rated' ? `rated ${a.rating}/10` : a.type === 'rated_episode' ? `rated S${a.seasonNumber}E${a.episodeNumber} ${a.rating}/10` : a.type === 'added_to_watchlist' ? 'saved to watchlist' : a.type;
@@ -376,6 +397,61 @@ const FriendProfilePage = {
         </div>
         <div class="fp-media-list">${watchlist.slice(0, 15).map(i => this._renderListItem(i, myWatchedIds)).join('')}</div>`;
     }
+
+    if (tab === 'plex') {
+      const { plexNowPlaying, plexHistory } = this.state;
+      let html = '';
+      if (plexNowPlaying.length) {
+        html += `<div class="fp-plex-now-playing">
+          <div class="fp-section-label">${UI.icon('play-circle', 14)} Now Playing</div>
+          <div class="fp-plex-sessions">${plexNowPlaying.map(s => {
+            const stateIcon = s.state === 'paused' ? UI.icon('pause', 10) : UI.icon('play', 10);
+            return `<div class="fp-plex-session">
+              <div class="fp-plex-session-info">
+                <span class="fp-plex-session-state ${s.state}">${stateIcon}</span>
+                <div>
+                  <p class="fp-plex-session-title">${UI.escapeHtml(s.title)}</p>
+                  ${s.episodeLabel ? `<p class="fp-plex-session-sub">${UI.escapeHtml(s.episodeLabel)}${s.episodeTitle ? ' \u00b7 ' + UI.escapeHtml(s.episodeTitle) : ''}</p>` : ''}
+                  ${s.user ? `<p class="fp-plex-session-user">${UI.escapeHtml(s.user)}</p>` : ''}
+                </div>
+              </div>
+              <div class="fp-plex-session-bar"><div class="fp-plex-session-fill" style="width:${(s.progress || 0).toFixed(1)}%"></div></div>
+            </div>`;
+          }).join('')}</div>
+        </div>`;
+      }
+      // Deduplicate Plex history to show-level
+      const deduped = new Map();
+      plexHistory.forEach(h => {
+        const key = h.tmdbId ? `id:${h.tmdbId}` : `t:${h.title}`;
+        const existing = deduped.get(key);
+        if (!existing || (h.lastViewedAt || 0) > (existing.lastViewedAt || 0)) deduped.set(key, h);
+      });
+      const items = [...deduped.values()].sort((a, b) => (b.lastViewedAt || 0) - (a.lastViewedAt || 0));
+      if (items.length) {
+        html += `<div class="fp-section-label" style="margin-top:12px">${UI.icon('film', 14)} Plex Library (${items.length})</div>`;
+        html += `<div class="fp-media-list">${items.slice(0, 30).map(h => {
+          const poster = h.posterPath ? API.imageUrl(h.posterPath, 'w92') : '';
+          const fpType = h.type === 'movie' ? 'movie' : 'tv';
+          const tmdbId = h.tmdbId;
+          const date = h.lastViewedAt ? new Date(h.lastViewedAt * 1000) : null;
+          const dateStr = date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          return `<div class="fp-list-item" ${tmdbId ? `onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})"` : ''}>
+            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
+            <div class="fp-list-info">
+              <p class="fp-list-title">${UI.escapeHtml(h.tmdbTitle || h.title || '')}</p>
+              <div class="fp-list-meta">
+                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
+                <span class="fp-plex-badge">${UI.icon('monitor', 10)} Plex</span>
+                ${dateStr ? `<span style="color:var(--slate-400);font-size:.75rem">${dateStr}</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+      }
+      if (!html) html = `<div class="fp-empty">${UI.icon('monitor', 28)}<p>No Plex data</p></div>`;
+      el.innerHTML = html;
+    }
   },
 
   _renderListItem(i, myWatchedIds) {
@@ -384,6 +460,7 @@ const FriendProfilePage = {
     const fpType = (i.mediaType || i.type || 'tv') === 'movie' ? 'movie' : 'tv';
     const tmdbId = i.tmdbId || i.id;
     const bothWatched = myWatchedIds.has(String(tmdbId));
+    const onPlex = this.state.plexLibraryIds.has(Number(tmdbId));
     return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
       ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
       <div class="fp-list-info">
@@ -391,6 +468,7 @@ const FriendProfilePage = {
         <div class="fp-list-meta">
           <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
           ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
+          ${onPlex ? `<span class="fp-plex-badge">${UI.icon('monitor', 10)} Plex</span>` : ''}
         </div>
       </div>
     </div>`;

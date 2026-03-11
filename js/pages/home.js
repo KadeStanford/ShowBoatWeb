@@ -69,6 +69,8 @@ const HomePage = {
       const fetchedAt = Date.now();
       sessions.forEach(s => { this.state._plexFetchedAt[s.ratingKey] = fetchedAt; });
       this.state.plexSessions = sessions;
+      // Persist sanitized sessions to Firestore for friends to see
+      Services.savePlexNowPlaying(sessions).catch(() => {});
       this._patchPlexSection();
       this._startPlexHomeTick();
       // Poll every 10s while home page is active
@@ -491,5 +493,7 @@ const HomePage = {
     clearInterval(this.state._plexTimer);
     this.state._plexTimer = null;
     this.state._plexServer = null;
+    // Clear now-playing in Firestore so friends don't see stale sessions
+    if (this.state.plexSessions.length) Services.clearPlexNowPlaying().catch(() => {});
   }
 };
