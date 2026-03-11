@@ -49,7 +49,28 @@ const SharedListsPage = {
         </div>`;
       return;
     }
-    el.innerHTML = `<div class="lists-grid">${this.state.lists.map(l => this.renderListCard(l)).join('')}</div>`;
+    const uid = auth.currentUser?.uid;
+    const owned = this.state.lists.filter(l => l.createdBy === uid);
+    const shared = this.state.lists.filter(l => l.createdBy !== uid);
+
+    let html = '';
+    if (shared.length) {
+      html += `<div class="lists-shared-section">
+        <div class="lists-shared-banner">
+          <div class="lists-shared-icon">${UI.icon('users', 20)}</div>
+          <div class="lists-shared-text">
+            <strong>Shared With You</strong>
+            <span>${shared.length} list${shared.length !== 1 ? 's' : ''} from friends</span>
+          </div>
+        </div>
+        <div class="lists-grid">${shared.map(l => this.renderListCard(l)).join('')}</div>
+      </div>`;
+    }
+    if (owned.length) {
+      if (shared.length) html += `<div class="lists-section-label">${UI.icon('bookmark', 16)} Your Lists</div>`;
+      html += `<div class="lists-grid">${owned.map(l => this.renderListCard(l)).join('')}</div>`;
+    }
+    el.innerHTML = html;
   },
 
   renderListCard(l) {
