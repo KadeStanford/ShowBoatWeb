@@ -1,5 +1,4 @@
 /* ShowBoat Admin Dashboard */
-const ADMIN_EMAILS = ['admin@showboat.me']; // Add admin email addresses here
 
 const AdminDash = {
   _allCodes: [],
@@ -11,17 +10,30 @@ const AdminDash = {
   _activeTab: 'overview',
 
   init() {
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged(async user => {
       document.getElementById('loading-screen').style.display = 'none';
-      if (!user || !ADMIN_EMAILS.includes(user.email?.toLowerCase())) {
+      if (!user) {
         document.getElementById('admin-login').style.display = 'block';
         document.getElementById('admin-app').style.display = 'none';
-        if (user) { auth.signOut(); this._showLoginError('Access denied. Not an admin account.'); }
-      } else {
-        document.getElementById('admin-login').style.display = 'none';
-        document.getElementById('admin-app').style.display = 'block';
-        document.getElementById('admin-user-label').textContent = user.email;
-        this.loadAll();
+        return;
+      }
+      // Check Firestore isAdmin field instead of hardcoded email list
+      try {
+        const doc = await db.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data().isAdmin === true) {
+          document.getElementById('admin-login').style.display = 'none';
+          document.getElementById('admin-app').style.display = 'block';
+          document.getElementById('admin-user-label').textContent = user.email;
+          this.loadAll();
+        } else {
+          document.getElementById('admin-login').style.display = 'block';
+          document.getElementById('admin-app').style.display = 'none';
+          this._showLoginError('Access denied. Your account does not have admin privileges.');
+        }
+      } catch (e) {
+        document.getElementById('admin-login').style.display = 'block';
+        document.getElementById('admin-app').style.display = 'none';
+        this._showLoginError('Failed to verify admin status.');
       }
     });
   },

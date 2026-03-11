@@ -6,9 +6,9 @@ const FriendsPage = {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="friends-page">
       ${UI.pageHeader('Friends', true)}
-      <div class="search-container">
-        <div class="search-bar">
-          ${UI.icon('search', 20)}
+      <div class="friends-search-wrap">
+        <div class="friends-search-bar">
+          ${UI.icon('search', 18)}
           <input type="text" id="friend-search" placeholder="Search by username..." oninput="FriendsPage.onSearch(this.value)">
         </div>
       </div>
@@ -17,7 +17,7 @@ const FriendsPage = {
       <div id="friends-list">${UI.loading()}</div>
     </div>`;
     await this.loadFriends();
-    this.loadRecommended().catch(() => {});
+    this.loadRecommended().catch(() => {}).finally(() => this.drawRecommended());
   },
 
   async loadFriends() {
@@ -88,22 +88,22 @@ const FriendsPage = {
 
       if (!scored.length) return;
       this.state.recommended = scored;
-      this.drawRecommended();
     } catch (_) {}
   },
 
   drawRecommended() {
     const el = document.getElementById('recommended-friends');
-    if (!el || !this.state.recommended.length) return;
+    if (!el) return;
     const friendIds = new Set(this.state.friends.map(f => f.friendId || f.uid || f.docId));
+    const recs = (this.state.recommended || []).filter(c => !friendIds.has(c.uid));
+
     el.innerHTML = `
       <div class="recommended-section">
         <div class="recommended-header">
           ${UI.icon('user-check', 16)} <span>Recommended Friends</span>
-          <span class="recommended-subtitle">Based on your taste & mutual connections</span>
+          ${recs.length ? `<span class="recommended-subtitle">Based on your taste & mutual connections</span>` : ''}
         </div>
-        <div class="recommended-list">${this.state.recommended.map(c => {
-          if (friendIds.has(c.uid)) return '';
+        ${recs.length ? `<div class="recommended-list">${recs.map(c => {
           const avatarHtml = c.photoURL
             ? `<img src="${UI.escapeHtml(c.photoURL)}" class="friend-avatar friend-avatar-img" alt="">`
             : `<div class="friend-avatar">${(c.username || '?')[0].toUpperCase()}</div>`;
@@ -118,7 +118,10 @@ const FriendsPage = {
             </div>
             <button class="add-friend-btn" onclick="event.stopPropagation(); FriendsPage.addFriend('${c.uid}','${UI.escapeHtml(c.username || '')}')">${UI.icon('user-plus', 16)} Add</button>
           </div>`;
-        }).join('')}</div>
+        }).join('')}</div>` : `<div class="recommended-empty">
+          <span class="recommended-empty-icon">${UI.icon('users', 28)}</span>
+          <p>Add friends to get new friend recommendations</p>
+        </div>`}
       </div>
       <div class="friends-section-header">My Friends</div>
     `;
@@ -237,25 +240,28 @@ const FriendProfilePage = {
       : `<div class="fp-avatar-initial">${(name || '?')[0].toUpperCase()}</div>`;
 
     const tabs = [
-      { key: 'activity', label: UI.icon('activity', 14) + ' Activity' },
-      { key: 'watched',  label: UI.icon('eye', 14) + ' Watched' },
-      { key: 'ratings',  label: UI.icon('star', 14) + ' Rated' },
-      { key: 'watchlist',label: UI.icon('bookmark', 14) + ' Watchlist' }
+      { key: 'activity', label: UI.icon('activity', 15) + ' Activity' },
+      { key: 'watched',  label: UI.icon('eye', 15) + ' Watched' },
+      { key: 'ratings',  label: UI.icon('star', 15) + ' Rated' },
+      { key: 'watchlist',label: UI.icon('bookmark', 15) + ' Watchlist' }
     ];
 
+    const movies = watched.filter(x => x.mediaType === 'movie').length;
+    const shows = watched.length - movies;
+
     container.innerHTML = `
-      <div class="fp-hero">
-        <div class="fp-hero-avatar">${avatarHtml}</div>
-        <div class="fp-hero-info">
-          <h2 class="fp-name">${UI.escapeHtml(name)}</h2>
-          <div class="fp-quick-stats">
-            <span>${UI.icon('eye', 14)} ${watched.length}</span>
-            <span>${UI.icon('star', 14)} ${ratings.length}</span>
-            <span>${UI.icon('bookmark', 14)} ${watchlist.length}</span>
-          </div>
+      <div class="fp-hero-banner">
+        <div class="fp-hero-avatar-wrap">${avatarHtml}</div>
+        <h2 class="fp-name">${UI.escapeHtml(name)}</h2>
+        <div class="fp-stat-pills">
+          <div class="fp-stat-pill"><span class="fp-stat-val">${watched.length}</span><span class="fp-stat-lbl">Watched</span></div>
+          <div class="fp-stat-pill"><span class="fp-stat-val">${ratings.length}</span><span class="fp-stat-lbl">Rated</span></div>
+          <div class="fp-stat-pill"><span class="fp-stat-val">${watchlist.length}</span><span class="fp-stat-lbl">Watchlist</span></div>
+          <div class="fp-stat-pill"><span class="fp-stat-val">${movies}</span><span class="fp-stat-lbl">Movies</span></div>
+          <div class="fp-stat-pill"><span class="fp-stat-val">${shows}</span><span class="fp-stat-lbl">Shows</span></div>
         </div>
         <div class="fp-hero-actions">
-          <button class="fp-action-btn" onclick="App.navigate('friend-analytics',{id:'${id}',name:'${UI.escapeHtml(name)}'})">
+          <button class="fp-action-btn fp-action-primary" onclick="App.navigate('friend-analytics',{id:'${id}',name:'${UI.escapeHtml(name)}'})">
             ${UI.icon('bar-chart-2', 16)} Analytics
           </button>
           <button class="fp-action-btn" onclick="App.navigate('shared-actors',{friendId:'${id}',friendName:'${UI.escapeHtml(name)}'})">
@@ -272,6 +278,7 @@ const FriendProfilePage = {
 
       ${badges.length ? `
       <div class="fp-badges-section">
+        <div class="fp-section-label">${UI.icon('award', 14)} Badges</div>
         <div class="fp-badges-scroll">${badges.map(b => {
           const t = (typeof BADGE_TIERS !== 'undefined' ? BADGE_TIERS[b.tier] : null) || { color: '#d97706', bg: 'rgba(217,119,6,.1)' };
           return `<div class="fp-badge-pill" style="--badge-color:${t.color};--badge-bg:${t.bg}" title="${UI.escapeHtml(b.name + ' · ' + (b.description || ''))}">

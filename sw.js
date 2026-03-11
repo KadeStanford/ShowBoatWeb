@@ -1,4 +1,4 @@
-const CACHE_NAME = 'showboat-v25';
+const CACHE_NAME = 'showboat-v26';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -22,6 +22,8 @@ const STATIC_ASSETS = [
   '/js/pages/lists.js',
   '/js/pages/media.js',
   '/js/pages/history.js',
+  '/js/pages/settings.js',
+  '/js/tour.js',
   '/js/app.js',
   '/img/icon.svg',
   '/manifest.json'

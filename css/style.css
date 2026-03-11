@@ -1347,14 +1347,19 @@ ul, ol { list-style: none; }
    FRIENDS PAGE
    ============================================= */
 .friends-page { padding-bottom: 40px; }
-.friend-items { display: flex; flex-direction: column; gap: 2px; padding: 0 32px; }
+.friends-search-wrap { padding: 0 16px 12px; }
+.friends-search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; transition: border-color 0.15s; }
+.friends-search-bar:focus-within { border-color: var(--accent); }
+.friends-search-bar svg { color: var(--text-muted); flex-shrink: 0; }
+.friends-search-bar input { background: none; border: none; color: var(--text-primary); font-size: 14px; flex: 1; outline: none; }
+.friend-items { display: flex; flex-direction: column; gap: 6px; padding: 0 16px; }
 .friend-item {
-  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-  border-radius: var(--radius-md); background: var(--glass-bg);
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  border-radius: 14px; background: var(--glass-bg);
   border: 1px solid var(--glass-border); cursor: pointer;
   transition: all var(--transition);
 }
-.friend-item:hover { background: var(--slate-800); border-color: var(--slate-700); }
+.friend-item:hover { background: var(--slate-800); border-color: var(--slate-700); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
 .friend-avatar {
   width: 44px; height: 44px; border-radius: 50%;
   background: linear-gradient(135deg, var(--indigo-600), var(--indigo-800));
@@ -1368,7 +1373,7 @@ ul, ol { list-style: none; }
   border-radius: 50%; transition: all var(--transition);
 }
 .friend-remove-btn:hover { color: var(--rose-400); background: rgba(244,63,94,.08); }
-.search-result-items { display: flex; flex-direction: column; gap: 2px; padding: 0 32px; margin-bottom: 16px; }
+.search-result-items { display: flex; flex-direction: column; gap: 6px; padding: 0 16px; margin-bottom: 16px; }
 .add-friend-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px; border-radius: 999px;
@@ -2598,25 +2603,25 @@ img.ep-friend-av { background: var(--slate-800); }
 /* ============================================================
    FRIEND PROFILE PAGE
    ============================================================ */
-.fp-hero { display: flex; align-items: center; gap: 16px; padding: 20px 16px; background: linear-gradient(135deg, rgba(99,102,241,.1) 0%, transparent 70%); border-bottom: 1px solid var(--border-subtle); }
-.fp-hero-avatar { flex-shrink: 0; }
-.fp-avatar-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--indigo-500); }
-.fp-avatar-initial { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo-500), #a855f7); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; border: 3px solid var(--indigo-500); }
-.fp-hero-info { flex: 1; min-width: 0; }
-.fp-name { font-size: 1.375rem; font-weight: 800; color: var(--text-primary); margin: 0 0 4px; }
-.fp-quick-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.fp-stat-chip { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 5px 10px; font-size: .8125rem; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
-.fp-stat-chip strong { color: var(--text-primary); }
+.fp-hero-banner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 16px 20px; background: linear-gradient(180deg, rgba(99,102,241,.12) 0%, rgba(99,102,241,.03) 60%, transparent 100%); border-bottom: 1px solid var(--border-subtle); }
+.fp-hero-avatar-wrap { margin-bottom: 12px; }
+.fp-avatar-img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--indigo-500); box-shadow: 0 4px 24px rgba(99,102,241,.25); }
+.fp-avatar-initial { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo-500), #a855f7); display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 800; color: #fff; border: 3px solid var(--indigo-500); box-shadow: 0 4px 24px rgba(99,102,241,.25); }
+.fp-name { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0 0 12px; }
+.fp-stat-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.fp-stat-pill { display: flex; flex-direction: column; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 8px 14px; min-width: 52px; }
+.fp-stat-val { font-size: 1.125rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.fp-stat-lbl { font-size: .6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
 .fp-body { padding: 0 0 80px; }
 .fp-section { padding: 20px 16px 8px; }
-.fp-section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 0 0 14px; }
+.fp-section-label { display: flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 0 16px; margin: 0 0 10px; }
 .fp-badges-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .fp-badge-chip { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 8px 14px; cursor: default; transition: box-shadow var(--transition); }
 .fp-badge-chip:hover { box-shadow: 0 2px 12px rgba(0,0,0,.2); }
 .fp-badge-tier-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .fp-badge-emoji { font-size: 1.375rem; }
 .fp-badge-chip-name { font-size: .875rem; font-weight: 600; color: var(--text-primary); }
-.fp-activity-list { display: flex; flex-direction: column; gap: 10px; }
+.fp-activity-list { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
 .fp-act-row { display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: all var(--transition); }
 .fp-act-row:hover { border-color: rgba(99,102,241,.35); background: rgba(99,102,241,.06); }
 .fp-act-thumb { width: 40px; height: 56px; border-radius: 7px; background-size: cover; background-position: center; background-color: var(--bg-card); border: 1px solid var(--border-subtle); flex-shrink: 0; }
@@ -2715,7 +2720,7 @@ img.ep-friend-av { background: var(--slate-800); }
 /* ============================================================
    RECOMMENDED FRIENDS
    ============================================================ */
-.recommended-section { margin-bottom: 6px; }
+.recommended-section { margin-bottom: 6px; padding: 0 16px; }
 .recommended-header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); padding: 0 2px 10px; }
 .recommended-header svg { flex-shrink: 0; }
 .recommended-subtitle { color: var(--text-secondary); font-weight: 400; font-size: 12px; margin-left: 4px; }
@@ -2724,12 +2729,38 @@ img.ep-friend-av { background: var(--slate-800); }
 .friend-reason { font-size: 11px; color: var(--accent); margin-top: 2px; opacity: 0.85; }
 .add-friend-btn { display: flex; align-items: center; gap: 5px; padding: 7px 12px; background: rgba(52,211,153,0.15); color: var(--accent); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
 .add-friend-btn:hover { background: rgba(52,211,153,0.25); }
-.friends-section-header { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 2px 10px; margin-top: 4px; border-top: 1px solid var(--border); }
+.friends-section-header { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 18px 10px; margin-top: 4px; border-top: 1px solid var(--border); }
 .friend-avatar-img { object-fit: cover; border-radius: 50%; }
+.recommended-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 16px; text-align: center; }
+.recommended-empty-icon { color: var(--text-muted); opacity: .5; }
+.recommended-empty p { color: var(--text-secondary); font-size: 13px; margin: 0; }
+.recommended-list { display: flex; flex-direction: column; gap: 6px; }
 
 /* ============================================================
    PROFILE — INVITE CODES & TICKETS
    ============================================================ */
+
+/* Settings Page */
+.settings-page { padding-bottom: 40px; }
+.settings-section { margin-bottom: 24px; }
+.settings-section-title { display: flex; align-items: center; gap: 8px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 0 16px; margin-bottom: 10px; }
+.settings-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 0 16px 8px; }
+.settings-label { font-size: .875rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 4px; }
+.settings-value { font-size: .875rem; color: var(--text-secondary); margin: 0; }
+.settings-desc { font-size: .8125rem; color: var(--text-secondary); margin: 0 0 10px; }
+.settings-input-row { display: flex; gap: 8px; align-items: center; }
+.settings-input { flex: 1; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); padding: 9px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s; }
+.settings-input:focus { border-color: var(--accent); }
+.settings-save-btn { padding: 9px 18px; border-radius: 8px; background: var(--accent); color: #000; font-weight: 600; font-size: 13px; border: none; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0; }
+.settings-save-btn:hover { opacity: .85; }
+.settings-save-btn:disabled { opacity: .5; cursor: default; }
+.settings-action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.settings-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.settings-toggle-group { display: flex; gap: 6px; }
+.settings-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.settings-toggle.active { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.35); color: var(--accent); }
+.settings-toggle:hover:not(.active) { border-color: var(--text-muted); }
+
 .invite-section { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin: 16px 0; }
 .invite-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .invite-section-header > span { display: flex; align-items: center; gap: 8px; }
@@ -2781,18 +2812,20 @@ img.ep-friend-av { background: var(--slate-800); }
 .fp-badge-pill-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
 .fp-badge-pill-tier { font-size: 10px; color: var(--text-secondary); }
 .fp-badge-tier-ring { position: absolute; inset: -1px; border-radius: 999px; border: 2px solid transparent; pointer-events: none; }
-.fp-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
-.fp-action-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.fp-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.fp-action-btn { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
 .fp-action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(52,211,153,0.06); }
-.fp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-.fp-tab { background: none; border: none; color: var(--text-secondary); padding: 9px 14px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.fp-action-primary { background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.3); color: var(--indigo-400, #818cf8); }
+.fp-action-primary:hover { background: rgba(99,102,241,.2); border-color: rgba(99,102,241,.5); color: var(--indigo-300, #a5b4fc); }
+.fp-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin: 16px 0 0; padding: 0 16px; }
+.fp-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: none; border: none; color: var(--text-secondary); padding: 11px 8px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
 .fp-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.fp-section-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.fp-section-header-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; }
 .fp-section-count { font-size: 12px; color: var(--text-secondary); }
 .fp-see-all-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-weight: 600; }
-.fp-media-list { display: flex; flex-direction: column; gap: 10px; }
-.fp-list-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--surface-1); border-radius: 10px; cursor: pointer; transition: background 0.15s; }
-.fp-list-item:hover { background: var(--surface-2); }
+.fp-media-list { display: flex; flex-direction: column; gap: 6px; padding: 0 16px; }
+.fp-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-1); border: 1px solid var(--border-subtle, rgba(255,255,255,0.04)); border-radius: 12px; cursor: pointer; transition: all 0.15s; }
+.fp-list-item:hover { background: var(--surface-2); border-color: rgba(99,102,241,.2); }
 .fp-list-poster { width: 36px; height: 50px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
 .fp-list-poster-ph { width: 36px; height: 50px; border-radius: 5px; background: var(--surface-2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 .fp-list-info { flex: 1; min-width: 0; }
@@ -2802,7 +2835,9 @@ img.ep-friend-av { background: var(--slate-800); }
 .fp-both-watched { position: relative; }
 .fp-both-badge { position: absolute; top: 2px; right: 2px; background: var(--accent); color: #000; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 4px; }
 .fp-type-tag { display: inline-block; background: var(--surface-2); color: var(--text-secondary); font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-top: 2px; }
-.fp-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 20px; }
+.fp-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.fp-report-btn { color: var(--text-muted); border-color: rgba(239,68,68,.15); }
+.fp-report-btn:hover { color: #ef4444; border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.06); }
 .fp-add-wl-btn { padding: 6px 10px; background: rgba(52,211,153,0.12); color: var(--accent); border: none; border-radius: 7px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
 
 /* Full friend list / watchlist pages */
@@ -2909,6 +2944,24 @@ img.ep-friend-av { background: var(--slate-800); }
 .modal-input { display: block; width: 100%; box-sizing: border-box; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); padding: 9px 12px; border-radius: 8px; font-size: 14px; font-family: inherit; }
 .modal-input:focus { outline: none; border-color: var(--accent); }
 .bug-report-form { display: flex; flex-direction: column; }
+
+/* ============================================================
+   GUIDED TOUR
+   ============================================================ */
+.tour-overlay { position: fixed; inset: 0; z-index: 99999; }
+.tour-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.65); }
+.tour-spotlight { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.65), 0 0 0 3px rgba(99,102,241,.6); z-index: 1; pointer-events: none; transition: all .3s ease; }
+.tour-tooltip { position: fixed; z-index: 2; background: var(--surface-1, #1e293b); border: 1px solid var(--border, rgba(255,255,255,.08)); border-radius: 14px; padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.4); max-width: 320px; }
+.tour-tooltip-title { font-size: 1rem; font-weight: 700; color: var(--text-primary, #f1f5f9); margin-bottom: 6px; }
+.tour-tooltip-text { font-size: .875rem; color: var(--text-secondary, #94a3b8); line-height: 1.5; margin-bottom: 14px; }
+.tour-tooltip-footer { display: flex; align-items: center; justify-content: space-between; }
+.tour-step-counter { font-size: .75rem; color: var(--text-muted, #64748b); }
+.tour-tooltip-btns { display: flex; gap: 6px; }
+.tour-skip-btn { background: none; border: none; color: var(--text-muted, #64748b); font-size: .8125rem; cursor: pointer; padding: 6px 10px; }
+.tour-skip-btn:hover { color: var(--text-secondary); }
+.tour-prev-btn { background: var(--surface-2, #334155); border: 1px solid var(--border); color: var(--text-secondary); padding: 7px 14px; border-radius: 8px; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.tour-next-btn { background: var(--indigo-500, #6366f1); border: none; color: #fff; padding: 7px 16px; border-radius: 8px; font-size: .8125rem; font-weight: 600; cursor: pointer; transition: background .15s; }
+.tour-next-btn:hover { background: var(--indigo-600, #4f46e5); }
 
 /* ============================================================
    Friend Profile — Report button

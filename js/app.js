@@ -13,6 +13,7 @@ const App = {
     'watchlist':          { render: () => WatchlistPage.render(), auth: true, nav: true, navIdx: 2 },
     'friends':            { render: () => FriendsPage.render(), auth: true, nav: true, navIdx: 3 },
     'profile':            { render: () => ProfilePage.render(), auth: true, nav: true, navIdx: 4 },
+    'settings':           { render: () => SettingsPage.render(), auth: true, nav: true },
     'details':            { render: (p) => DetailsPage.render(p), auth: true, nav: true },
     'activity':           { render: () => ActivityPage.render(), auth: true, nav: true },
     'wall-of-shame':      { render: () => WallOfShamePage.render(), auth: true, nav: true },
@@ -50,6 +51,8 @@ const App = {
         Services.ensurePlexActivityBackfill().catch(() => {});
         // Check for newly earned badges and show unlock notifications
         setTimeout(() => checkAndNotifyNewBadges().catch(() => {}), 3000);
+        // Auto-start guided tour for new users
+        setTimeout(() => { if (typeof GuidedTour !== 'undefined' && GuidedTour.shouldAutoStart()) GuidedTour.start(); }, 1500);
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);
