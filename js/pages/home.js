@@ -63,6 +63,8 @@ const HomePage = {
       }
       if (!this.state._plexServer) return;
       const data = await PlexAPI.serverFetch(token, this.state._plexServer, '/status/sessions');
+      // Store the working server URL for thumbnails
+      if (PlexAPI._lastWorkingUri) this.state._plexServerBase = PlexAPI._lastWorkingUri;
       const sessions = data?.MediaContainer?.Metadata || [];
       const fetchedAt = Date.now();
       sessions.forEach(s => { this.state._plexFetchedAt[s.ratingKey] = fetchedAt; });
@@ -108,8 +110,9 @@ const HomePage = {
     const episodeLabel = isEpisode ? `S${s.parentIndex || '?'}E${s.index || '?'}` : (s.year || '');
     const episodeTitle = isEpisode ? (s.title || '') : '';
     const thumb = s.grandparentThumb || s.thumb || '';
-    const thumbUrl = thumb
-      ? `${Services.plex.serverUrl}/photo/:/transcode?width=96&height=144&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
+    const baseUrl = this.state._plexServerBase || Services.plex.serverUrl || '';
+    const thumbUrl = (thumb && baseUrl)
+      ? `${baseUrl}/photo/:/transcode?width=96&height=144&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
       : '';
     const viewOffset = s.viewOffset || 0;
     const duration = s.duration || 1;

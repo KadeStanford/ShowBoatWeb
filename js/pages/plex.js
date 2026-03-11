@@ -1002,13 +1002,21 @@ const PlexNowPlayingPage = {
         ${stillUrl ? `<img class="np-still" src="${UI.escapeHtml(stillUrl)}" alt="">` : ''}
         ${overview ? `<p class="np-overview">${UI.escapeHtml(overview.substring(0, 220))}${overview.length > 220 ? '…' : ''}</p>` : ''}
         ${facts.length ? `<div class="np-fact-grid">${facts.join('')}</div>` : ''}
-        ${cast.length ? `<div class="np-cast-row">${cast.map(c => {
-          const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w92') : '';
+        ${cast.length ? `<div class="np-cast-section">
+          <p class="np-cast-label">${UI.icon('users', 12)} Cast</p>
+          <div class="np-cast-row">${cast.map(c => {
+          const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w185') : '';
+          const charName = c.character || '';
           return `<div class="np-cast-chip" onclick="event.stopPropagation();App.navigate('actor-details',{id:${c.id}})">
-            ${photo ? `<img src="${photo}" alt="">` : `<div class="np-cast-ph">${(c.name||'?')[0]}</div>`}
-            <span>${UI.escapeHtml((c.name||'').split(' ')[0])}</span>
+            <div class="np-cast-photo">
+              ${photo ? `<img src="${photo}" alt="">` : `<div class="np-cast-ph">${(c.name||'?')[0]}</div>`}
+            </div>
+            <div class="np-cast-text">
+              <span class="np-cast-name">${UI.escapeHtml(c.name || '')}</span>
+              ${charName ? `<span class="np-cast-char">${UI.escapeHtml(charName)}</span>` : ''}
+            </div>
           </div>`;
-        }).join('')}</div>` : ''}
+        }).join('')}</div></div>` : ''}
       `;
     } catch (_) {}
   },
