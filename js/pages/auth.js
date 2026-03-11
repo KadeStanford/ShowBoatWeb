@@ -205,7 +205,7 @@ const AuthPages = {
               <label>Invite Code</label>
               <div class="input-wrapper">
                 ${UI.icon('key', 18)}
-                <input type="text" id="signup-code" placeholder="XXXX-XXXX" autocomplete="off" required style="text-transform:uppercase;letter-spacing:2px">
+                <input type="text" id="signup-code" placeholder="XXXX-XXXX" autocomplete="off" required maxlength="9" style="text-transform:uppercase;letter-spacing:2px" oninput="AuthPages.formatCode(this)">
               </div>
             </div>
             <div class="input-group">
@@ -321,5 +321,14 @@ const AuthPages = {
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     btn.innerHTML = UI.icon(show ? 'eye' : 'eye-off', 20);
+  },
+
+  formatCode(el) {
+    const cur = el.selectionStart;
+    const before = el.value.slice(0, cur).replace(/[^A-Za-z0-9]/g, '').length;
+    const raw = el.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8);
+    el.value = raw.length > 4 ? raw.slice(0, 4) + '-' + raw.slice(4) : raw;
+    const newPos = before > 4 ? before + 1 : before;
+    el.setSelectionRange(newPos, newPos);
   }
 };
