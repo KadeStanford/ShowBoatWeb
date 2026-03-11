@@ -1,4 +1,4 @@
-const CACHE_NAME = 'showboat-v24';
+const CACHE_NAME = 'showboat-v25';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
   '/js/services.js',
   '/js/badges.js',
   '/js/components.js',
+  '/js/animations.js',
   '/js/pages/auth.js',
   '/js/pages/home.js',
   '/js/pages/discover.js',
@@ -20,6 +21,7 @@ const STATIC_ASSETS = [
   '/js/pages/plex.js',
   '/js/pages/lists.js',
   '/js/pages/media.js',
+  '/js/pages/history.js',
   '/js/app.js',
   '/img/icon.svg',
   '/manifest.json'
