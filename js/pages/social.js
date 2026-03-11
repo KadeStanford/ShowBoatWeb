@@ -220,10 +220,26 @@ const FriendProfilePage = {
       this.state.photoURL = profile?.photoURL || null;
       if (profile?.username) this.state.name = profile.username;
       this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
-      this.state.activity = (actResult?.items || []).filter(a => {
+      const coreActivity = (actResult?.items || []).filter(a => {
         if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return false;
         return true;
       });
+      // Convert Plex history to activity items and merge
+      const plexActivity = plexH.map(h => ({
+        type: h.type === 'movie' ? 'watched' : (h.season != null ? 'watched_episode' : 'watched'),
+        source: 'plex',
+        mediaId: h.tmdbId || null,
+        mediaTitle: h.tmdbTitle || h.title || '',
+        mediaType: h.type === 'movie' ? 'movie' : 'tv',
+        mediaPosterPath: h.posterPath || null,
+        seasonNumber: h.season || null,
+        episodeNumber: h.episode || null,
+        createdAt: h.lastViewedAt ? h.lastViewedAt * 1000 : (h.savedAt || 0)
+      }));
+      // Deduplicate: skip plex items whose tmdbId+type already appears in core activity
+      const coreKeys = new Set(coreActivity.map(a => `${a.mediaId||a.showId}:${a.type}`));
+      const uniquePlex = plexActivity.filter(p => !coreKeys.has(`${p.mediaId}:${p.type}`));
+      this.state.activity = [...coreActivity, ...uniquePlex].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
       const friendStats = {
         watchlistCount: wl.length, watchedCount: w.length, ratingsCount: r.length, friendsCount: 0,
@@ -343,11 +359,12 @@ const FriendProfilePage = {
         const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
         const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
         let verb = a.type === 'watched' ? 'watched' : a.type === 'watched_episode' ? `watched S${a.seasonNumber}E${a.episodeNumber}` : a.type === 'rated' ? `rated ${a.rating}/10` : a.type === 'rated_episode' ? `rated S${a.seasonNumber}E${a.episodeNumber} ${a.rating}/10` : a.type === 'added_to_watchlist' ? 'saved to watchlist' : a.type;
-        return `<div class="fp-act-row" onclick="App.navigate('details',{id:${a.mediaId||a.showId},type:'${aType}'})">
+        const plexTag = a.source === 'plex' ? ' <span class="fp-act-plex-tag">Plex</span>' : '';
+        return `<div class="fp-act-row" ${a.mediaId ? `onclick="App.navigate('details',{id:${a.mediaId},type:'${aType}'})"` : ''}>
           ${poster ? `<img src="${poster}" class="fp-act-thumb" alt="">` : `<div class="fp-act-thumb fp-act-thumb-ph">${UI.icon('film', 14)}</div>`}
           <div class="fp-act-info">
             <p class="fp-act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
-            <p class="fp-act-verb">${verb}${a.createdAt ? ` · ${UI.timeAgo(a.createdAt)}` : ''}</p>
+            <p class="fp-act-verb">${verb}${plexTag}${a.createdAt ? ` · ${UI.timeAgo(a.createdAt)}` : ''}</p>
           </div>
         </div>`;
       }).join('')}</div>`;

@@ -3096,6 +3096,7 @@ input[type="range"]::-moz-range-track {
 .fp-act-plex-title { font-size: 13px; font-weight: 600; color: var(--slate-200); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fp-act-plex-ep { font-weight: 400; color: var(--slate-400); font-size: 11px; }
 .fp-act-plex-sub { font-size: 11px; color: var(--slate-400); margin: 1px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-act-plex-tag { display: inline-block; font-size: 9px; font-weight: 700; color: #1F1F1F; background: #E5A00D; padding: 1px 5px; border-radius: 3px; vertical-align: middle; margin-left: 4px; letter-spacing: .3px; }
 .fp-report-btn { color: var(--text-muted); border-color: rgba(239,68,68,.15); }
 .fp-report-btn:hover { color: #ef4444; border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.06); }
 .fp-add-wl-btn { padding: 6px 10px; background: rgba(52,211,153,0.12); color: var(--accent); border: none; border-radius: 7px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
