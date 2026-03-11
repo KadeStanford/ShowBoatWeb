@@ -621,7 +621,11 @@ const Services = {
     this._plexBackfillDone = true;
     try {
       const items = await this.getPlexHistory();
-      if (items.length) await this.backportPlexActivity(items);
+      if (items.length) {
+        await this.backportPlexActivity(items);
+        // Also sync Plex episodes into the watched collection for accuracy
+        await this.markWatchedFromPlexHistory();
+      }
     } catch (_) {}
   },
 

@@ -25,6 +25,10 @@ const WatchedHistoryPage = {
     if (!uid) return;
     const watched = await Services.getWatched(uid);
 
+    // Also load Plex history to enrich episode data
+    let plexItems = [];
+    try { plexItems = await Services.getPlexHistory(); } catch (_) {}
+
     // Group TV episodes by show
     const showMap = new Map();
     const movieMap = new Map();
@@ -66,6 +70,57 @@ const WatchedHistoryPage = {
             posterPath: doc.posterPath || null,
             episodes: [],
             latestAt: doc.watchedAt || 0,
+          });
+        }
+      }
+    }
+
+    // Enrich from Plex history — add episode data for shows that exist in showMap
+    // and merge any Plex-only shows/movies the watched collection is missing
+    const plexEpPattern = /^tv:(\d+):s(\d+):e(\d+)$/;
+    for (const item of plexItems) {
+      if (!item.tmdbId) continue;
+      const id = Number(item.tmdbId);
+      if (item.type === 'movie') {
+        if (!movieMap.has(id)) {
+          movieMap.set(id, {
+            docId: `movie:${id}`, tmdbId: id, mediaType: 'movie',
+            name: item.tmdbTitle || item.title || '',
+            posterPath: item.posterPath || null,
+            watchedAt: item.lastViewedAt ? item.lastViewedAt * 1000 : 0
+          });
+        }
+        continue;
+      }
+      if (item.type === 'show' && item.season != null && item.episode != null) {
+        if (!showMap.has(id)) {
+          showMap.set(id, {
+            tmdbId: id,
+            name: item.tmdbTitle || item.title || '',
+            posterPath: item.posterPath || null,
+            episodes: [],
+            latestAt: 0,
+          });
+        }
+        const show = showMap.get(id);
+        // Only add if this episode isn't already tracked
+        const alreadyHas = show.episodes.some(e => e.season === item.season && e.episode === item.episode);
+        if (!alreadyHas) {
+          const ts = item.lastViewedAt ? item.lastViewedAt * 1000 : 0;
+          show.episodes.push({ season: item.season, episode: item.episode, watchedAt: ts });
+          if (ts > show.latestAt) show.latestAt = ts;
+        }
+        // Update name/poster if missing
+        if (!show.name && (item.tmdbTitle || item.title)) show.name = item.tmdbTitle || item.title;
+        if (!show.posterPath && item.posterPath) show.posterPath = item.posterPath;
+      } else if (item.type === 'show') {
+        if (!showMap.has(id)) {
+          showMap.set(id, {
+            tmdbId: id,
+            name: item.tmdbTitle || item.title || '',
+            posterPath: item.posterPath || null,
+            episodes: [],
+            latestAt: item.lastViewedAt ? item.lastViewedAt * 1000 : 0,
           });
         }
       }
