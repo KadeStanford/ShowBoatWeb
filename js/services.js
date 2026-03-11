@@ -446,6 +446,12 @@ const Services = {
     });
   },
 
+  async removeMemberFromList(listId, memberUid) {
+    await db.collection('sharedLists').doc(listId).update({
+      members: firebase.firestore.FieldValue.arrayRemove(memberUid)
+    });
+  },
+
   // ==================== RECOMMENDATIONS ====================
   async sendRecommendation(friendUid, media, message = '') {
     const uid = this._uid(); if (!uid) return;

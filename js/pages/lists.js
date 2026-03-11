@@ -219,8 +219,12 @@ const SharedListDetailPage = {
           <option value="type" ${this.state.sortBy === 'type' ? 'selected' : ''}>Type</option>
         </select>
         <div class="sld-toolbar-actions">
+          ${sorted.length ? `<button class="sld-action-btn sld-fun" onclick="SharedListDetailPage.randomPick()">${UI.icon('shuffle', 16)} Pick</button>` : ''}
+          <button class="sld-action-btn" onclick="SharedListDetailPage.duplicateList()">${UI.icon('copy', 16)} Duplicate</button>
           ${isOwner ? `<button class="sld-action-btn" onclick="SharedListDetailPage.showRename()">${UI.icon('edit-2', 16)} Rename</button>` : ''}
+          ${isOwner ? `<button class="sld-action-btn" onclick="SharedListDetailPage.showMembers()">${UI.icon('users', 16)} Members</button>` : ''}
           ${isOwner ? `<button class="sld-action-btn" onclick="SharedListDetailPage.showInvite()">${UI.icon('user-plus', 16)} Invite</button>` : ''}
+          ${!isOwner ? `<button class="sld-action-btn sld-danger" onclick="SharedListDetailPage.confirmLeave()">${UI.icon('log-out', 16)} Leave</button>` : ''}
           ${isOwner ? `<button class="sld-action-btn sld-danger" onclick="SharedListDetailPage.confirmDelete()">${UI.icon('trash-2', 16)} Delete</button>` : ''}
         </div>
       </div>
@@ -245,6 +249,17 @@ const SharedListDetailPage = {
   renderItem(item) {
     const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
     const type = (item.mediaType || item.showType || 'tv') === 'show' ? 'tv' : (item.mediaType || item.showType || 'tv');
+    const uid = auth.currentUser?.uid;
+    // Attribution
+    let addedByLabel = '';
+    if (item.addedBy) {
+      if (item.addedBy === uid) {
+        addedByLabel = 'You';
+      } else {
+        const f = this.state.friends.find(fr => fr.uid === item.addedBy);
+        addedByLabel = f?.username || '';
+      }
+    }
     return `<div class="sld-card" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${type}'})">
       <div class="sld-card-poster">
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="sld-card-ph">${UI.icon('film', 28)}</div>`}
@@ -252,6 +267,7 @@ const SharedListDetailPage = {
         <span class="sld-card-type">${type === 'movie' ? 'Movie' : 'Show'}</span>
       </div>
       <p class="sld-card-title">${UI.escapeHtml(item.name || item.showName || '')}</p>
+      ${addedByLabel ? `<p class="sld-card-added-by">${UI.icon('user', 10)} ${UI.escapeHtml(addedByLabel)}</p>` : ''}
     </div>`;
   },
 
@@ -312,6 +328,108 @@ const SharedListDetailPage = {
       this.state.list = data;
       UI.toast('Friend added!', 'success');
     } catch (e) { UI.toast('Failed to add friend', 'error'); }
+  },
+
+  // ── Manage Members (owner) ──
+  showMembers() {
+    const uid = auth.currentUser?.uid;
+    const members = this.state.list?.members || [];
+    const rows = members.map(mUid => {
+      const isMe = mUid === uid;
+      const isCreator = mUid === this.state.list.createdBy;
+      const f = this.state.friends.find(fr => fr.uid === mUid);
+      const name = isMe ? 'You' : (f?.username || 'Member');
+      const initial = name.charAt(0).toUpperCase();
+      const photo = f?.photoURL;
+      const roleTag = isCreator ? '<span class="sld-member-role owner">Owner</span>' : '<span class="sld-member-role">Member</span>';
+      const removeBtn = (!isMe && !isCreator) ? `<button class="sld-member-kick" onclick="SharedListDetailPage.removeMember('${mUid}')" title="Remove">${UI.icon('x', 14)}</button>` : '';
+      return `<div class="sld-manage-row" id="sld-member-${mUid}">
+        <div class="sld-invite-avatar">
+          ${photo ? `<img src="${photo}" alt="">` : `<span>${initial}</span>`}
+        </div>
+        <span class="sld-invite-name">${UI.escapeHtml(name)}</span>
+        ${roleTag}
+        ${removeBtn}
+      </div>`;
+    }).join('');
+    UI.showModal('Manage Members', `<div class="sld-invite-modal">
+      <p class="sld-invite-desc">${members.length} member${members.length !== 1 ? 's' : ''} in this list</p>
+      <div class="sld-invite-list" id="sld-members-list">${rows}</div>
+      <div class="modal-buttons" style="margin-top:16px">
+        <button class="btn-secondary" onclick="UI.closeModal()">Done</button>
+      </div>
+    </div>`);
+  },
+
+  async removeMember(memberUid) {
+    try {
+      await Services.removeMemberFromList(this.state.id, memberUid);
+      // Update local state
+      if (this.state.list) {
+        this.state.list.members = this.state.list.members.filter(m => m !== memberUid);
+      }
+      const row = document.getElementById(`sld-member-${memberUid}`);
+      if (row) { row.style.opacity = '0'; row.style.transform = 'translateX(20px)'; setTimeout(() => row.remove(), 250); }
+      UI.toast('Member removed', 'success');
+    } catch (e) { UI.toast('Failed to remove member', 'error'); }
+  },
+
+  // ── Leave List (non-owner) ──
+  confirmLeave() {
+    UI.showModal('Leave List', `<div>
+      <p style="color:var(--text-secondary);margin-bottom:20px">You'll no longer have access to "${UI.escapeHtml(this.state.list?.name || 'this list')}". You can be re-invited later.</p>
+      <div class="modal-buttons" style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
+        <button class="btn-primary" style="background:var(--rose-600);border-color:var(--rose-600)" onclick="UI.closeModal();SharedListDetailPage.leaveList()">Leave</button>
+      </div>
+    </div>`);
+  },
+
+  async leaveList() {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      await Services.removeMemberFromList(this.state.id, uid);
+      UI.toast('You left the list', 'success');
+      App.navigate('shared-lists');
+    } catch (e) { UI.toast('Failed to leave list', 'error'); }
+  },
+
+  // ── Random Pick ──
+  randomPick() {
+    const items = this.state.items;
+    if (!items.length) return;
+    const pick = items[Math.floor(Math.random() * items.length)];
+    const poster = (pick.posterPath || pick.showPoster) ? API.imageUrl(pick.posterPath || pick.showPoster, 'w342') : '';
+    const type = (pick.mediaType || pick.showType || 'tv') === 'show' ? 'tv' : (pick.mediaType || pick.showType || 'tv');
+    UI.showModal('Random Pick', `<div class="sld-random-modal">
+      <p class="sld-random-label">Tonight you should watch...</p>
+      <div class="sld-random-card" onclick="UI.closeModal();App.navigate('details',{id:${pick.id || pick.showId},type:'${type}'})">
+        ${poster ? `<img src="${poster}" alt="" class="sld-random-poster">` : `<div class="sld-random-poster sld-card-ph">${UI.icon('film', 40)}</div>`}
+        <div class="sld-random-info">
+          <h3>${UI.escapeHtml(pick.name || pick.showName || '')}</h3>
+          <span class="sld-card-type" style="position:static;display:inline-block">${type === 'movie' ? 'Movie' : 'Show'}</span>
+        </div>
+      </div>
+      <div class="modal-buttons" style="margin-top:16px;display:flex;gap:10px;justify-content:center">
+        <button class="btn-secondary" onclick="SharedListDetailPage.randomPick()">${UI.icon('shuffle', 16)} Pick Again</button>
+        <button class="btn-primary" onclick="UI.closeModal();App.navigate('details',{id:${pick.id || pick.showId},type:'${type}'})">View Details</button>
+      </div>
+    </div>`);
+  },
+
+  // ── Duplicate List ──
+  async duplicateList() {
+    const l = this.state.list;
+    if (!l) return;
+    try {
+      const ref = await Services.createSharedList(l.name + ' (copy)');
+      if (ref?.id && l.items?.length) {
+        await db.collection('sharedLists').doc(ref.id).update({ items: l.items });
+      }
+      UI.toast('List duplicated!', 'success');
+      if (ref?.id) App.navigate('shared-list-detail', { id: ref.id });
+    } catch (e) { UI.toast('Failed to duplicate', 'error'); }
   },
 
   showRename() {
