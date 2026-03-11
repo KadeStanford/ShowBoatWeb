@@ -122,12 +122,14 @@ const DetailsPage = {
     const { prefix = '', interactive = true, onRate = 'DetailsPage.setRating' } = opts;
     const val = Math.round(rating || 0);
     if (interactive) {
+      const clearFn = onRate === 'DetailsPage.setRating' ? 'DetailsPage.clearRating()' : `DetailsPage.clearEpisodeRating()`;
       const pct = val * 10;
       return `<div class="rating-slider-row" id="rating-row-${prefix}">
         <input type="range" class="rating-slider" id="slider-${prefix}" min="0" max="10" step="1" value="${val}"
           oninput="${onRate}(parseInt(this.value))"
           style="background:linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)">
         <span class="rating-number" id="rating-num-${prefix}">${val > 0 ? val : '—'}/10</span>
+        ${val > 0 ? `<button class="unrate-btn" onclick="${clearFn}" title="Clear rating">${UI.icon('x', 14)}</button>` : ''}
       </div>`;
     }
     return `<span class="rating-badge">${val}/10</span>`;
@@ -143,14 +145,41 @@ const DetailsPage = {
     if (numEl) numEl.textContent = `${rating > 0 ? rating : '—'}/10`;
     const slider = document.getElementById('slider-');
     if (slider) { const pct = rating * 10; slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`; }
+    // Update clear button visibility
+    const row = document.getElementById('rating-row-');
+    if (row) { let btn = row.querySelector('.unrate-btn'); if (rating > 0 && !btn) { btn = document.createElement('button'); btn.className = 'unrate-btn'; btn.title = 'Clear rating'; btn.innerHTML = UI.icon('x', 14); btn.onclick = () => DetailsPage.clearRating(); row.appendChild(btn); } else if (rating === 0 && btn) btn.remove(); }
     // Debounce: only save after user stops sliding for 600ms
     clearTimeout(this._ratingDebounceTimer);
     this._ratingDebounceTimer = setTimeout(async () => {
+      if (rating === 0) { await this.clearRating(); return; }
       const d = this.state.details;
       const review = document.getElementById('overall-review')?.value || this._pendingReview || '';
       await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type, review });
       UI.toast(`Rated ${rating}/10`, 'success');
     }, 600);
+  },
+
+  async clearRating() {
+    clearTimeout(this._ratingDebounceTimer);
+    this.state.rating = 0;
+    const numEl = document.getElementById('rating-num-');
+    if (numEl) numEl.textContent = '—/10';
+    const slider = document.getElementById('slider-');
+    if (slider) { slider.value = 0; slider.style.background = `linear-gradient(to right, var(--accent) 0%, rgba(255,255,255,0.1) 0%)`; }
+    const row = document.getElementById('rating-row-');
+    if (row) { const btn = row.querySelector('.unrate-btn'); if (btn) btn.remove(); }
+    await Services.removeRating(this.state.id);
+    UI.toast('Rating cleared', 'success');
+  },
+
+  async clearEpisodeRating() {
+    this._epRating = 0;
+    const numEl = document.getElementById('rating-num-ep');
+    if (numEl) numEl.textContent = '—/10';
+    const slider = document.getElementById('slider-ep');
+    if (slider) { slider.value = 0; slider.style.background = `linear-gradient(to right, var(--accent) 0%, rgba(255,255,255,0.1) 0%)`; }
+    const row = document.getElementById('rating-row-ep');
+    if (row) { const btn = row.querySelector('.unrate-btn'); if (btn) btn.remove(); }
   },
 
   async saveOverallReview() {
@@ -359,6 +388,11 @@ const DetailsPage = {
   async saveEpisodeRating() {
     const ep = this.state.episodes[this._epIdx];
     if (!ep) return;
+    if (!this._epRating || this._epRating === 0) {
+      await Services.removeEpisodeRating(this.state.id, ep.season_number, ep.episode_number);
+      UI.toast('Episode rating cleared', 'success');
+      return;
+    }
     const comment = (document.getElementById('ep-comment')?.value || '').trim();
     const d = this.state.details;
     await Services.rateEpisode(this.state.id, ep.season_number, ep.episode_number, this._epRating, comment, {

@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own data and subcollections
+    // Users can read/write their own data and all subcollections
     match /users/{userId}/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
@@ -9,6 +9,18 @@ service cloud.firestore {
     // Any authenticated user can read other user profiles (for friend search)
     match /users/{userId} {
       allow read: if request.auth != null;
+    }
+    // Mutual friends: either party can add/remove the friendship record
+    // (addFriend writes to both users' /friends/ subcollections)
+    match /users/{userId}/friends/{friendId} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.uid == friendId);
+    }
+    // Shames: the shamer can write to the shamed user's subcollection
+    match /users/{userId}/shames/{shameId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null;
     }
     // Shared resources accessible to all authenticated users
     match /shames/{shameId} {

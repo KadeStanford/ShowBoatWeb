@@ -19,10 +19,19 @@ const ProfilePage = {
     const s = this.state.stats || {};
     const username = p.username || auth.currentUser?.displayName || 'User';
     const initial = username[0].toUpperCase();
+    const photoURL = p.photoURL || auth.currentUser?.photoURL || '';
+
+    const avatarHtml = photoURL
+      ? `<img src="${UI.escapeHtml(photoURL)}" class="profile-avatar-lg profile-avatar-img" id="profile-avatar-img" alt="">`
+      : `<div class="profile-avatar-lg" id="profile-avatar-initial">${initial}</div>`;
 
     el.innerHTML = `<div class="profile-page">
       <div class="profile-header">
-        <div class="profile-avatar-lg">${initial}</div>
+        <div class="profile-avatar-wrap" onclick="ProfilePage.triggerPhotoUpload()" title="Change photo">
+          ${avatarHtml}
+          <div class="profile-avatar-edit">${UI.icon('camera', 14)}</div>
+        </div>
+        <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="ProfilePage.handlePhotoUpload(this.files[0])">
         <h2>${UI.escapeHtml(username)}</h2>
         <p class="profile-email">${UI.escapeHtml(auth.currentUser?.email || '')}</p>
         ${p.createdAt ? `<p class="profile-joined">Joined ${new Date(p.createdAt).toLocaleDateString()}</p>` : ''}
@@ -48,6 +57,27 @@ const ProfilePage = {
       </div>
       <p class="app-version">ShowBoat &middot; <a href="https://showboat.me" style="color:var(--accent)">showboat.me</a></p>
     </div>`;
+  },
+
+  triggerPhotoUpload() {
+    document.getElementById('profile-photo-input')?.click();
+  },
+
+  async handlePhotoUpload(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { UI.toast('Photo must be under 5MB', 'error'); return; }
+    UI.toast('Uploading photo...', 'info');
+    try {
+      const url = await Services.uploadProfilePhoto(file);
+      if (this.state.profile) this.state.profile.photoURL = url;
+      // Update avatar in place without full redraw
+      const wrap = document.querySelector('.profile-avatar-wrap');
+      if (wrap) {
+        const old = wrap.querySelector('.profile-avatar-lg');
+        if (old) { const img = document.createElement('img'); img.src = url; img.className = 'profile-avatar-lg profile-avatar-img'; img.id = 'profile-avatar-img'; old.replaceWith(img); }
+      }
+      UI.toast('Profile photo updated!', 'success');
+    } catch (e) { UI.toast('Upload failed: ' + e.message, 'error'); }
   },
 
   async logout() {

@@ -112,6 +112,7 @@ const Services = {
 
   async rateMedia(tmdbId, rating, meta = {}) {
     const uid = this._uid(); if (!uid) return;
+    if (!rating || rating <= 0) { await this.removeRating(tmdbId); return; }
     await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).set({
       tmdbId: Number(tmdbId), rating, ratedAt: Date.now(),
       name: meta.name || '', posterPath: meta.posterPath || null,
@@ -119,6 +120,17 @@ const Services = {
       review: meta.review || ''
     }, { merge: true });
     this._logActivity('rated', { id: tmdbId, name: meta.name, mediaType: meta.mediaType, posterPath: meta.posterPath, rating, comment: meta.review });
+  },
+
+  async removeRating(tmdbId) {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).delete().catch(() => {});
+  },
+
+  async removeEpisodeRating(tmdbId, season, episode) {
+    const uid = this._uid(); if (!uid) return;
+    const docId = `${tmdbId}_s${season}_e${episode}`;
+    await db.collection('users').doc(uid).collection('episodeRatings').doc(docId).delete().catch(() => {});
   },
 
   // ==================== EPISODE RATINGS ====================
@@ -402,6 +414,24 @@ const Services = {
     const snap = await db.collection('matcherSessions')
       .where('participants', 'array-contains', uid).orderBy('createdAt', 'desc').limit(20).get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async getAllMyEpisodeRatings() {
+    const uid = this._uid(); if (!uid) return [];
+    try {
+      const snap = await db.collection('users').doc(uid).collection('episodeRatings').get();
+      return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    } catch (_) { return []; }
+  },
+
+  async uploadProfilePhoto(file) {
+    const uid = this._uid(); if (!uid) throw new Error('Not signed in');
+    const ref = storage.ref(`profilePhotos/${uid}/avatar`);
+    const snapshot = await ref.put(file);
+    const url = await snapshot.ref.getDownloadURL();
+    await db.collection('users').doc(uid).update({ photoURL: url });
+    await auth.currentUser.updateProfile({ photoURL: url }).catch(() => {});
+    return url;
   },
 
   // ==================== ACTIVITY FEED ====================

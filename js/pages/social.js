@@ -21,6 +21,11 @@ const FriendsPage = {
   async loadFriends() {
     try {
       this.state.friends = await Services.getFriends();
+      // Enrich with current photoURL from each friend's profile
+      const profiles = await Promise.all(
+        this.state.friends.map(f => Services.getUserProfile(f.friendId || f.uid || f.docId).catch(() => null))
+      );
+      this.state.friends.forEach((f, i) => { if (profiles[i]?.photoURL) f.photoURL = profiles[i].photoURL; });
       this.drawFriends();
     } catch (e) { document.getElementById('friends-list').innerHTML = UI.emptyState('Error', e.message); }
   },
@@ -32,8 +37,11 @@ const FriendsPage = {
     el.innerHTML = `<div class="friend-items">${this.state.friends.map(f => {
       const fid = f.friendId || f.uid || f.docId;
       const fname = f.friendUsername || f.username || '';
+      const avatarHtml = f.photoURL
+        ? `<img src="${UI.escapeHtml(f.photoURL)}" class="friend-avatar friend-avatar-img" alt="">`
+        : `<div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>`;
       return `<div class="friend-item" onclick="App.navigate('friend-profile',{id:'${fid}',name:'${UI.escapeHtml(fname)}'})">
-      <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+      ${avatarHtml}
       <div class="friend-info"><p class="friend-name">${UI.escapeHtml(fname || fid)}</p></div>
       <button class="friend-remove-btn" onclick="event.stopPropagation(); FriendsPage.removeFriend('${fid}')" title="Remove">${UI.icon('user-minus', 18)}</button>
     </div>`;
@@ -86,28 +94,35 @@ const FriendsPage = {
 };
 
 const FriendProfilePage = {
-  state: { id: '', name: '', watchlist: [], watched: [], ratings: [] },
+  state: { id: '', name: '', photoURL: null, watchlist: [], watched: [], ratings: [] },
 
   async render(params) {
     this.state.id = params.id;
     this.state.name = params.name || '';
+    this.state.photoURL = null;
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
-      const [wl, w, r] = await Promise.all([
-        Services.getWatchlist(this.state.id), Services.getWatched(this.state.id), Services.getRatings(this.state.id)
+      const [wl, w, r, profile] = await Promise.all([
+        Services.getWatchlist(this.state.id), Services.getWatched(this.state.id), Services.getRatings(this.state.id),
+        Services.getUserProfile(this.state.id).catch(() => null)
       ]);
       this.state.watchlist = wl; this.state.watched = w; this.state.ratings = r;
+      this.state.photoURL = profile?.photoURL || null;
+      if (profile?.username) this.state.name = profile.username;
       this.draw(el);
     } catch (e) { el.innerHTML = UI.pageHeader(this.state.name, true) + UI.emptyState('Error', e.message); }
   },
 
   draw(el) {
-    const { name, watchlist, watched, ratings } = this.state;
+    const { name, photoURL, watchlist, watched, ratings } = this.state;
+    const avatarHtml = photoURL
+      ? `<img src="${UI.escapeHtml(photoURL)}" class="profile-avatar-lg profile-avatar-img" alt="">`
+      : `<div class="profile-avatar-lg">${(name || '?')[0].toUpperCase()}</div>`;
     el.innerHTML = `<div class="friend-profile-page">
       ${UI.pageHeader(name || 'Friend', true)}
       <div class="profile-header">
-        <div class="profile-avatar-lg">${(name || '?')[0].toUpperCase()}</div>
+        ${avatarHtml}
         <h2>${UI.escapeHtml(name)}</h2>
       </div>
       <div class="stats-grid">
@@ -169,18 +184,27 @@ const ActivityPage = {
 
   drawFeed() {
     const el = document.getElementById('feed-content');
-    if (!this.state.feed.length) { el.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here'); return; }
     const currentUid = auth.currentUser?.uid;
-    el.innerHTML = `<div class="activity-items">${this.state.feed.map(a => {
+
+    // Filter out unrated items (rating=0 is logged as unrated, shouldn't display)
+    const feed = this.state.feed.filter(a => {
+      if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return false;
+      return true;
+    });
+
+    if (!feed.length) { el.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here'); return; }
+
+    el.innerHTML = `<div class="activity-thread">${feed.map(a => {
+      const isMine = a.userId === currentUid;
       const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
       const isEpisode = a.type === 'rated_episode';
       let actionText;
       if (isEpisode) {
-        actionText = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'} — ${a.rating || '?'}/10`;
+        actionText = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'} ${a.rating}/10`;
       } else if (a.type === 'watched') {
         actionText = 'watched';
       } else if (a.type === 'rated') {
-        actionText = `rated ${a.rating || '?'}/10`;
+        actionText = `rated ${a.rating}/10`;
       } else if (a.type === 'added_to_watchlist') {
         actionText = 'added to watchlist';
       } else if (a.type === 'shame') {
@@ -188,16 +212,27 @@ const ActivityPage = {
       } else {
         actionText = a.type;
       }
-      const displayName = a.userId === currentUid ? 'You' : (a.userName || a.username || 'Someone');
+      const displayName = isMine ? 'You' : (a.userName || a.username || 'Someone');
       const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
-      return `<div class="activity-item" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
-        ${poster ? `<img src="${poster}" class="activity-poster" alt="">` : `<div class="activity-poster placeholder">${UI.icon('film', 16)}</div>`}
-        <div class="activity-info">
-          <p><strong>${UI.escapeHtml(displayName)}</strong> ${actionText}</p>
-          <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${isEpisode && a.episodeName ? ` — ${UI.escapeHtml(a.episodeName)}` : ''}</p>
-          ${a.comment ? `<p class="activity-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
-          ${a.createdAt ? `<p class="activity-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
+      const avatarHtml = isMine ? '' : (() => {
+        if (a.userPhoto) return `<img src="${UI.escapeHtml(a.userPhoto)}" class="activity-avatar" alt="">`;
+        return `<div class="activity-avatar activity-avatar-initial">${(a.userName || a.username || '?')[0].toUpperCase()}</div>`;
+      })();
+      return `<div class="activity-msg-row ${isMine ? 'mine' : 'theirs'}">
+        ${!isMine ? avatarHtml : ''}
+        <div class="activity-bubble-wrap">
+          ${!isMine ? `<span class="activity-sender">${UI.escapeHtml(displayName)}</span>` : ''}
+          <div class="activity-bubble ${isMine ? 'bubble-mine' : 'bubble-theirs'}" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
+            ${poster ? `<img src="${poster}" class="activity-bubble-poster" alt="">` : ''}
+            <div class="activity-bubble-body">
+              <p class="activity-action">${actionText}</p>
+              <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${isEpisode && a.episodeName ? `<br><span class="activity-ep-name">${UI.escapeHtml(a.episodeName)}</span>` : ''}</p>
+              ${a.comment ? `<p class="activity-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
+            </div>
+          </div>
+          ${a.createdAt ? `<span class="activity-time">${UI.timeAgo(a.createdAt)}</span>` : ''}
         </div>
+        ${isMine ? avatarHtml : ''}
       </div>`;
     }).join('')}</div>`;
   }
