@@ -103,6 +103,24 @@ const Services = {
     await ref.doc(docId).delete();
   },
 
+  async markAllEpisodesUnwatched(tmdbId) {
+    const uid = this._uid(); if (!uid) return;
+    const ref = db.collection('users').doc(uid).collection('watched');
+    const prefix = `tv:${tmdbId}:s`;
+    const snap = await ref.get();
+    const BATCH_LIMIT = 499;
+    let batch = db.batch();
+    let count = 0;
+    snap.docs.forEach(doc => {
+      if (doc.id.startsWith(prefix)) {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_LIMIT) { batch.commit(); batch = db.batch(); count = 0; }
+      }
+    });
+    if (count > 0) await batch.commit();
+  },
+
   // Batch-mark all episodes in a series as watched (uses episode_count per season, no extra API calls)
   async markAllEpisodesWatched(tmdbId, meta, seasons) {
     const uid = this._uid(); if (!uid) return;
@@ -1094,6 +1112,13 @@ const Services = {
     try {
       const snap = await db.collection('users').doc(uid).collection('watched').get();
       const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      // Collect show-level watched IDs (fully watched shows)
+      const showLevelPattern = /^tv:(\d+)$/;
+      const fullyWatched = new Set();
+      docs.forEach(doc => {
+        const m = doc.docId?.match(showLevelPattern);
+        if (m) fullyWatched.add(Number(m[1]));
+      });
       // Find episode-level docs: tv:ID:s#:e#
       const epPattern = /^tv:(\d+):s(\d+):e(\d+)$/;
       const showMap = new Map();
@@ -1101,6 +1126,7 @@ const Services = {
         const m = doc.docId?.match(epPattern);
         if (!m) return;
         const showId = Number(m[1]);
+        if (fullyWatched.has(showId)) return; // skip fully watched shows
         const s = Number(m[2]), ep = Number(m[3]);
         const existing = showMap.get(showId);
         const ts = doc.watchedAt || 0;

@@ -288,6 +288,12 @@ const DetailsPage = {
     const d = this.state.details;
     if (this.state.isWatched) {
       await Services.markUnwatched(this.state.id, this.state.type);
+      // Also remove all episode watched entries for TV shows
+      if (this.state.type === 'tv') {
+        Services.markAllEpisodesUnwatched(this.state.id).catch(() => {});
+        document.querySelectorAll('.ep-watched-btn').forEach(b => b.classList.remove('active'));
+        this.state.watchedEps = new Set();
+      }
       this.state.isWatched = false;
       UI.toast('Unmarked as watched', 'success');
     } else {
