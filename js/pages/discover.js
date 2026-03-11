@@ -10,6 +10,8 @@ const DiscoverPage = {
     seasonsMin: '', seasonsMax: '', runtimeMin: '', runtimeMax: '',
     showFilters: false,
     watchedIds: new Set(), hideWatched: false,
+    // Grid size
+    gridSize: parseInt(localStorage.getItem('disc-grid-size')) || 160,
     // Quick-add
     _sharedLists: null,
     // Scroll restore
@@ -87,6 +89,10 @@ const DiscoverPage = {
       <div class="filter-tabs">
         ${['multi', 'tv', 'movie', 'person'].map(t => `<button class="filter-tab ${this.state.tab === t ? 'active' : ''}" onclick="DiscoverPage.setTab('${t}')">${t === 'multi' ? 'All' : t === 'tv' ? 'TV Shows' : t === 'movie' ? 'Movies' : 'People'}</button>`).join('')}
         ${isFilterable ? `<button class="filter-tab filter-toggle ${this.state.showFilters ? 'active' : ''}" onclick="DiscoverPage.toggleFilters()">${UI.icon('bar-chart-2', 14)} Filters${activeCount ? ` (${activeCount})` : ''}</button>` : ''}
+      </div>
+      <div class="disc-grid-slider-row">
+        <label>${UI.icon('grid', 14)}</label>
+        <input type="range" id="disc-grid-slider" min="100" max="240" step="10" value="${this.state.gridSize}" oninput="DiscoverPage.setGridSize(this.value)">
       </div>
       <div id="genre-chips"></div>
       <div id="advanced-filters" class="${this.state.showFilters && isFilterable ? '' : 'hidden'}"></div>
@@ -452,7 +458,7 @@ const DiscoverPage = {
         filtered = results.filter(r => !this.state.watchedIds.has(String(r.id)));
       }
       const gridHtml = filtered.length
-        ? `<div class="media-grid" id="discover-grid">${filtered.map(item => this.renderCard(item)).join('')}</div><div id="discover-sentinel" style="height:1px;margin-bottom:20px"></div>`
+        ? `<div class="media-grid" id="discover-grid" style="grid-template-columns:repeat(auto-fill,minmax(${this.state.gridSize}px,1fr))">${filtered.map(item => this.renderCard(item)).join('')}</div><div id="discover-sentinel" style="height:1px;margin-bottom:20px"></div>`
         : UI.emptyState('No results', 'Try different search terms or filters');
       el.innerHTML = gridHtml;
       // Save state for scroll restoration
@@ -558,6 +564,13 @@ const DiscoverPage = {
     const input = document.getElementById('discover-search');
     if (input) input.value = '';
     this.render();
+  },
+
+  setGridSize(val) {
+    this.state.gridSize = parseInt(val);
+    localStorage.setItem('disc-grid-size', val);
+    const grid = document.getElementById('discover-grid');
+    if (grid) grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${val}px, 1fr))`;
   },
 
   toggleGenre(id) {

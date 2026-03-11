@@ -1598,7 +1598,7 @@ ul, ol { list-style: none; }
    ============================================= */
 .media-card-sm, .media-card { position: relative; }
 .activity-dot {
-  position: absolute; top: 6px; right: 6px; z-index: 3;
+  position: absolute; top: 6px; right: 40px; z-index: 3;
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--emerald-500); border: 2px solid var(--bg-primary);
   box-shadow: 0 0 6px rgba(16,185,129,.5);
@@ -2448,7 +2448,7 @@ img.ep-friend-av { background: var(--slate-800); }
   border: 1px solid rgba(255,255,255,.15);
   color: white; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity .2s, background .2s, transform .15s;
+  opacity: .65; transition: opacity .2s, background .2s, transform .15s;
 }
 .media-card:hover .disc-quick-add { opacity: 1; }
 .disc-quick-add:hover { background: var(--indigo-500); transform: scale(1.1); }
@@ -2467,6 +2467,28 @@ img.ep-friend-av { background: var(--slate-800); }
 }
 .disc-qa-opt:hover { background: var(--slate-700); color: white; }
 .disc-qa-divider { height: 1px; background: var(--slate-700); margin: 2px 8px; }
+
+/* Grid size slider */
+.disc-grid-slider-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 32px; margin: 4px 0;
+}
+.disc-grid-slider-row label {
+  color: var(--slate-400); display: flex; align-items: center;
+}
+#disc-grid-slider {
+  flex: 1; max-width: 140px; height: 4px;
+  -webkit-appearance: none; appearance: none;
+  background: var(--slate-700); border-radius: 2px; outline: none;
+}
+#disc-grid-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--indigo-500); cursor: pointer;
+}
+#disc-grid-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border: none;
+  border-radius: 50%; background: var(--indigo-500); cursor: pointer;
+}
 
 /* --- Task 6: Watched badge + filter --- */
 .watched-overlay {
@@ -3322,6 +3344,11 @@ img.ep-friend-av { background: var(--slate-800); }
    ACTOR DETAILS — filmography episode expand
    ============================================================ */
 .fi-year { color: var(--text-muted); font-size: .8125rem; margin-left: 4px; }
+.fi-type-tag {
+  display: inline-block; font-size: .625rem; font-weight: 700; letter-spacing: .3px;
+  padding: 1px 5px; border-radius: 4px; vertical-align: middle; margin-left: 6px;
+  background: rgba(99,102,241,.15); color: var(--indigo-400);
+}
 .fi-ep-row { display: flex; align-items: center; gap: 7px; margin-top: 5px; flex-wrap: wrap; }
 .fi-expand-btn {
   display: inline-flex; align-items: center; gap: 3px;
