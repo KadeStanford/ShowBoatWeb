@@ -1,324 +1,328 @@
-/* ===================================================
-   Details Page
-   Ported from src/screens/Details.tsx
-   Full genre-based theming, seasons/episodes, cast
-   =================================================== */
+/* ShowBoat — Show/Movie Details Page */
+const DetailsPage = {
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], loading: true },
 
-const DetailsPage = (() => {
-
-  /* Genre → color theme (ported from GENRE_THEMES) */
-  const GENRE_THEMES = {
-    28:    { bg: '#1a0505', accent: '#ef4444' },   // Action → Red
-    12:    { bg: '#052e16', accent: '#10b981' },   // Adventure → Emerald
-    16:    { bg: '#1e073b', accent: '#a855f7' },   // Animation → Purple
-    35:    { bg: '#1c1105', accent: '#f59e0b' },   // Comedy → Amber
-    80:    { bg: '#111827', accent: '#6b7280' },   // Crime → Gray
-    99:    { bg: '#082f49', accent: '#0ea5e9' },   // Documentary → Sky
-    18:    { bg: '#1c1105', accent: '#eab308' },   // Drama → Gold
-    10751: { bg: '#042f2e', accent: '#14b8a6' },   // Family → Teal
-    14:    { bg: '#1e073b', accent: '#a855f7' },   // Fantasy → Purple
-    36:    { bg: '#1c1208', accent: '#a16207' },   // History → Brown
-    27:    { bg: '#1a0505', accent: '#991b1b' },   // Horror → DarkRed
-    10402: { bg: '#2b0a3d', accent: '#ec4899' },   // Music → Pink
-    9648:  { bg: '#1e1b4b', accent: '#6366f1' },   // Mystery → Indigo
-    10749: { bg: '#2b0a1e', accent: '#f43f5e' },   // Romance → Rose
-    878:   { bg: '#042f2e', accent: '#06b6d4' },   // Sci-Fi → Cyan
-    10770: { bg: '#111827', accent: '#6b7280' },   // TV Movie → Gray
-    53:    { bg: '#052e16', accent: '#22c55e' },   // Thriller → Green
-    10752: { bg: '#052e16', accent: '#22c55e' },   // War → Green
-    37:    { bg: '#1c1208', accent: '#f97316' },   // Western → Orange
-    10759: { bg: '#1a0505', accent: '#ef4444' },   // Action & Adventure (TV)
-    10762: { bg: '#042f2e', accent: '#14b8a6' },   // Kids (TV)
-    10763: { bg: '#082f49', accent: '#0ea5e9' },   // News
-    10764: { bg: '#2b0a3d', accent: '#ec4899' },   // Reality
-    10765: { bg: '#042f2e', accent: '#06b6d4' },   // Sci-Fi & Fantasy (TV)
-    10766: { bg: '#2b0a1e', accent: '#f43f5e' },   // Soap
-    10767: { bg: '#1c1105', accent: '#f59e0b' },   // Talk
-    10768: { bg: '#052e16', accent: '#22c55e' },   // War & Politics (TV)
-  };
-  const DEFAULT_THEME = { bg: '#020617', accent: '#f59e0b' };
-
-  let selectedSeason = null;
-  let detailData     = null;
-  let episodes       = [];
-
-  function getTheme(genres) {
-    if (!genres || !genres.length) return DEFAULT_THEME;
-    return GENRE_THEMES[genres[0].id] || DEFAULT_THEME;
-  }
-
-  function formatCurrency(n) {
-    if (!n) return '—';
-    if (n >= 1e9) return '$' + (n / 1e9).toFixed(1) + 'B';
-    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
-    if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
-    return '$' + n.toLocaleString();
-  }
-
-  function formatRuntime(mins) {
-    if (!mins) return '—';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  async function render(container, params) {
-    const { type, id } = params;
-    document.body.classList.add('details-open');
-
-    container.innerHTML = '<div class="page"><div class="loading-spinner"><div class="spinner"></div></div></div>';
-
+  async render(params) {
+    this.state = { id: params.id, type: params.type || 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, seasonNum: 1, episodes: [], friendActivity: [], loading: true };
+    const el = document.getElementById('page-content');
+    el.innerHTML = UI.loading();
     try {
-      detailData = await TMDB.getDetails(id, type);
-      selectedSeason = null;
-      episodes = [];
-      renderDetail(container, type);
-
-      // Auto-load first season for TV
-      if (type === 'tv' && detailData.seasons && detailData.seasons.length) {
-        const firstReal = detailData.seasons.find(s => s.season_number > 0) || detailData.seasons[0];
-        loadSeason(container, id, firstReal.season_number, type);
+      let details;
+      if (this.state.type === 'tv') {
+        details = await API.getShowDetails(this.state.id);
+        if (!details || details.success === false) { details = await API.getMovieDetails(this.state.id); this.state.type = 'movie'; }
+      } else {
+        details = await API.getMovieDetails(this.state.id);
       }
-    } catch (e) {
-      container.innerHTML = `
-        <div class="page">
-          <div class="empty-state">
-            <div class="empty-state-icon">⚠️</div>
-            <div class="empty-state-text">Could not load details.</div>
-          </div>
-        </div>`;
-    }
-  }
-
-  function renderDetail(container, type) {
-    const d     = detailData;
-    const theme = getTheme(d.genres);
-    const backdrop = TMDB.getBackdropUrl(d.backdrop_path);
-    const poster   = TMDB.getPosterUrl(d.poster_path);
-    const title    = d.title || d.name || 'Untitled';
-    const tagline  = d.tagline || '';
-    const genres   = d.genres || [];
-    const rating   = d.vote_average ? d.vote_average.toFixed(1) : '—';
-    const cast     = (d.credits && d.credits.cast) ? d.credits.cast.slice(0, 10) : [];
-
-    // Set CSS custom properties for theme
-    document.documentElement.style.setProperty('--detail-bg', theme.bg);
-    document.documentElement.style.setProperty('--detail-accent', theme.accent);
-    document.documentElement.style.setProperty('--detail-accent-dim', theme.accent + '26');
-
-    let statsHtml = '';
-    if (type === 'movie') {
-      const year    = (d.release_date || '').slice(0, 4) || '—';
-      const runtime = formatRuntime(d.runtime);
-      const status  = d.status || '—';
-      statsHtml = `
-        <div class="stat-box"><div class="stat-value">★ ${rating}</div><div class="stat-label">Rating</div></div>
-        <div class="stat-box"><div class="stat-value">${year}</div><div class="stat-label">Year</div></div>
-        <div class="stat-box"><div class="stat-value">${escapeHtml(status)}</div><div class="stat-label">Status</div></div>
-        <div class="stat-box"><div class="stat-value">${runtime}</div><div class="stat-label">Runtime</div></div>
-      `;
-    } else {
-      const seasons  = d.number_of_seasons || '—';
-      const episodes = d.number_of_episodes || '—';
-      const status   = d.status || '—';
-      statsHtml = `
-        <div class="stat-box"><div class="stat-value">★ ${rating}</div><div class="stat-label">Rating</div></div>
-        <div class="stat-box"><div class="stat-value">${seasons}</div><div class="stat-label">Seasons</div></div>
-        <div class="stat-box"><div class="stat-value">${episodes}</div><div class="stat-label">Episodes</div></div>
-        <div class="stat-box"><div class="stat-value">${escapeHtml(status)}</div><div class="stat-label">Status</div></div>
-      `;
-    }
-
-    let seasonsHtml = '';
-    if (type === 'tv' && d.seasons && d.seasons.length) {
-      seasonsHtml = `
-        <div class="details-section">
-          <div class="details-section-title">Seasons</div>
-          <div class="seasons-scroll" id="seasonsScroll">
-            ${d.seasons.map(s => {
-              const sPoster = TMDB.getPosterUrl(s.poster_path);
-              const isActive = selectedSeason === s.season_number;
-              return `
-                <div class="season-card ${isActive ? 'active' : ''}" data-season="${s.season_number}">
-                  ${sPoster
-                    ? `<img class="season-poster" src="${sPoster}" alt="" loading="lazy" />`
-                    : '<div class="season-poster placeholder-img">📺</div>'}
-                  <div class="season-name">${escapeHtml(s.name)}</div>
-                  <div class="season-ep-count">${s.episode_count} episodes</div>
-                </div>`;
-            }).join('')}
-          </div>
-        </div>
-        <div id="episodesList"></div>
-      `;
-    }
-
-    let financeHtml = '';
-    if (type === 'movie' && (d.budget || d.revenue)) {
-      financeHtml = `
-        <div class="details-section">
-          <div class="details-section-title">Box Office</div>
-          <div class="finance-grid">
-            <div class="finance-box">
-              <div class="finance-label">Budget</div>
-              <div class="finance-value">${formatCurrency(d.budget)}</div>
-            </div>
-            <div class="finance-box">
-              <div class="finance-label">Revenue</div>
-              <div class="finance-value">${formatCurrency(d.revenue)}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    let castHtml = '';
-    if (cast.length) {
-      castHtml = `
-        <div class="details-section">
-          <div class="details-section-title">Cast</div>
-          <div class="cast-scroll">
-            ${cast.map(c => {
-              const photo = TMDB.getPosterUrl(c.profile_path);
-              return `
-                <div class="cast-card">
-                  ${photo
-                    ? `<img class="cast-photo" src="${photo}" alt="" loading="lazy" />`
-                    : '<div class="cast-photo placeholder-img">👤</div>'}
-                  <div class="cast-name">${escapeHtml(c.name)}</div>
-                  <div class="cast-char">${escapeHtml(c.character || '')}</div>
-                </div>`;
-            }).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    container.innerHTML = `
-      <div class="page" style="padding:0;">
-        <!-- Backdrop -->
-        <div class="details-backdrop-wrap">
-          ${backdrop
-            ? `<img class="details-backdrop" src="${backdrop}" alt="" />`
-            : '<div class="details-backdrop placeholder-img" style="height:100%;">🎬</div>'}
-          <div class="details-backdrop-grad"></div>
-          <button class="details-back" onclick="history.back()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-        </div>
-
-        <!-- Hero -->
-        <div class="details-hero">
-          ${poster
-            ? `<img class="details-poster" src="${poster}" alt="" />`
-            : '<div class="details-poster placeholder-img">🎬</div>'}
-          <div class="details-title-block">
-            <div class="details-name">${escapeHtml(title)}</div>
-            ${tagline ? `<div class="details-tagline">${escapeHtml(tagline)}</div>` : ''}
-            <div class="genre-pills">
-              ${genres.map(g => `<span class="genre-pill">${escapeHtml(g.name)}</span>`).join('')}
-            </div>
-          </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="details-stats">${statsHtml}</div>
-
-        <!-- Synopsis -->
-        ${d.overview ? `
-        <div class="details-section">
-          <div class="details-section-title">Synopsis</div>
-          <div class="synopsis">${escapeHtml(d.overview)}</div>
-        </div>` : ''}
-
-        <!-- Seasons (TV) -->
-        ${seasonsHtml}
-
-        <!-- Finance (Movie) -->
-        ${financeHtml}
-
-        <!-- Cast -->
-        ${castHtml}
-
-        <div style="height:40px;"></div>
-      </div>
-    `;
-
-    // Season click handler
-    if (type === 'tv') {
-      const scroll = document.getElementById('seasonsScroll');
-      if (scroll) {
-        scroll.addEventListener('click', e => {
-          const card = e.target.closest('.season-card');
-          if (!card) return;
-          const sNum = parseInt(card.dataset.season, 10);
-          loadSeason(container, d.id, sNum, type);
-        });
+      this.state.details = details;
+      const [credits, inWl, isW, rat] = await Promise.all([
+        API.getMediaCredits(this.state.id, this.state.type),
+        Services.isInWatchlist(this.state.id),
+        Services.isWatched(this.state.id),
+        Services.getRating(this.state.id)
+      ]);
+      this.state.credits = credits;
+      this.state.inWatchlist = inWl;
+      this.state.isWatched = isW;
+      this.state.rating = rat || 0;
+      if (this.state.type === 'tv' && details.seasons?.length) {
+        const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
+        this.state.seasonNum = firstSeason.season_number;
+        await this.loadEpisodes(this.state.seasonNum);
       }
-    }
-  }
+      this.loadFriendActivity();
+      this.state.loading = false;
+      this.draw(el);
+    } catch (e) { el.innerHTML = UI.pageHeader('Details', true) + UI.emptyState('Error loading details', e.message); }
+  },
 
-  async function loadSeason(container, tvId, seasonNum, type) {
-    selectedSeason = seasonNum;
-
-    // Update active state on season cards
-    document.querySelectorAll('.season-card').forEach(c => {
-      c.classList.toggle('active', parseInt(c.dataset.season, 10) === seasonNum);
-    });
-
-    const epEl = document.getElementById('episodesList');
-    if (!epEl) return;
-    epEl.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-    try {
-      const season = await TMDB.getSeasonDetails(tvId, seasonNum);
-      episodes = season.episodes || [];
-      renderEpisodes(epEl);
-    } catch {
-      epEl.innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load episodes.</div></div>';
-    }
-  }
-
-  function renderEpisodes(el) {
-    if (!episodes.length) {
-      el.innerHTML = '<div class="empty-state" style="padding:20px;"><div class="empty-state-text">No episodes available.</div></div>';
-      return;
-    }
+  draw(el) {
+    const d = this.state.details;
+    if (!d) return;
+    const backdrop = d.backdrop_path ? API.imageUrl(d.backdrop_path, 'original') : '';
+    const poster = d.poster_path ? API.imageUrl(d.poster_path, 'w342') : '';
+    const title = d.name || d.title || '';
+    const year = (d.first_air_date || d.release_date || '').substring(0, 4);
+    const runtime = d.episode_run_time?.[0] || d.runtime;
+    const genres = (d.genres || []).map(g => g.name).join(', ');
+    const status = d.status || '';
+    const cast = this.state.credits?.cast?.slice(0, 20) || [];
 
     el.innerHTML = `
-      <div class="details-section">
-        <div class="details-section-title">Episodes</div>
-        ${episodes.map(ep => {
-          const thumb = ep.still_path ? TMDB.getBackdropUrl(ep.still_path) : null;
-          const airDate = ep.air_date || '';
-          const runtime = ep.runtime ? formatRuntime(ep.runtime) : '';
-          return `
-            <div class="episode-card">
-              ${thumb
-                ? `<img class="episode-thumb" src="${thumb}" alt="" loading="lazy" />`
-                : '<div class="episode-thumb placeholder-img">🎬</div>'}
-              <div class="episode-info">
-                <div class="episode-num">Episode ${ep.episode_number}</div>
-                <div class="episode-name">${escapeHtml(ep.name || '')}</div>
-                <div class="episode-date">${airDate}${runtime ? ' · ' + runtime : ''}</div>
-                ${ep.overview ? `<div class="episode-desc">${escapeHtml(ep.overview)}</div>` : ''}
+      <div class="details-page">
+        <div class="details-hero" style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-primary)), url('${backdrop}')">
+          <button class="back-btn-float" onclick="App.back()">${UI.icon('arrow-left', 22)}</button>
+        </div>
+        <div class="details-body">
+          <div class="details-top">
+            ${poster ? `<img src="${poster}" class="details-poster" alt="">` : ''}
+            <div class="details-info">
+              <h1>${UI.escapeHtml(title)}</h1>
+              <div class="details-meta">
+                ${year ? `<span>${year}</span>` : ''}
+                ${runtime ? `<span>${runtime}m</span>` : ''}
+                ${status ? `<span class="status-badge">${status}</span>` : ''}
+                ${d.vote_average ? `<span>${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
               </div>
+              ${genres ? `<p class="details-genres">${UI.escapeHtml(genres)}</p>` : ''}
+              ${d.number_of_seasons ? `<p class="detail-seasons">${d.number_of_seasons} Season${d.number_of_seasons > 1 ? 's' : ''}</p>` : ''}
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
+          </div>
+          <div class="actions-row">
+            <button class="action-btn ${this.state.inWatchlist ? 'active' : ''}" onclick="DetailsPage.toggleWatchlist()">
+              ${UI.icon(this.state.inWatchlist ? 'bookmark' : 'bookmark', 20)}
+              <span>${this.state.inWatchlist ? 'In Watchlist' : 'Watchlist'}</span>
+            </button>
+            <button class="action-btn ${this.state.isWatched ? 'active' : ''}" onclick="DetailsPage.toggleWatched()">
+              ${UI.icon('check-circle', 20)}
+              <span>${this.state.isWatched ? 'Watched' : 'Mark Watched'}</span>
+            </button>
+            <button class="action-btn" onclick="DetailsPage.showMoreActions()">
+              ${UI.icon('more-horizontal', 20)}
+              <span>More</span>
+            </button>
+          </div>
+          <div class="rating-section">
+            <label>Your Rating</label>
+            <div class="rating-slider-row">
+              <input type="range" min="0" max="10" step="0.5" value="${this.state.rating}" class="rating-slider" oninput="DetailsPage.onRate(this.value)" id="rating-slider">
+              <span class="rating-value" id="rating-val">${this.state.rating > 0 ? this.state.rating : '—'}</span>
+            </div>
+          </div>
+          ${d.overview ? `<div class="section"><h3>Overview</h3><p class="overview-text">${UI.escapeHtml(d.overview)}</p></div>` : ''}
+          ${this.state.type === 'tv' && d.seasons?.length ? this.renderSeasons(d.seasons) : ''}
+          <div id="episodes-container">${this.state.episodes.length ? this.renderEpisodeList() : ''}</div>
+          ${cast.length ? this.renderCast(cast) : ''}
+          <div id="friend-activity-section"></div>
+          ${this.renderActionButtons()}
+        </div>
+      </div>`;
+  },
 
-  function destroy() {
-    document.body.classList.remove('details-open');
-    document.documentElement.style.removeProperty('--detail-bg');
-    document.documentElement.style.removeProperty('--detail-accent');
-    document.documentElement.style.removeProperty('--detail-accent-dim');
-    detailData = null;
-    episodes = [];
-    selectedSeason = null;
-  }
+  renderSeasons(seasons) {
+    const filteredSeasons = seasons.filter(s => s.season_number >= 0);
+    return `<div class="section seasons-section">
+      <div class="section-header"><h3>Seasons</h3></div>
+      <div class="season-tabs">${filteredSeasons.map(s => `<button class="season-tab ${s.season_number === this.state.seasonNum ? 'active' : ''}" onclick="DetailsPage.selectSeason(${s.season_number})">S${s.season_number}</button>`).join('')}</div>
+    </div>`;
+  },
 
-  return { render, destroy };
-})();
+  renderEpisodeList() {
+    return `<div class="episode-list">${this.state.episodes.map((ep, i) => {
+      const still = ep.still_path ? API.imageUrl(ep.still_path, 'w300') : '';
+      return `<div class="episode-item" onclick="DetailsPage.showEpisodeDetails(${i})">
+        ${still ? `<img src="${still}" class="episode-still" alt="" loading="lazy">` : `<div class="episode-still placeholder">${UI.icon('tv', 20)}</div>`}
+        <div class="episode-info">
+          <p class="ep-number">E${ep.episode_number}</p>
+          <p class="ep-name">${UI.escapeHtml(ep.name || `Episode ${ep.episode_number}`)}</p>
+          ${ep.air_date ? `<p class="ep-date">${ep.air_date}</p>` : ''}
+        </div>
+        <button class="ep-watched-btn" onclick="event.stopPropagation(); DetailsPage.toggleEpisodeWatched(${ep.season_number}, ${ep.episode_number}, this)" title="Mark watched">
+          ${UI.icon('check', 18)}
+        </button>
+      </div>`;
+    }).join('')}</div>`;
+  },
+
+  renderCast(cast) {
+    return `<div class="section">
+      <div class="section-header"><h3>Cast</h3><button class="see-all-btn" onclick="App.navigate('cast-list',{id:${this.state.id},type:'${this.state.type}'})">See All</button></div>
+      <div class="horizontal-scroll cast-row">${cast.slice(0, 10).map(c => {
+        const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w185') : '';
+        return `<div class="cast-card" onclick="App.navigate('actor-details',{id:${c.id}})">
+          ${photo ? `<img src="${photo}" alt="" loading="lazy">` : `<div class="cast-placeholder">${UI.icon('user', 24)}</div>`}
+          <p class="cast-name">${UI.escapeHtml(c.name || '')}</p>
+          <p class="cast-char">${UI.escapeHtml(c.character || '')}</p>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  },
+
+  renderActionButtons() {
+    return `<div class="detail-actions">
+      <button class="detail-action-btn" onclick="DetailsPage.shameFriend()">${UI.icon('thumbs-down', 18)} Shame a Friend</button>
+      <button class="detail-action-btn" onclick="DetailsPage.recommendToFriend()">${UI.icon('send', 18)} Recommend</button>
+      <button class="detail-action-btn" onclick="DetailsPage.addToSharedList()">${UI.icon('list', 18)} Add to List</button>
+    </div>`;
+  },
+
+  async selectSeason(num) {
+    this.state.seasonNum = num;
+    document.querySelectorAll('.season-tab').forEach(b => b.classList.toggle('active', b.textContent === `S${num}`));
+    const container = document.getElementById('episodes-container');
+    if (container) container.innerHTML = UI.loading();
+    await this.loadEpisodes(num);
+    if (container) container.innerHTML = this.renderEpisodeList();
+  },
+
+  async loadEpisodes(seasonNum) {
+    try {
+      const eps = await API.getSeasonEpisodes(this.state.id, seasonNum);
+      this.state.episodes = eps || [];
+    } catch (_) { this.state.episodes = []; }
+  },
+
+  async toggleWatchlist() {
+    const d = this.state.details;
+    const item = { id: this.state.id, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, addedAt: Date.now() };
+    this.state.inWatchlist = !this.state.inWatchlist;
+    if (this.state.inWatchlist) { await Services.addToWatchlist(item); UI.toast('Added to watchlist', 'success'); }
+    else { await Services.removeFromWatchlist(this.state.id); UI.toast('Removed from watchlist', 'success'); }
+    const btn = document.querySelector('.actions-row .action-btn:first-child');
+    if (btn) btn.classList.toggle('active', this.state.inWatchlist);
+  },
+
+  async toggleWatched() {
+    const d = this.state.details;
+    if (this.state.isWatched) {
+      await Services.unmarkWatched(this.state.id);
+      this.state.isWatched = false;
+      UI.toast('Unmarked as watched', 'success');
+    } else {
+      await Services.markWatched({ id: this.state.id, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, watchedAt: Date.now() });
+      this.state.isWatched = true;
+      UI.toast('Marked as watched!', 'success');
+      // Auto-resolve shames
+      await Services._resolveShames(this.state.id);
+    }
+    const btn = document.querySelectorAll('.actions-row .action-btn')[1];
+    if (btn) { btn.classList.toggle('active', this.state.isWatched); btn.querySelector('span').textContent = this.state.isWatched ? 'Watched' : 'Mark Watched'; }
+  },
+
+  async toggleEpisodeWatched(season, episode, btn) {
+    const d = this.state.details;
+    const isWatched = btn.classList.contains('active');
+    if (isWatched) {
+      await Services.unmarkWatched(`${this.state.id}_s${season}e${episode}`);
+      btn.classList.remove('active');
+    } else {
+      await Services.markWatched({ id: `${this.state.id}_s${season}e${episode}`, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: 'tv', season, episode, watchedAt: Date.now() });
+      btn.classList.add('active');
+    }
+  },
+
+  rateTimeout: null,
+  onRate(val) {
+    const display = document.getElementById('rating-val');
+    if (display) display.textContent = val > 0 ? val : '—';
+    clearTimeout(this.rateTimeout);
+    this.rateTimeout = setTimeout(async () => {
+      this.state.rating = parseFloat(val);
+      const d = this.state.details;
+      await Services.rateShow(this.state.id, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, rating: parseFloat(val), ratedAt: Date.now() });
+      UI.toast(`Rated ${val}/10`, 'success');
+    }, 500);
+  },
+
+  showEpisodeDetails(idx) {
+    const ep = this.state.episodes[idx];
+    if (!ep) return;
+    const still = ep.still_path ? API.imageUrl(ep.still_path, 'w500') : '';
+    UI.showModal(`
+      <div class="episode-modal">
+        ${still ? `<img src="${still}" class="modal-still" alt="">` : ''}
+        <h3>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h3>
+        ${ep.air_date ? `<p class="modal-date">${ep.air_date}</p>` : ''}
+        ${ep.vote_average ? `<p class="modal-rating">${UI.icon('star', 14)} ${ep.vote_average.toFixed(1)}</p>` : ''}
+        ${ep.overview ? `<p class="modal-overview">${UI.escapeHtml(ep.overview)}</p>` : ''}
+      </div>`);
+  },
+
+  showMoreActions() {
+    const d = this.state.details;
+    UI.showModal(`
+      <div class="more-actions-modal">
+        <h3>More Actions</h3>
+        <button class="modal-action" onclick="DetailsPage.shameFriend(); UI.closeModal();">${UI.icon('thumbs-down', 18)} Shame a Friend</button>
+        <button class="modal-action" onclick="DetailsPage.recommendToFriend(); UI.closeModal();">${UI.icon('send', 18)} Recommend to Friend</button>
+        <button class="modal-action" onclick="DetailsPage.addToSharedList(); UI.closeModal();">${UI.icon('list', 18)} Add to Shared List</button>
+        <button class="modal-action" onclick="window.open('https://www.youtube.com/results?search_query=${encodeURIComponent((d.name || d.title || '') + ' trailer')}','_blank'); UI.closeModal();">${UI.icon('play', 18)} Watch Trailer</button>
+      </div>`);
+  },
+
+  async shameFriend() {
+    const friends = await Services.getFriends();
+    if (!friends.length) { UI.toast('Add friends first!', 'error'); return; }
+    const d = this.state.details;
+    UI.showModal(`<div class="friend-picker">
+      <h3>Shame a Friend for not watching</h3>
+      <p class="modal-subtitle">${UI.escapeHtml(d.name || d.title || '')}</p>
+      <div class="friend-list">${friends.map(f => `<button class="friend-pick-btn" onclick="DetailsPage.doShame('${f.friendId}','${UI.escapeHtml(f.friendUsername || '')}')">
+        <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
+        <span>${UI.escapeHtml(f.friendUsername || f.friendId)}</span>
+      </button>`).join('')}</div>
+    </div>`);
+  },
+
+  async doShame(friendId, friendUsername) {
+    UI.closeModal();
+    const d = this.state.details;
+    await Services.shameFriend({ friendId, friendUsername, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    UI.toast('Friend shamed!', 'success');
+  },
+
+  async recommendToFriend() {
+    const friends = await Services.getFriends();
+    if (!friends.length) { UI.toast('Add friends first!', 'error'); return; }
+    const d = this.state.details;
+    UI.showModal(`<div class="friend-picker">
+      <h3>Recommend to a Friend</h3>
+      <p class="modal-subtitle">${UI.escapeHtml(d.name || d.title || '')}</p>
+      <div class="friend-list">${friends.map(f => `<button class="friend-pick-btn" onclick="DetailsPage.doRecommend('${f.friendId}')">
+        <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
+        <span>${UI.escapeHtml(f.friendUsername || f.friendId)}</span>
+      </button>`).join('')}</div>
+    </div>`);
+  },
+
+  async doRecommend(friendId) {
+    UI.closeModal();
+    const d = this.state.details;
+    await Services.sendRecommendation(friendId, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    UI.toast('Recommendation sent!', 'success');
+  },
+
+  async addToSharedList() {
+    const lists = await Services.getSharedLists();
+    if (!lists.length) { UI.toast('Create a shared list first', 'info'); App.navigate('shared-lists'); return; }
+    const d = this.state.details;
+    UI.showModal(`<div class="list-picker">
+      <h3>Add to Shared List</h3>
+      <p class="modal-subtitle">${UI.escapeHtml(d.name || d.title || '')}</p>
+      <div class="lists-options">${lists.map(l => `<button class="list-pick-btn" onclick="DetailsPage.doAddToList('${l.id}')">
+        ${UI.icon('list', 18)} <span>${UI.escapeHtml(l.name || 'Untitled')}</span>
+      </button>`).join('')}</div>
+    </div>`);
+  },
+
+  async doAddToList(listId) {
+    UI.closeModal();
+    const d = this.state.details;
+    await Services.addToSharedList(listId, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    UI.toast('Added to list!', 'success');
+  },
+
+  async loadFriendActivity() {
+    try {
+      const friends = await Services.getFriends();
+      const activity = [];
+      for (const f of friends.slice(0, 20)) {
+        const [inWl, isW] = await Promise.all([
+          Services.isInWatchlist(this.state.id, f.friendId),
+          Services.isWatched(this.state.id, f.friendId)
+        ]);
+        if (inWl || isW) activity.push({ ...f, inWatchlist: inWl, isWatched: isW });
+      }
+      this.state.friendActivity = activity;
+      const section = document.getElementById('friend-activity-section');
+      if (section && activity.length) {
+        section.innerHTML = `<div class="section"><h3>Friends Activity</h3>
+          <div class="friend-activity-list">${activity.map(f => `<div class="friend-activity-item">
+            <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
+            <span class="friend-name">${UI.escapeHtml(f.friendUsername || '')}</span>
+            <span class="friend-status ${f.isWatched ? 'watched' : 'watchlist'}">${f.isWatched ? 'Watched' : 'In Watchlist'}</span>
+          </div>`).join('')}</div></div>`;
+      }
+    } catch (_) {}
+  }
+};

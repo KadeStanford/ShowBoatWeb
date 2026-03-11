@@ -1,59 +1,46 @@
-/* ShowBoard Service Worker — Offline caching */
-
-const CACHE_NAME = 'showboard-v1';
+const CACHE_NAME = 'showboat-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
-  '/js/app.js',
-  '/js/api/tmdb.js',
-  '/js/api/plex.js',
+  '/js/firebase-config.js',
+  '/js/api.js',
+  '/js/services.js',
+  '/js/badges.js',
+  '/js/components.js',
+  '/js/pages/auth.js',
   '/js/pages/home.js',
   '/js/pages/discover.js',
-  '/js/pages/activity.js',
-  '/js/pages/settings.js',
   '/js/pages/details.js',
+  '/js/pages/watchlist.js',
+  '/js/pages/profile.js',
+  '/js/pages/social.js',
+  '/js/pages/matcher.js',
+  '/js/pages/analytics.js',
+  '/js/pages/plex.js',
+  '/js/pages/lists.js',
+  '/js/pages/media.js',
+  '/js/app.js',
+  '/img/icon.svg',
   '/manifest.json'
 ];
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)));
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Network-first for API calls
-  if (url.hostname === 'api.themoviedb.org' || url.hostname === 'image.tmdb.org') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // Cache images for offline
-          if (url.hostname === 'image.tmdb.org' && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Network-first for API calls, cache-first for static assets
+  if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  } else {
+    e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request)));
   }
-
-  // Cache-first for static assets
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
-  );
 });

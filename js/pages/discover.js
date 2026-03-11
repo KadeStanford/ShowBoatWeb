@@ -1,118 +1,125 @@
-/* ===================================================
-   Discover Page (Watchlist)
-   Ported from src/screens/Watchlist.tsx
-   =================================================== */
+/* ShowBoat — Discover Page */
+const DiscoverPage = {
+  state: { query: '', results: [], tab: 'multi', genres: [], selectedGenre: '', trending: [], page: 1, loading: false },
 
-const DiscoverPage = (() => {
-  let currentFilter = 'all';
-  let results = [];
-
-  async function render(container) {
-    container.innerHTML = `
-      <div class="page">
-        <div class="discover-header">
-          <h1 class="discover-title">Discover</h1>
-        </div>
-
+  async render(params) {
+    if (params?.tab) this.state.tab = params.tab;
+    const el = document.getElementById('page-content');
+    el.innerHTML = `<div class="discover-page">
+      ${UI.pageHeader('Discover', false)}
+      <div class="search-container">
         <div class="search-bar">
-          <input class="search-input" id="searchInput" type="text"
-                 placeholder="Search movies & TV shows..." autocomplete="off" />
-          <button class="search-btn" id="searchBtn">GO</button>
-        </div>
-
-        <div class="filter-tabs" id="filterTabs">
-          <button class="filter-tab active" data-filter="all">All</button>
-          <button class="filter-tab" data-filter="movie">Movies</button>
-          <button class="filter-tab" data-filter="tv">TV Shows</button>
-        </div>
-
-        <div id="discoverResults">
-          <div class="loading-spinner"><div class="spinner"></div></div>
+          ${UI.icon('search', 20)}
+          <input type="text" id="discover-search" placeholder="Search movies, shows, people..." value="${UI.escapeHtml(this.state.query)}" oninput="DiscoverPage.onSearch(this.value)">
+          ${this.state.query ? `<button class="clear-btn" onclick="DiscoverPage.clearSearch()">${UI.icon('x', 18)}</button>` : ''}
         </div>
       </div>
-    `;
+      <div class="filter-tabs">
+        ${['multi', 'tv', 'movie', 'person'].map(t => `<button class="filter-tab ${this.state.tab === t ? 'active' : ''}" onclick="DiscoverPage.setTab('${t}')">${t === 'multi' ? 'All' : t === 'tv' ? 'TV Shows' : t === 'movie' ? 'Movies' : 'People'}</button>`).join('')}
+      </div>
+      <div id="genre-chips"></div>
+      <div id="discover-results">${UI.loading()}</div>
+    </div>`;
+    await this.loadGenres();
+    await this.loadContent();
+  },
 
-    document.getElementById('searchBtn').addEventListener('click', doSearch);
-    document.getElementById('searchInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') doSearch();
-    });
-    document.getElementById('filterTabs').addEventListener('click', e => {
-      const btn = e.target.closest('.filter-tab');
-      if (!btn) return;
-      currentFilter = btn.dataset.filter;
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t === btn));
-      renderResults();
-    });
-
-    currentFilter = 'all';
-    loadTrending();
-  }
-
-  async function loadTrending() {
-    try {
-      results = await TMDB.getTrending();
-      renderResults();
-    } catch {
-      document.getElementById('discoverResults').innerHTML =
-        '<div class="empty-state"><div class="empty-state-text">Could not load content.</div></div>';
+  async loadGenres() {
+    if (this.state.tab === 'tv' || this.state.tab === 'movie') {
+      const genres = await API.getGenres(this.state.tab);
+      this.state.genres = genres;
+      const el = document.getElementById('genre-chips');
+      if (el) el.innerHTML = `<div class="filter-chips"><button class="chip ${!this.state.selectedGenre ? 'active' : ''}" onclick="DiscoverPage.setGenre('')">All</button>${genres.map(g => `<button class="chip ${this.state.selectedGenre == g.id ? 'active' : ''}" onclick="DiscoverPage.setGenre('${g.id}')">${UI.escapeHtml(g.name)}</button>`).join('')}</div>`;
+    } else {
+      document.getElementById('genre-chips').innerHTML = '';
     }
-  }
+  },
 
-  async function doSearch() {
-    const q = document.getElementById('searchInput').value.trim();
-    if (!q) { loadTrending(); return; }
-
-    document.getElementById('discoverResults').innerHTML =
-      '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-    try {
-      results = await TMDB.searchMedia(q);
-      renderResults();
-    } catch {
-      document.getElementById('discoverResults').innerHTML =
-        '<div class="empty-state"><div class="empty-state-text">Search failed. Try again.</div></div>';
-    }
-  }
-
-  function renderResults() {
-    const el = document.getElementById('discoverResults');
+  async loadContent() {
+    const el = document.getElementById('discover-results');
     if (!el) return;
-
-    let filtered = results;
-    if (currentFilter === 'movie') filtered = results.filter(r => r.media_type === 'movie');
-    else if (currentFilter === 'tv') filtered = results.filter(r => r.media_type === 'tv');
-
-    if (!filtered.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No results found.</div></div>';
-      return;
+    this.state.loading = true;
+    try {
+      let results;
+      if (this.state.query) {
+        if (this.state.tab === 'multi') results = await API.searchMulti(this.state.query, this.state.page);
+        else if (this.state.tab === 'person') results = await API.searchPeople(this.state.query, this.state.page);
+        else if (this.state.tab === 'tv') results = await API.searchShows(this.state.query, this.state.page);
+        else results = await API.searchMovies(this.state.query, this.state.page);
+      } else if (this.state.selectedGenre) {
+        results = await API.discoverMedia(this.state.tab, { with_genres: this.state.selectedGenre, page: this.state.page });
+      } else {
+        results = await API.getTrending(this.state.tab === 'multi' ? 'all' : this.state.tab === 'person' ? 'person' : this.state.tab);
+      }
+      this.state.results = results;
+      el.innerHTML = results.length ? `<div class="media-grid">${results.map(item => this.renderCard(item)).join('')}</div>` : UI.emptyState('No results', 'Try a different search or filter');
+    } catch (e) {
+      el.innerHTML = UI.emptyState('Error', e.message);
     }
+    this.state.loading = false;
+  },
 
-    el.innerHTML = '<div class="results-list">' + filtered.map(item => {
-      const poster = TMDB.getPosterUrl(item.poster_path);
-      const title  = item.title || item.name || 'Untitled';
-      const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
-      const type   = item.media_type === 'movie' ? 'movie' : 'tv';
-      const rating = item.vote_average ? item.vote_average.toFixed(1) : '—';
+  renderCard(item) {
+    const type = item.media_type || this.state.tab;
+    if (type === 'person') return this.renderPersonCard(item);
+    const poster = item.poster_path ? API.imageUrl(item.poster_path, 'w342') : '';
+    const title = item.name || item.title || '';
+    const year = (item.first_air_date || item.release_date || '').substring(0, 4);
+    return `<div class="media-card" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
+      ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
+      <div class="card-info">
+        <p class="card-title">${UI.escapeHtml(title)}</p>
+        <div class="card-meta">${year ? `<span>${year}</span>` : ''}${item.vote_average ? `<span>${UI.icon('star', 12)} ${item.vote_average.toFixed(1)}</span>` : ''}</div>
+      </div>
+    </div>`;
+  },
 
-      return `
-        <div class="result-card" onclick="location.hash='#/details/${type}/${item.id}'">
-          ${poster
-            ? `<img class="result-poster" src="${poster}" alt="" loading="lazy" />`
-            : '<div class="result-poster placeholder-img">🎬</div>'}
-          <div class="result-info">
-            <div class="result-title">${escapeHtml(title)}</div>
-            <div class="result-meta">
-              <span class="media-badge ${type}">${type === 'movie' ? 'Movie' : 'TV'}</span>
-              ${year ? `<span>${year}</span>` : ''}
-            </div>
-            <div class="result-rating">★ ${rating}</div>
-          </div>
-        </div>
-      `;
-    }).join('') + '</div>';
+  renderPersonCard(item) {
+    const photo = item.profile_path ? API.imageUrl(item.profile_path, 'w185') : '';
+    return `<div class="media-card person-card" onclick="App.navigate('actor-details',{id:${item.id}})">
+      ${photo ? `<img src="${photo}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('user', 32)}</div>`}
+      <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || '')}</p><p class="card-subtitle">${UI.escapeHtml(item.known_for_department || '')}</p></div>
+    </div>`;
+  },
+
+  searchTimeout: null,
+  onSearch(val) {
+    this.state.query = val;
+    this.state.page = 1;
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => this.loadContent(), 350);
+    const clear = document.querySelector('.clear-btn');
+    if (val && !clear) {
+      const bar = document.querySelector('.search-bar');
+      if (bar) { const btn = document.createElement('button'); btn.className = 'clear-btn'; btn.innerHTML = UI.icon('x', 18); btn.onclick = () => this.clearSearch(); bar.appendChild(btn); }
+    } else if (!val && clear) clear.remove();
+  },
+
+  clearSearch() {
+    this.state.query = '';
+    this.state.page = 1;
+    const input = document.getElementById('discover-search');
+    if (input) input.value = '';
+    this.loadContent();
+  },
+
+  setTab(tab) {
+    this.state.tab = tab;
+    this.state.query = '';
+    this.state.selectedGenre = '';
+    this.state.page = 1;
+    const input = document.getElementById('discover-search');
+    if (input) input.value = '';
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.toggle('active', b.textContent === (tab === 'multi' ? 'All' : tab === 'tv' ? 'TV Shows' : tab === 'movie' ? 'Movies' : 'People')));
+    this.loadGenres();
+    this.loadContent();
+  },
+
+  setGenre(id) {
+    this.state.selectedGenre = id;
+    this.state.page = 1;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    this.loadContent();
   }
-
-  function destroy() {}
-
-  return { render, destroy };
-})();
+};

@@ -1,25 +1,15 @@
 {
-  "name": "ShowBoard",
-  "short_name": "ShowBoard",
-  "description": "Track movies and TV shows. Browse trending, search TMDB, and monitor Plex activity.",
+  "name": "ShowBoat",
+  "short_name": "ShowBoat",
+  "description": "Your personal media tracker — track shows, connect with friends, and discover the next thing to watch.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
-  "theme_color": "#0f172a",
-  "orientation": "portrait-primary",
+  "theme_color": "#020617",
+  "orientation": "portrait",
   "icons": [
-    {
-      "src": "/img/icon-192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/img/icon-512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "img/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "categories": ["entertainment"],
   "lang": "en"

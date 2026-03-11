@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#020617"/>
+  <g transform="translate(128,100)" fill="none" stroke="#34d399" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="40" width="256" height="192" rx="16"/>
+    <polyline points="192,0 128,56 64,0"/>
+  </g>
+  <text x="256" y="400" text-anchor="middle" fill="#f8fafc" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700">ShowBoat</text>
+</svg>

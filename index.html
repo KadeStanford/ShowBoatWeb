@@ -1,56 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ShowBoard — Track Movies & TV Shows</title>
-  <meta name="description" content="Track movies and TV shows you want to watch. Browse trending content, search TMDB, and connect your Plex server." />
-  <meta name="theme-color" content="#0f172a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="ShowBoard" />
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>🎬</text></svg>" />
-  <link rel="apple-touch-icon" href="/img/icon-192.svg" />
-  <link rel="preconnect" href="https://api.themoviedb.org" />
-  <link rel="preconnect" href="https://image.tmdb.org" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShowBoat — Your Personal Media Tracker</title>
+  <meta name="description" content="Track shows and movies, connect with friends, discover new content, and never miss what to watch next.">
+  <meta name="theme-color" content="#020617">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="img/icon.svg">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- App Shell -->
+  <div id="app">
+    <div id="loading-screen" class="loading-screen">
+      <div class="loading-logo">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+      </div>
+      <h1 class="loading-title">ShowBoat</h1>
+      <div class="spinner"></div>
+    </div>
 
-  <!-- Bottom Tab Bar -->
-  <nav class="tab-bar" id="tabBar">
-    <a href="#/" class="tab-item active" data-page="home">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a href="#/discover" class="tab-item" data-page="discover">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span>Discover</span>
-    </a>
-    <a href="#/activity" class="tab-item" data-page="activity">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      <span>Activity</span>
-    </a>
-    <a href="#/settings" class="tab-item" data-page="settings">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span>Settings</span>
-    </a>
-  </nav>
+    <!-- Toast container -->
+    <div id="toast-container"></div>
 
-  <!-- Page Content -->
-  <main id="app"></main>
+    <!-- Modal container -->
+    <div id="modal-overlay" class="modal-overlay hidden"></div>
 
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
+    <!-- Main content area -->
+    <div id="page-content" class="page-content"></div>
 
-  <script src="/js/api/tmdb.js"></script>
-  <script src="/js/api/plex.js"></script>
-  <script src="/js/pages/home.js"></script>
-  <script src="/js/pages/discover.js"></script>
-  <script src="/js/pages/activity.js"></script>
-  <script src="/js/pages/settings.js"></script>
-  <script src="/js/pages/details.js"></script>
-  <script src="/js/app.js"></script>
+    <!-- Bottom navigation (shown when logged in) -->
+    <nav id="bottom-nav" class="bottom-nav hidden">
+      <button class="nav-btn" data-page="home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" data-page="discover">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        <span>Discover</span>
+      </button>
+      <button class="nav-btn" data-page="watchlist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <span>Watchlist</span>
+      </button>
+      <button class="nav-btn" data-page="friends">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Friends</span>
+      </button>
+      <button class="nav-btn" data-page="profile">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Firebase SDK (compat for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+  <!-- App Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/badges.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/auth.js"></script>
+  <script src="js/pages/home.js"></script>
+  <script src="js/pages/discover.js"></script>
+  <script src="js/pages/details.js"></script>
+  <script src="js/pages/watchlist.js"></script>
+  <script src="js/pages/profile.js"></script>
+  <script src="js/pages/social.js"></script>
+  <script src="js/pages/matcher.js"></script>
+  <script src="js/pages/analytics.js"></script>
+  <script src="js/pages/plex.js"></script>
+  <script src="js/pages/lists.js"></script>
+  <script src="js/pages/media.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
