@@ -2476,7 +2476,7 @@ input[type="range"] {
   background: var(--slate-700); transition: background .15s;
 }
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 18px; height: 18px;
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
   border-radius: 50%; background: var(--indigo-500); cursor: pointer;
   border: 2px solid rgba(255,255,255,.2);
   box-shadow: 0 1px 6px rgba(0,0,0,.4);
