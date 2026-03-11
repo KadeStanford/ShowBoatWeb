@@ -50,7 +50,7 @@ const DiscoverPage = {
     const isFilterable = this.state.tab === 'tv' || this.state.tab === 'movie';
     const activeCount = this._activeFilterCount();
     el.innerHTML = `<div class="discover-page">
-      ${UI.pageHeader('Discover', false)}
+      ${UI.pageHeader('Discover', true)}
       <div class="search-container">
         <div class="search-bar">
           ${UI.icon('search', 20)}

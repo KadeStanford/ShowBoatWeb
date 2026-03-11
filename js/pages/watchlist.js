@@ -5,7 +5,7 @@ const WatchlistPage = {
   async render() {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="watchlist-page">
-      ${UI.pageHeader('Watchlist', false)}
+      ${UI.pageHeader('Watchlist', true)}
       <div class="filter-tabs" style="padding:0 32px">
         ${['all', 'tv', 'movie', 'actors'].map(t => `<button class="filter-tab ${this.state.tab === t ? 'active' : ''}" onclick="WatchlistPage.setTab('${t}')">${t === 'all' ? 'All' : t === 'tv' ? 'TV Shows' : t === 'movie' ? 'Movies' : 'Shared Actors'}</button>`).join('')}
       </div>

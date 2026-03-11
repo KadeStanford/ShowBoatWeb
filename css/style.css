@@ -2610,3 +2610,22 @@ img.ep-friend-av { background: var(--slate-800); }
   .hero-slide { background-position: center top !important; }
   .hero-slide[style*="background-image"] { background-position: 50% 15% !important; }
 }
+
+/* ============================================================
+   HOME — PLEX NOW PLAYING SECTION
+   ============================================================ */
+.plex-home-sessions { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.plex-home-sessions::-webkit-scrollbar { display: none; }
+.plex-home-card { display: flex; gap: 10px; align-items: flex-start; background: var(--bg-secondary); border: 1px solid rgba(229,160,13,.25); border-radius: 14px; padding: 10px; cursor: pointer; transition: all var(--transition); flex-shrink: 0; width: 200px; }
+.plex-home-card:hover { border-color: rgba(229,160,13,.6); background: rgba(229,160,13,.07); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(229,160,13,.15); }
+.plex-home-thumb { width: 48px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; background-color: var(--bg-card); flex-shrink: 0; border: 1px solid var(--border-subtle); }
+.plex-home-thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+.plex-home-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.plex-home-state { display: inline-flex; align-items: center; gap: 3px; font-size: .625rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; border-radius: 4px; padding: 2px 5px; width: fit-content; }
+.plex-home-state.playing { background: rgba(16,185,129,.15); color: #10b981; }
+.plex-home-state.paused  { background: rgba(245,158,11,.15); color: #f59e0b; }
+.plex-home-title { font-size: .8125rem; font-weight: 700; color: var(--text-primary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plex-home-sub { font-size: .75rem; color: var(--text-secondary); margin: 0; }
+.plex-home-user { font-size: .6875rem; color: var(--text-muted); margin: 0; }
+.plex-home-bar { width: 100%; height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.plex-home-fill { height: 100%; background: #e5a00d; border-radius: 2px; transition: width .4s ease; }

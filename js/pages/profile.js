@@ -26,6 +26,7 @@ const ProfilePage = {
       : `<div class="profile-avatar-lg" id="profile-avatar-initial">${initial}</div>`;
 
     el.innerHTML = `<div class="profile-page">
+      ${UI.pageHeader('Profile', true)}
       <div class="profile-header">
         <div class="profile-avatar-wrap" onclick="ProfilePage.triggerPhotoUpload()" title="Change photo">
           ${avatarHtml}

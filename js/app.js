@@ -40,9 +40,24 @@ const App = {
       this.user = user;
       if (user) {
         this.showNav(true);
-        // If on auth page or no page, go home
+        // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
-          this.navigate('home');
+          const hash = window.location.hash.slice(1);
+          if (hash) {
+            const [hashPage, queryStr] = hash.split('?');
+            if (hashPage && this.routes[hashPage] && this.routes[hashPage].auth) {
+              let params = {};
+              if (queryStr) {
+                const sp = new URLSearchParams(queryStr);
+                for (const [k, v] of sp) params[k] = this.deserializeParam(v);
+              }
+              this.navigate(hashPage, Object.keys(params).length ? params : undefined);
+            } else {
+              this.navigate('home');
+            }
+          } else {
+            this.navigate('home');
+          }
         }
       } else {
         this.showNav(false);

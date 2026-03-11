@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), personalRecs: null },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -33,8 +33,79 @@ const HomePage = {
       const logo = await API.fetchLogo(item.id, item.media_type);
       if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
-    // Friend trends + activity dots + personal recs
-    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); }
+    // Friend trends + activity dots + personal recs + plex sessions
+    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); this.loadPlexSessions(); }
+  },
+
+  async loadPlexSessions() {
+    if (!Services.plex.isConnected) return;
+    try {
+      const token = Services.plex.token;
+      if (!this.state._plexServer) {
+        const resources = await PlexAPI.getResources(token);
+        if (!resources) return;
+        this.state._plexServer = resources.find(r => r.provides?.includes('server'));
+      }
+      if (!this.state._plexServer) return;
+      const data = await PlexAPI.serverFetch(token, this.state._plexServer, '/status/sessions');
+      const sessions = data?.MediaContainer?.Metadata || [];
+      this.state.plexSessions = sessions;
+      this._patchPlexSection();
+      // Poll every 30s while home page is active
+      if (!this.state._plexTimer) {
+        this.state._plexTimer = setInterval(() => {
+          if (document.getElementById('plex-now-playing-home')) {
+            this.loadPlexSessions();
+          } else {
+            clearInterval(this.state._plexTimer);
+            this.state._plexTimer = null;
+          }
+        }, 30000);
+      }
+    } catch (_) {}
+  },
+
+  _patchPlexSection() {
+    const sec = document.getElementById('plex-now-playing-home');
+    if (!sec) return;
+    const sessions = this.state.plexSessions;
+    if (!sessions.length) {
+      sec.style.display = 'none';
+      return;
+    }
+    sec.style.display = '';
+    sec.innerHTML = `
+      <div class="section-header">
+        <h3>${UI.icon('monitor', 16)} Now Playing on Plex</h3>
+        <button class="see-all-btn" onclick="App.navigate('plex-now-playing')">View All</button>
+      </div>
+      <div class="plex-home-sessions">${sessions.map(s => this._renderPlexHomeCard(s)).join('')}</div>
+    `;
+  },
+
+  _renderPlexHomeCard(s) {
+    const isEpisode = s.type === 'episode';
+    const title = isEpisode ? (s.grandparentTitle || s.parentTitle || s.title) : s.title;
+    const subtitle = isEpisode ? `S${s.parentIndex || '?'}E${s.index || '?'}` : (s.year || '');
+    const thumb = s.grandparentThumb || s.thumb || '';
+    const thumbUrl = thumb
+      ? `${Services.plex.serverUrl}/photo/:/transcode?width=72&height=108&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
+      : '';
+    const progress = s.duration ? Math.min(100, (s.viewOffset / s.duration * 100)).toFixed(0) : 0;
+    const user = s.User?.title || '';
+    const state = s.Player?.state || 'playing';
+    return `<div class="plex-home-card" onclick="App.navigate('plex-now-playing')">
+      ${thumbUrl
+        ? `<div class="plex-home-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
+        : `<div class="plex-home-thumb plex-home-thumb-ph">${UI.icon('film', 18)}</div>`}
+      <div class="plex-home-info">
+        <span class="plex-home-state ${state}">${state === 'paused' ? UI.icon('pause', 10) : UI.icon('play', 10)}</span>
+        <p class="plex-home-title">${UI.escapeHtml(title)}</p>
+        ${subtitle ? `<p class="plex-home-sub">${UI.escapeHtml(subtitle)}</p>` : ''}
+        ${user ? `<p class="plex-home-user">${UI.escapeHtml(user)}</p>` : ''}
+        <div class="plex-home-bar"><div class="plex-home-fill" style="width:${progress}%"></div></div>
+      </div>
+    </div>`;
   },
 
   async loadPersonalRecs() {
@@ -111,6 +182,7 @@ const HomePage = {
     el.innerHTML = `
       <div class="home-page">
         ${this.renderHero()}
+        <div class="section" id="plex-now-playing-home" style="display:none"></div>
         ${this.renderMenuGrid()}
         ${this.renderDynamicSection()}
         ${s.shames.length ? this.renderShameSection() : ''}
@@ -254,5 +326,10 @@ const HomePage = {
     this.goToSlide((this.state.current + 1) % len);
   },
 
-  destroy() { clearInterval(this.state.timer); }
+  destroy() {
+    clearInterval(this.state.timer);
+    clearInterval(this.state._plexTimer);
+    this.state._plexTimer = null;
+    this.state._plexServer = null;
+  }
 };
