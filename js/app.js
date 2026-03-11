@@ -122,6 +122,12 @@ const App = {
     // Scroll to top
     el.scrollTop = 0;
     window.scrollTo(0, 0);
+
+    // Trigger entrance animations
+    if (typeof Animate !== 'undefined') {
+      // Small delay to let async renders populate the DOM
+      setTimeout(() => Animate.afterPageRender(), 50);
+    }
   },
 
   back() {

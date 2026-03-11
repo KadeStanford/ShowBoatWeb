@@ -6,12 +6,40 @@ const AnalyticsPage = {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="analytics-page">${UI.pageHeader('Analytics', true)}<div id="analytics-content">${UI.loading()}</div></div>`;
     try {
-      const [stats, ratings, watched] = await Promise.all([
-        Services.getUserStats(), Services.getRatings(), Services.getWatched()
+      const [stats, ratings, watched, tvGenres, movieGenres] = await Promise.all([
+        Services.getUserStats(), Services.getRatings(), Services.getWatched(),
+        API.getGenres('tv'), API.getGenres('movie')
       ]);
       this.state.stats = stats;
       this.state.ratings = ratings;
       this.state.watched = watched;
+
+      // Build genre name map from both TV and Movie genre lists
+      const genreMap = {};
+      [...tvGenres, ...movieGenres].forEach(g => { genreMap[g.id] = g.name; });
+
+      // Get unique show/movie-level items (skip individual episodes for genre lookup)
+      const uniqueMedia = new Map();
+      watched.forEach(w => {
+        const id = w.tmdbId || w.id;
+        const mt = (w.mediaType === 'show' ? 'tv' : w.mediaType) || 'tv';
+        if (id && !uniqueMedia.has(`${mt}:${id}`)) uniqueMedia.set(`${mt}:${id}`, { id, type: mt });
+      });
+
+      // Fetch details in parallel (limited to 30 to avoid hammering the API)
+      const entries = [...uniqueMedia.values()].slice(0, 30);
+      const details = await Promise.all(entries.map(e =>
+        (e.type === 'movie' ? API.getMovieDetails(e.id) : API.getShowDetails(e.id)).catch(() => null)
+      ));
+
+      // Tally genres
+      const genres = {};
+      details.forEach(d => {
+        if (!d || !d.genres) return;
+        d.genres.forEach(g => { genres[g.name] = (genres[g.name] || 0) + 1; });
+      });
+
+      this.state.genreData = genres;
       this.draw();
     } catch (e) { document.getElementById('analytics-content').innerHTML = UI.emptyState('Error', e.message); }
   },
@@ -22,9 +50,8 @@ const AnalyticsPage = {
     const ratings = this.state.ratings;
     const watched = this.state.watched;
 
-    // Calculate genre distribution by media type
-    const genres = {};
-    watched.forEach(w => { let mt = w.mediaType || 'Unknown'; if (mt === 'show') mt = 'tv'; const g = mt === 'tv' ? 'TV Show' : mt === 'movie' ? 'Movie' : mt; genres[g] = (genres[g] || 0) + 1; });
+    // Genre distribution from TMDB data
+    const genres = this.state.genreData || {};
     const genreEntries = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const maxGenre = genreEntries.length ? genreEntries[0][1] : 1;
 

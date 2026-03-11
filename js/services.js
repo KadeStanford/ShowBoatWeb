@@ -486,5 +486,29 @@ const Services = {
       try { return JSON.parse(localStorage.getItem('plex_library') || '[]'); } catch { return []; }
     },
     setLibrary(lib) { localStorage.setItem('plex_library', JSON.stringify(lib)); }
+  },
+
+  // ==================== PLEX HISTORY (Firestore) ====================
+  async savePlexHistory(items) {
+    const uid = this._uid(); if (!uid) return;
+    const batch = db.batch();
+    const ref = db.collection('users').doc(uid).collection('plexHistory');
+    for (const item of items) {
+      const docId = item.type === 'show'
+        ? `show_${(item.title || '').replace(/\W+/g, '_')}_s${item.season || 0}e${item.episode || 0}`
+        : `movie_${(item.title || '').replace(/\W+/g, '_')}`;
+      batch.set(ref.doc(docId), { ...item, savedAt: Date.now() }, { merge: true });
+    }
+    await batch.commit();
+  },
+
+  async getPlexHistory() {
+    const uid = this._uid(); if (!uid) return [];
+    try {
+      const snap = await db.collection('users').doc(uid).collection('plexHistory').orderBy('lastViewedAt', 'desc').get();
+      if (snap.docs.length) return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    } catch (_) {}
+    const snap = await db.collection('users').doc(uid).collection('plexHistory').get();
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   }
 };

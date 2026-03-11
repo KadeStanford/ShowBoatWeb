@@ -151,10 +151,18 @@ const ActivityPage = {
         friendUids.length ? Services.getActivityFeed(friendUids) : Promise.resolve([]),
         uid ? Services.getActivityFeed([uid]) : Promise.resolve([])
       ]);
-      // Merge, deduplicate, and sort
+      // Merge, deduplicate by user+media (keep most recent action per media per user), and sort
       const allMap = new Map();
       [...ownActivity, ...friendActivity].forEach(a => { if (!allMap.has(a.id)) allMap.set(a.id, a); });
-      this.state.feed = [...allMap.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const all = [...allMap.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      // Keep only the most recent entry per user+media combo (so accidental ratings don't stack)
+      const seen = new Map();
+      const deduped = [];
+      for (const a of all) {
+        const key = `${a.userId}_${a.mediaId || a.showId}_${a.type === 'rated_episode' ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
+        if (!seen.has(key)) { seen.set(key, true); deduped.push(a); }
+      }
+      this.state.feed = deduped;
       this.drawFeed();
     } catch (e) { document.getElementById('feed-content').innerHTML = UI.emptyState('Error', e.message); }
   },

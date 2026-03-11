@@ -64,20 +64,35 @@ const ActorDetailsPage = {
       const notWl = credits.filter(c => !this.state.watchlistIds.has(Number(c.id)));
       credits = [...inWl, ...notWl];
     }
-    el.innerHTML = `<div class="cast-list" style="padding:0 32px">${credits.map(c => {
-      const poster = c.poster_path ? API.imageUrl(c.poster_path, 'w185') : '';
-      const type = c.media_type || 'movie';
-      const year = (c.first_air_date || c.release_date || '').slice(0, 4);
-      const inWl = this.state.watchlistIds.has(Number(c.id));
-      return `<div class="cast-list-item" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
-        ${poster ? `<img src="${poster}" style="width:48px;height:72px;border-radius:8px;object-fit:cover;background:var(--slate-800);flex-shrink:0" alt="" loading="lazy">` : `<div style="width:48px;height:72px;border-radius:8px;background:var(--slate-800);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--slate-600)">${UI.icon('film', 20)}</div>`}
-        <div class="cast-info" style="flex:1">
-          <p class="cast-name">${UI.escapeHtml(c.name || c.title || '')}</p>
-          <p class="cast-char">${UI.escapeHtml(c.character || '')}${year ? ` · ${year}` : ''} · ${type === 'tv' ? 'TV' : 'Movie'}</p>
-        </div>
-        ${inWl ? `<span style="color:var(--emerald-400);flex-shrink:0" title="In your watchlist">${UI.icon('bookmark-filled', 18)}</span>` : ''}
+    // Split into Movies and TV Shows
+    const movies = credits.filter(c => (c.media_type || 'movie') === 'movie');
+    const tvShows = credits.filter(c => (c.media_type || 'movie') === 'tv');
+
+    const renderSection = (title, items) => {
+      if (!items.length) return '';
+      return `<div class="filmography-section">
+        <h4 class="filmography-heading">${title} (${items.length})</h4>
+        <div class="cast-list" style="padding:0">${items.map(c => {
+          const poster = c.poster_path ? API.imageUrl(c.poster_path, 'w185') : '';
+          const type = c.media_type || 'movie';
+          const year = (c.first_air_date || c.release_date || '').slice(0, 4);
+          const inWl = this.state.watchlistIds.has(Number(c.id));
+          return `<div class="cast-list-item" onclick="App.navigate('details',{id:${c.id},type:'${type}'})">
+            ${poster ? `<img src="${poster}" style="width:48px;height:72px;border-radius:8px;object-fit:cover;background:var(--slate-800);flex-shrink:0" alt="" loading="lazy">` : `<div style="width:48px;height:72px;border-radius:8px;background:var(--slate-800);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--slate-600)">${UI.icon('film', 20)}</div>`}
+            <div class="cast-info" style="flex:1">
+              <p class="cast-name">${UI.escapeHtml(c.name || c.title || '')}</p>
+              <p class="cast-char">${UI.escapeHtml(c.character || '')}${year ? ` · ${year}` : ''}</p>
+            </div>
+            ${inWl ? `<span style="color:var(--emerald-400);flex-shrink:0" title="In your watchlist">${UI.icon('bookmark-filled', 18)}</span>` : ''}
+          </div>`;
+        }).join('')}</div>
       </div>`;
-    }).join('')}</div>`;
+    };
+
+    el.innerHTML = `<div style="padding:0 32px">
+      ${renderSection('Movies', movies)}
+      ${renderSection('TV Shows', tvShows)}
+    </div>`;
   }
 };
 

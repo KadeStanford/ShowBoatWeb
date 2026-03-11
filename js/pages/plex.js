@@ -56,7 +56,6 @@ const PlexConnectPage = {
           const result = await PlexAPI.checkPin(pin.id);
           if (result && result.authToken) {
             clearInterval(poll);
-            // Try to find servers
             let serverName = '';
             try {
               const resources = await PlexAPI.getResources(result.authToken);
@@ -89,6 +88,24 @@ const PlexConnectPage = {
     }
   },
 
+  // Paginated fetch: gets ALL items from a Plex section endpoint
+  async _fetchAllPaged(token, server, basePath) {
+    const pageSize = 200;
+    let start = 0;
+    const all = [];
+    while (true) {
+      const sep = basePath.includes('?') ? '&' : '?';
+      const url = `${basePath}${sep}X-Plex-Container-Start=${start}&X-Plex-Container-Size=${pageSize}`;
+      const data = await PlexAPI.serverFetch(token, server, url);
+      const items = data?.MediaContainer?.Metadata || [];
+      all.push(...items);
+      const totalSize = data?.MediaContainer?.totalSize || 0;
+      start += pageSize;
+      if (items.length < pageSize || start >= totalSize) break;
+    }
+    return all;
+  },
+
   async syncNow() {
     const btn = document.getElementById('plex-sync-btn');
     if (!btn) return;
@@ -97,17 +114,12 @@ const PlexConnectPage = {
       const token = Services.plex.token;
       if (!token) { UI.toast('Not connected to Plex', 'error'); return; }
 
-      // Discover servers via plex.tv
       const resources = await PlexAPI.getResources(token);
       const server = resources?.find(r => r.provides?.includes('server'));
-      if (!server) {
-        UI.toast('No Plex server found on your account', 'error');
-        return;
-      }
+      if (!server) { UI.toast('No Plex server found on your account', 'error'); return; }
 
       btn.innerHTML = `${UI.icon('activity', 18)} Connecting to ${UI.escapeHtml(server.name || 'server')}...`;
 
-      // Fetch library sections from the server (tries relay → remote → local)
       const sectionsData = await PlexAPI.serverFetch(token, server, '/library/sections');
       if (!sectionsData) {
         UI.toast(`Could not reach "${server.name}". Make sure remote access is enabled in Plex settings.`, 'error');
@@ -117,70 +129,92 @@ const PlexConnectPage = {
       const sections = sectionsData?.MediaContainer?.Directory || [];
       const allItems = [];
 
-      btn.innerHTML = `${UI.icon('activity', 18)} Fetching watch history...`;
+      btn.innerHTML = `${UI.icon('activity', 18)} Fetching ALL watch history...`;
 
-      // Fetch all watched items from each show/movie section
       for (const section of sections.filter(s => s.type === 'show' || s.type === 'movie')) {
-        // Try /allLeaves?type=4&viewCount>=1 for shows (episodes), /all?viewCount>=1 for movies
-        let watchedData;
         if (section.type === 'show') {
-          // Get watched episodes from the show section
-          watchedData = await PlexAPI.serverFetch(token, server, `/library/sections/${section.key}/all?type=4&viewCount%3E=1&sort=lastViewedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=200`);
-          if (watchedData) {
-            (watchedData?.MediaContainer?.Metadata || []).forEach(m => {
-              allItems.push({
-                title: m.grandparentTitle || m.title || '',
-                episodeTitle: m.title || '',
-                season: m.parentIndex,
-                episode: m.index,
-                year: m.year || m.parentYear || '',
-                type: 'show',
-                thumb: m.grandparentThumb || m.thumb || '',
-                lastViewedAt: m.lastViewedAt
-              });
+          const metadata = await this._fetchAllPaged(token, server, `/library/sections/${section.key}/all?type=4&viewCount%3E=1&sort=lastViewedAt:desc`);
+          metadata.forEach(m => {
+            allItems.push({
+              title: m.grandparentTitle || m.title || '',
+              episodeTitle: m.title || '',
+              season: m.parentIndex,
+              episode: m.index,
+              year: m.year || m.parentYear || '',
+              type: 'show',
+              thumb: m.grandparentThumb || m.thumb || '',
+              lastViewedAt: m.lastViewedAt
             });
-          }
+          });
         } else {
-          // Get watched movies
-          watchedData = await PlexAPI.serverFetch(token, server, `/library/sections/${section.key}/all?unwatched=0&sort=lastViewedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=200`);
-          if (watchedData) {
-            (watchedData?.MediaContainer?.Metadata || []).forEach(m => {
-              allItems.push({
-                title: m.title || '',
-                year: m.year || '',
-                type: 'movie',
-                thumb: m.thumb || '',
-                lastViewedAt: m.lastViewedAt
-              });
+          const metadata = await this._fetchAllPaged(token, server, `/library/sections/${section.key}/all?unwatched=0&sort=lastViewedAt:desc`);
+          metadata.forEach(m => {
+            allItems.push({
+              title: m.title || '',
+              year: m.year || '',
+              type: 'movie',
+              thumb: m.thumb || '',
+              lastViewedAt: m.lastViewedAt
             });
-          }
+          });
         }
       }
 
-      // Fallback: if no watched items found, try recentlyViewed
+      // Fallback if nothing found
       if (!allItems.length) {
         for (const section of sections.filter(s => s.type === 'show' || s.type === 'movie')) {
           const recentData = await PlexAPI.serverFetch(token, server, `/library/sections/${section.key}/recentlyViewed`);
           if (recentData) {
             (recentData?.MediaContainer?.Metadata || []).forEach(m => {
-              allItems.push({
-                title: m.title || m.grandparentTitle || '',
-                year: m.year || '',
-                type: section.type,
-                thumb: m.thumb || ''
-              });
+              allItems.push({ title: m.title || m.grandparentTitle || '', year: m.year || '', type: section.type, thumb: m.thumb || '' });
             });
           }
         }
       }
 
       if (allItems.length) {
+        btn.innerHTML = `${UI.icon('activity', 18)} Matching with TMDB...`;
+        // TMDB matching: match unique titles to get posters
+        const uniqueTitles = new Map();
+        allItems.forEach(item => {
+          const key = `${item.type}:${item.title}`;
+          if (!uniqueTitles.has(key)) uniqueTitles.set(key, item);
+        });
+        const tmdbCache = {};
+        const matchEntries = [...uniqueTitles.values()].slice(0, 100);
+        const batchSize = 5;
+        for (let i = 0; i < matchEntries.length; i += batchSize) {
+          const batch = matchEntries.slice(i, i + batchSize);
+          const results = await Promise.all(batch.map(async item => {
+            try {
+              const searchFn = item.type === 'movie' ? API.searchMovies : API.searchShows;
+              const query = item.year ? `${item.title}` : item.title;
+              const res = await searchFn.call(API, query, 1);
+              const match = res?.[0];
+              if (match) return { key: `${item.type}:${item.title}`, tmdbId: match.id, posterPath: match.poster_path, tmdbTitle: match.name || match.title };
+            } catch (_) {}
+            return null;
+          }));
+          results.filter(Boolean).forEach(r => { tmdbCache[r.key] = r; });
+        }
+
+        // Enrich items with TMDB data
+        allItems.forEach(item => {
+          const match = tmdbCache[`${item.type}:${item.title}`];
+          if (match) {
+            item.tmdbId = match.tmdbId;
+            item.posterPath = match.posterPath;
+          }
+        });
+
         Services.plex.setLibrary(allItems);
+        // Persist to Firestore
+        try { await Services.savePlexHistory(allItems); } catch (_) {}
         Services.plex.connect(server.name, token);
         this.state.server = server.name;
         UI.toast(`Synced ${allItems.length} items from "${server.name}"`, 'success');
       } else {
-        UI.toast(`Connected to "${server.name}" but no watched items found. Have you watched anything on this server?`, 'info');
+        UI.toast(`Connected to "${server.name}" but no watched items found.`, 'info');
       }
     } catch (e) {
       UI.toast('Sync failed: ' + e.message, 'error');
@@ -200,36 +234,91 @@ const PlexConnectPage = {
 };
 
 const PlexWatchedPage = {
+  state: { items: [], tab: 'all', loading: true },
+
   async render() {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="plex-watched-page">
       ${UI.pageHeader('Plex Watch History', true)}
+      <div class="filter-tabs" id="plex-tabs">
+        ${['all', 'show', 'movie'].map(t => `<button class="filter-tab ${this.state.tab === t ? 'active' : ''}" onclick="PlexWatchedPage.setTab('${t}')">${t === 'all' ? 'All' : t === 'show' ? 'TV Shows' : 'Movies'}</button>`).join('')}
+      </div>
       <div id="plex-watched-content">${UI.loading()}</div>
     </div>`;
-    if (!Services.plex.isConnected) {
-      document.getElementById('plex-watched-content').innerHTML = UI.emptyState('monitor', 'Not Connected', 'Connect your Plex account first');
-      return;
-    }
-    // Show items from local Plex library cache
-    const plexItems = Services.plex.getLibrary();
+    await this.loadItems();
+  },
+
+  async loadItems() {
     const content = document.getElementById('plex-watched-content');
-    if (!plexItems.length) {
+    try {
+      // Try Firestore first, then localStorage fallback
+      let items = await Services.getPlexHistory();
+      if (!items.length) items = Services.plex.getLibrary();
+      this.state.items = items;
+      this.state.loading = false;
+      this.draw();
+    } catch (_) {
+      this.state.items = Services.plex.getLibrary();
+      this.state.loading = false;
+      this.draw();
+    }
+  },
+
+  setTab(tab) {
+    this.state.tab = tab;
+    document.querySelectorAll('#plex-tabs .filter-tab').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    this.draw();
+  },
+
+  draw() {
+    const content = document.getElementById('plex-watched-content');
+    if (!content) return;
+    let items = this.state.items;
+    if (!items.length) {
       content.innerHTML = UI.emptyState('monitor', 'No Plex history', 'Sync your Plex account to see watch history here');
       return;
     }
-    content.innerHTML = `<div class="watchlist-items">${plexItems.map(item => {
-      const subtitle = item.type === 'show' && item.season != null
-        ? `S${item.season}E${item.episode}${item.episodeTitle ? ' — ' + UI.escapeHtml(item.episodeTitle) : ''}`
-        : (item.type === 'show' ? 'TV Show' : 'Movie');
-      return `<div class="watchlist-item">
-        <div class="wl-poster placeholder">${UI.icon('monitor', 24)}</div>
-        <div class="wl-info">
-          <p class="wl-title">${UI.escapeHtml(item.title || '')}</p>
-          <p class="wl-subtitle">${subtitle}</p>
-          <span class="plex-tag">From Plex</span>
-          ${item.year ? `<p class="wl-date">${item.year}</p>` : ''}
-        </div>
-      </div>`;
-    }).join('')}</div>`;
+    // Filter by tab
+    if (this.state.tab !== 'all') items = items.filter(i => i.type === this.state.tab);
+    if (!items.length) {
+      content.innerHTML = UI.emptyState('monitor', `No ${this.state.tab === 'show' ? 'TV' : 'movie'} history`, 'Nothing matched this filter');
+      return;
+    }
+    // Sort by lastViewedAt descending
+    items.sort((a, b) => (b.lastViewedAt || 0) - (a.lastViewedAt || 0));
+
+    // Group by date
+    const groups = {};
+    items.forEach(item => {
+      const ts = item.lastViewedAt ? item.lastViewedAt * 1000 : null;
+      const dateKey = ts ? new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown Date';
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(item);
+    });
+
+    let html = '<div class="plex-history-list">';
+    for (const [date, groupItems] of Object.entries(groups)) {
+      html += `<div class="plex-date-separator"><span>${UI.escapeHtml(date)}</span><span class="plex-date-count">${groupItems.length} item${groupItems.length > 1 ? 's' : ''}</span></div>`;
+      html += '<div class="plex-history-group">';
+      groupItems.forEach(item => {
+        const poster = item.posterPath ? API.imageUrl(item.posterPath, 'w185') : '';
+        const subtitle = item.type === 'show' && item.season != null
+          ? `S${item.season}E${item.episode}${item.episodeTitle ? ' — ' + UI.escapeHtml(item.episodeTitle) : ''}`
+          : (item.year ? `${item.year}` : '');
+        const onclick = item.tmdbId ? `onclick="App.navigate('details',{id:${item.tmdbId},type:'${item.type === 'show' ? 'tv' : 'movie'}'})"`  : '';
+        html += `<div class="plex-history-item" ${onclick} style="${item.tmdbId ? 'cursor:pointer' : ''}">
+          ${poster ? `<img src="${poster}" class="plex-poster" alt="" loading="lazy">` : `<div class="plex-poster placeholder">${UI.icon(item.type === 'movie' ? 'film' : 'tv', 24)}</div>`}
+          <div class="plex-item-info">
+            <p class="plex-item-title">${UI.escapeHtml(item.title || '')}</p>
+            ${subtitle ? `<p class="plex-item-sub">${subtitle}</p>` : ''}
+            <span class="plex-tag">${item.type === 'movie' ? 'Movie' : 'TV'}</span>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    content.innerHTML = html;
   }
 };
