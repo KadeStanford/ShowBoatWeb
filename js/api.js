@@ -153,9 +153,37 @@ const PlexAPI = {
   },
 
   async getResources(token) {
-    const res = await fetch('https://plex.tv/api/v2/resources?includeHttps=1', {
+    const res = await fetch('https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1', {
       headers: { ...this.headers(), 'X-Plex-Token': token }
     });
     return res.json();
+  },
+
+  // Get usable server connection URIs, sorted: relay first, then remote HTTPS, then local
+  getServerConnections(server) {
+    const conns = server.connections || [];
+    const relay = conns.filter(c => c.relay);
+    const remote = conns.filter(c => !c.relay && !c.local && c.protocol === 'https');
+    const local = conns.filter(c => c.local);
+    return [...relay, ...remote, ...local];
+  },
+
+  // Try fetching from a Plex server, trying each connection until one works
+  async serverFetch(token, server, path) {
+    const conns = this.getServerConnections(server);
+    for (const conn of conns) {
+      try {
+        const url = `${conn.uri}${path}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          headers: { ...this.headers(), 'X-Plex-Token': token },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (res.ok) return res.json();
+      } catch (_) { /* try next connection */ }
+    }
+    return null;
   }
 };
