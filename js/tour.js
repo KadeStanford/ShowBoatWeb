@@ -62,7 +62,7 @@ const GuidedTour = {
     overlay.className = 'tour-overlay';
     overlay.id = 'guided-tour-overlay';
     overlay.innerHTML = `
-      <div class="tour-backdrop" onclick="GuidedTour.skip()"></div>
+      <div class="tour-backdrop"></div>
       <div class="tour-spotlight" id="tour-spotlight"></div>
       <div class="tour-tooltip" id="tour-tooltip">
         <div class="tour-tooltip-title" id="tour-title"></div>
@@ -120,15 +120,37 @@ const GuidedTour = {
     tooltip.style.transform = '';
     const gap = 12;
     const vw = window.innerWidth;
+    const vh = window.innerHeight;
     const tooltipWidth = Math.min(300, vw - 32);
     tooltip.style.width = tooltipWidth + 'px';
 
-    if (position === 'top') {
-      tooltip.style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, vw - tooltipWidth - 16)) + 'px';
-      tooltip.style.top = (rect.top - gap) + 'px';
-      tooltip.style.transform = 'translateY(-100%)';
+    // Measure tooltip height for clipping checks
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.display = 'block';
+    const tH = tooltip.offsetHeight || 160;
+    tooltip.style.visibility = '';
+
+    // Auto-flip: if 'top' would clip above viewport, show below; if 'bottom' would clip below, show above
+    let pos = position;
+    if (pos === 'top' && rect.top - gap - tH < 8) pos = 'bottom';
+    else if (pos === 'bottom' && rect.bottom + gap + tH > vh - 8) pos = 'top';
+
+    // Also handle sidebar targets: if target is on the left side, position to the right of it
+    const isSidebar = rect.right < 200;
+    if (isSidebar) {
+      tooltip.style.left = (rect.right + gap) + 'px';
+      tooltip.style.top = Math.max(16, Math.min(rect.top, vh - tH - 16)) + 'px';
+      tooltip.style.transform = '';
+      return;
+    }
+
+    const leftPos = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, vw - tooltipWidth - 16));
+    tooltip.style.left = leftPos + 'px';
+
+    if (pos === 'top') {
+      tooltip.style.top = (rect.top - gap - tH) + 'px';
+      tooltip.style.transform = '';
     } else {
-      tooltip.style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, vw - tooltipWidth - 16)) + 'px';
       tooltip.style.top = (rect.bottom + gap) + 'px';
       tooltip.style.transform = '';
     }
