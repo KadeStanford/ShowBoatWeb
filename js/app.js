@@ -48,6 +48,8 @@ const App = {
         Services.restorePlexOnLogin().catch(() => {});
         // Ensure Plex watch history is backported into activity collection
         Services.ensurePlexActivityBackfill().catch(() => {});
+        // Check for newly earned badges and show unlock notifications
+        setTimeout(() => checkAndNotifyNewBadges().catch(() => {}), 3000);
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);

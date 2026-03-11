@@ -56,6 +56,7 @@ const ProfilePage = {
         <button class="profile-menu-item" onclick="App.navigate('wall-of-shame')">${UI.icon('thumbs-down', 20)} <span>Wall of Shame</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('shared-lists')">${UI.icon('list', 20)} <span>Shared Lists</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('matcher-history')">${UI.icon('zap', 20)} <span>Matcher History</span> ${UI.icon('chevron-right', 18)}</button>
+        ${p.isAdmin ? `<button class="profile-menu-item profile-admin-btn" onclick="window.open('admin.html','_self')">${UI.icon('shield', 20)} <span>Admin Dashboard</span> ${UI.icon('chevron-right', 18)}</button>` : ''}
       </div>
       <div class="invite-section">
         <div class="invite-section-header">

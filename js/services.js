@@ -638,16 +638,56 @@ const Services = {
 
   async getUserStats(uid) {
     const targetUid = uid || this._uid();
-    if (!targetUid) return { watched: 0, watchlist: 0, ratings: 0, friends: 0 };
-    const [watched, watchlist, ratings, friends] = await Promise.all([
+    const empty = { episodes: 0, movies: 0, completed: 0, plex: false, friends: 0, friendsCount: 0, ratings: 0, ratingsCount: 0, watchlist: 0, watchlistCount: 0, watched: 0, reviews: 0, shamesSent: 0, matcherSessions: 0, episodeRatings: 0 };
+    if (!targetUid) return empty;
+
+    const epPattern = /^tv:\d+:s\d+:e\d+$/;
+    const isCurrentUser = !uid || uid === this._uid();
+
+    const [watchedSnap, watchlistSnap, ratingsSnap, friendsSnap, plexSnap] = await Promise.all([
       db.collection('users').doc(targetUid).collection('watched').get(),
       db.collection('users').doc(targetUid).collection('watchlist').get(),
       db.collection('users').doc(targetUid).collection('ratings').get(),
-      db.collection('users').doc(targetUid).collection('friends').get()
+      db.collection('users').doc(targetUid).collection('friends').get(),
+      db.collection('users').doc(targetUid).collection('plexHistory').get()
     ]);
+
+    // Count episodes & movies from manually-tracked watched collection
+    const watchedEpisodes = watchedSnap.docs.filter(d => epPattern.test(d.id)).length;
+    const watchedMovies   = watchedSnap.docs.filter(d => d.id.startsWith('movie:')).length;
+
+    // Count from Plex history (avoid double-counting by taking max)
+    const plexEpisodes = plexSnap.docs.filter(d => d.data().type === 'show').length;
+    const plexMovies   = plexSnap.docs.filter(d => d.data().type === 'movie').length;
+
+    const episodes = Math.max(watchedEpisodes, plexEpisodes);
+    const movies   = Math.max(watchedMovies,   plexMovies);
+
+    // Unique TV shows that have at least one watched episode
+    const showIds = new Set();
+    watchedSnap.docs.forEach(d => { if (epPattern.test(d.id)) showIds.add(d.id.split(':')[1]); });
+    const completed = showIds.size;
+
+    // Plex connection status
+    const plex = isCurrentUser ? this.plex.isConnected : plexSnap.size > 0;
+
+    // Ratings breakdown
+    const ratingDocs = ratingsSnap.docs.map(d => d.data());
+    const episodeRatings = ratingDocs.filter(d => d.mediaType === 'episode').length;
+    const reviews        = ratingDocs.filter(d => d.review && d.review.trim().length > 0).length;
+
+    // Shames & matcher (graceful fallbacks)
+    let shamesSent = 0, matcherSessions = 0;
+    try { const s = await db.collection('shames').where('fromUid', '==', targetUid).get(); shamesSent = s.size; } catch (_) {}
+    try { const m = await db.collection('matcherSessions').where('createdBy', '==', targetUid).get(); matcherSessions = m.size; } catch (_) {}
+
     return {
-      watched: watched.size, watchlist: watchlist.size,
-      ratings: ratings.size, friends: friends.size
+      episodes, movies, completed, plex,
+      friends: friendsSnap.size, friendsCount: friendsSnap.size,
+      ratings: ratingsSnap.size, ratingsCount: ratingsSnap.size,
+      watchlist: watchlistSnap.size, watchlistCount: watchlistSnap.size,
+      watched: watchedSnap.size,
+      reviews, shamesSent, matcherSessions, episodeRatings
     };
   },
 

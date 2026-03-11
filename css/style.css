@@ -1327,6 +1327,9 @@ ul, ol { list-style: none; }
 .profile-menu-item svg:first-child { color: var(--slate-400); flex-shrink: 0; }
 .profile-menu-item span { flex: 1; }
 .profile-menu-item svg:last-child { color: var(--slate-600); flex-shrink: 0; }
+.profile-admin-btn { border-top: 2px solid rgba(251,113,133,.25); color: #fb7185 !important; }
+.profile-admin-btn svg:first-child { color: #fb7185; }
+.profile-admin-btn:hover { background: rgba(251,113,133,.08); border-color: rgba(251,113,133,.3); }
 .btn-logout {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; padding: 14px; border-radius: var(--radius-md);
@@ -2033,6 +2036,15 @@ img.ep-friend-av { background: var(--slate-800); }
 .toast.error { border-color: rgba(239,68,68,.3); }
 .toast.info { border-color: rgba(59,130,246,.3); }
 @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Badge unlock toast */
+.badge-toast { padding: 12px 14px; min-width: 300px; gap: 12px; }
+.badge-toast-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; }
+.badge-toast-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.badge-toast-title { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+.badge-toast-name { font-size: .9rem; font-weight: 600; }
+.badge-toast-view { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: .8rem; font-weight: 600; flex-shrink: 0; transition: background .15s; }
+.badge-toast-view:hover { background: rgba(255,255,255,.25); }
 
 /* =============================================
    EMPTY STATE

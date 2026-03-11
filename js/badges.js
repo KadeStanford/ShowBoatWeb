@@ -69,3 +69,23 @@ function calculateBadges(stats) {
     return { ...badge, current, earned, progress };
   });
 }
+
+async function checkAndNotifyNewBadges() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  try {
+    const [stats, userDoc] = await Promise.all([
+      Services.getUserStats(),
+      db.collection('users').doc(uid).get()
+    ]);
+    const allBadges = calculateBadges(stats);
+    const earned = allBadges.filter(b => b.earned);
+    const storedIds = new Set(userDoc.data()?.earnedBadgeIds || []);
+    const newlyEarned = earned.filter(b => !storedIds.has(b.id));
+    if (newlyEarned.length) {
+      newlyEarned.forEach((b, i) => setTimeout(() => UI.badgeToast(b), i * 900));
+      const allIds = [...new Set([...storedIds, ...earned.map(b => b.id)])];
+      await db.collection('users').doc(uid).update({ earnedBadgeIds: allIds });
+    }
+  } catch (_) {}
+}

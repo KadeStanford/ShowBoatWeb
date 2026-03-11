@@ -65,6 +65,21 @@ const UI = {
     setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; setTimeout(() => el.remove(), 300); }, 3500);
   },
 
+  badgeToast(badge) {
+    if (typeof App !== 'undefined' && App.currentPage === 'badges') return;
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast badge-toast success';
+    el.innerHTML = `<span class="badge-toast-icon">${badge.icon}</span>
+      <div class="badge-toast-info">
+        <span class="badge-toast-title">New Badge Unlocked!</span>
+        <span class="badge-toast-name">${this._esc(badge.name)}</span>
+      </div>
+      <button class="badge-toast-view" onclick="App.navigate('badges');this.closest('.toast').remove()">View →</button>`;
+    container.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(110%)'; setTimeout(() => el.remove(), 300); }, 6000);
+  },
+
   // --- Modal ---
   showModal(titleOrContent, contentHtml, opts = {}) {
     const overlay = document.getElementById('modal-overlay');
