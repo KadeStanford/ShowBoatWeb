@@ -1,8 +1,8 @@
-const CACHE_NAME = 'showboat-v5';
+const CACHE_NAME = 'showboat-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/style.css',
+  '/css/style.css?v=6',
   '/js/firebase-config.js',
   '/js/api.js',
   '/js/services.js',
@@ -38,7 +38,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Network-first for API calls and JS files, cache-first for other static assets
-  if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com') || url.pathname.endsWith('.js')) {
+  if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     e.respondWith(fetch(e.request).then(res => {
       const clone = res.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));

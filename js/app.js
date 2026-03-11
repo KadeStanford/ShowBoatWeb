@@ -151,8 +151,17 @@ const App = {
   showNav(show) {
     const nav = document.getElementById('bottom-nav');
     const sidebar = document.getElementById('sidebar-nav');
-    if (nav) nav.style.display = show ? 'flex' : 'none';
-    if (sidebar) sidebar.classList.toggle('hidden', !show);
+    const isDesktop = window.innerWidth > 1023;
+    if (nav) nav.style.display = (show && !isDesktop) ? 'flex' : 'none';
+    if (sidebar) {
+      if (show && isDesktop) {
+        sidebar.classList.remove('hidden');
+        sidebar.style.display = 'flex';
+      } else {
+        sidebar.classList.add('hidden');
+        sidebar.style.display = '';
+      }
+    }
     document.getElementById('page-content')?.classList.toggle('has-nav', show);
   },
 
