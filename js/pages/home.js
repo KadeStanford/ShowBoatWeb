@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), plexIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), plexIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null, _plexFetchedAt: {}, _plexHomeTick: null },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -63,9 +63,12 @@ const HomePage = {
       if (!this.state._plexServer) return;
       const data = await PlexAPI.serverFetch(token, this.state._plexServer, '/status/sessions');
       const sessions = data?.MediaContainer?.Metadata || [];
+      const fetchedAt = Date.now();
+      sessions.forEach(s => { this.state._plexFetchedAt[s.ratingKey] = fetchedAt; });
       this.state.plexSessions = sessions;
       this._patchPlexSection();
-      // Poll every 30s while home page is active
+      this._startPlexHomeTick();
+      // Poll every 10s while home page is active
       if (!this.state._plexTimer) {
         this.state._plexTimer = setInterval(() => {
           if (document.getElementById('plex-now-playing-home')) {
@@ -73,8 +76,9 @@ const HomePage = {
           } else {
             clearInterval(this.state._plexTimer);
             this.state._plexTimer = null;
+            this._stopPlexHomeTick();
           }
-        }, 30000);
+        }, 10000);
       }
     } catch (_) {}
   },
@@ -100,26 +104,69 @@ const HomePage = {
   _renderPlexHomeCard(s) {
     const isEpisode = s.type === 'episode';
     const title = isEpisode ? (s.grandparentTitle || s.parentTitle || s.title) : s.title;
-    const subtitle = isEpisode ? `S${s.parentIndex || '?'}E${s.index || '?'}` : (s.year || '');
+    const episodeLabel = isEpisode ? `S${s.parentIndex || '?'}E${s.index || '?'}` : (s.year || '');
+    const episodeTitle = isEpisode ? (s.title || '') : '';
     const thumb = s.grandparentThumb || s.thumb || '';
     const thumbUrl = thumb
-      ? `${Services.plex.serverUrl}/photo/:/transcode?width=72&height=108&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
+      ? `${Services.plex.serverUrl}/photo/:/transcode?width=96&height=144&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
       : '';
-    const progress = s.duration ? Math.min(100, (s.viewOffset / s.duration * 100)).toFixed(0) : 0;
+    const viewOffset = s.viewOffset || 0;
+    const duration = s.duration || 1;
+    const progress = s.duration ? Math.min(100, (viewOffset / duration) * 100) : 0;
+    const fmtTime = ms => { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600); const m = Math.floor((t % 3600) / 60); const sec = t % 60; const pad = n => String(n).padStart(2, '0'); return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`; };
+    const elapsed = fmtTime(viewOffset);
+    const remaining = fmtTime(Math.max(0, duration - viewOffset));
     const user = s.User?.title || '';
     const state = s.Player?.state || 'playing';
+    const rk = s.ratingKey;
     return `<div class="plex-home-card" onclick="App.navigate('plex-now-playing')">
       ${thumbUrl
         ? `<div class="plex-home-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
-        : `<div class="plex-home-thumb plex-home-thumb-ph">${UI.icon('film', 18)}</div>`}
+        : `<div class="plex-home-thumb plex-home-thumb-ph">${UI.icon('film', 22)}</div>`}
       <div class="plex-home-info">
         <span class="plex-home-state ${state}">${state === 'paused' ? UI.icon('pause', 10) : UI.icon('play', 10)}</span>
         <p class="plex-home-title">${UI.escapeHtml(title)}</p>
-        ${subtitle ? `<p class="plex-home-sub">${UI.escapeHtml(subtitle)}</p>` : ''}
+        ${episodeLabel ? `<p class="plex-home-sub">${UI.escapeHtml(episodeLabel)}</p>` : ''}
+        ${episodeTitle ? `<p class="plex-home-ep-title">${UI.escapeHtml(episodeTitle)}</p>` : ''}
         ${user ? `<p class="plex-home-user">${UI.escapeHtml(user)}</p>` : ''}
-        <div class="plex-home-bar"><div class="plex-home-fill" style="width:${progress}%"></div></div>
+        <div class="plex-home-bar"><div class="plex-home-fill" id="phf-${rk}" style="width:${progress.toFixed(1)}%"></div></div>
+        <div class="plex-home-times">
+          <span id="phe-${rk}">${elapsed}</span>
+          <span id="phr-${rk}">-${remaining}</span>
+        </div>
       </div>
     </div>`;
+  },
+
+  _startPlexHomeTick() {
+    this._stopPlexHomeTick();
+    const fmtTime = ms => { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600); const m = Math.floor((t % 3600) / 60); const sec = t % 60; const pad = n => String(n).padStart(2, '0'); return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`; };
+    this.state._plexHomeTick = setInterval(() => {
+      this.state.plexSessions.forEach(s => {
+        const fetchedAt = this.state._plexFetchedAt[s.ratingKey];
+        if (!fetchedAt) return;
+        const isPaused = s.Player?.state === 'paused';
+        const viewOffset = s.viewOffset || 0;
+        const duration = s.duration || 1;
+        const current = isPaused ? viewOffset : Math.min(duration, viewOffset + (Date.now() - fetchedAt));
+        const pct = Math.min(100, (current / duration) * 100);
+        const remaining = Math.max(0, duration - current);
+        const rk = s.ratingKey;
+        const fill = document.getElementById(`phf-${rk}`);
+        const elEl = document.getElementById(`phe-${rk}`);
+        const remEl = document.getElementById(`phr-${rk}`);
+        if (fill) fill.style.width = pct.toFixed(1) + '%';
+        if (elEl) elEl.textContent = fmtTime(current);
+        if (remEl) remEl.textContent = '-' + fmtTime(remaining);
+      });
+    }, 1000);
+  },
+
+  _stopPlexHomeTick() {
+    if (this.state._plexHomeTick) {
+      clearInterval(this.state._plexHomeTick);
+      this.state._plexHomeTick = null;
+    }
   },
 
   async loadPersonalRecs() {

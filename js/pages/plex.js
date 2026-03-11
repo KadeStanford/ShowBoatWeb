@@ -633,9 +633,48 @@ const PlexWatchedPage = {
 
 /* ---------- Plex Companion — Now Playing ---------- */
 const PlexNowPlayingPage = {
-  state: { sessions: [], loading: false, details: {} },
+  state: { sessions: [], loading: false, details: {}, _liveTimer: null, _fetchedAt: {}, _server: null, _token: null },
+
+  formatTime(ms) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  },
+
+  _startLiveTick() {
+    this._stopLiveTick();
+    this.state._liveTimer = setInterval(() => {
+      this.state.sessions.forEach(s => {
+        const fetchedAt = this.state._fetchedAt[s.ratingKey];
+        if (!fetchedAt) return;
+        const isPaused = s.Player?.state === 'paused';
+        const viewOffset = s.viewOffset || 0;
+        const duration = s.duration || 1;
+        const current = isPaused ? viewOffset : Math.min(duration, viewOffset + (Date.now() - fetchedAt));
+        const pct = Math.min(100, (current / duration) * 100);
+        const remaining = Math.max(0, duration - current);
+        const fill = document.getElementById(`np-fill-${s.ratingKey}`);
+        const elapsedEl = document.getElementById(`np-elapsed-${s.ratingKey}`);
+        const remEl = document.getElementById(`np-remaining-${s.ratingKey}`);
+        if (fill) fill.style.width = pct.toFixed(1) + '%';
+        if (elapsedEl) elapsedEl.textContent = this.formatTime(current);
+        if (remEl) remEl.textContent = '-' + this.formatTime(remaining);
+      });
+    }, 1000);
+  },
+
+  _stopLiveTick() {
+    if (this.state._liveTimer) {
+      clearInterval(this.state._liveTimer);
+      this.state._liveTimer = null;
+    }
+  },
 
   async render() {
+    this._stopLiveTick();
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="plex-now-playing-page">${UI.pageHeader('Now Playing', true)}<div id="np-content">${UI.loading()}</div></div>`;
     if (!Services.plex.isConnected) {
@@ -644,19 +683,26 @@ const PlexNowPlayingPage = {
     }
     try {
       const token = Services.plex.token;
-      const resources = await PlexAPI.getResources(token);
-      const server = resources?.find(r => r.provides?.includes('server'));
-      if (!server) { document.getElementById('np-content').innerHTML = UI.emptyState('No Server', 'Could not find a Plex server on your account.'); return; }
-      const data = await PlexAPI.serverFetch(token, server, '/status/sessions');
+      if (!this.state._server) {
+        const resources = await PlexAPI.getResources(token);
+        const server = resources?.find(r => r.provides?.includes('server'));
+        if (!server) { document.getElementById('np-content').innerHTML = UI.emptyState('No Server', 'Could not find a Plex server on your account.'); return; }
+        this.state._server = server;
+        this.state._token = token;
+      }
+      const data = await PlexAPI.serverFetch(token, this.state._server, '/status/sessions');
       const sessions = data?.MediaContainer?.Metadata || [];
+      const fetchedAt = Date.now();
+      sessions.forEach(s => { this.state._fetchedAt[s.ratingKey] = fetchedAt; });
       this.state.sessions = sessions;
-      this.draw(server, token);
+      this.draw();
+      this._startLiveTick();
     } catch (e) {
       document.getElementById('np-content').innerHTML = UI.emptyState('Error', e.message);
     }
   },
 
-  draw(server, token) {
+  draw() {
     const el = document.getElementById('np-content');
     const sessions = this.state.sessions;
 
@@ -675,10 +721,14 @@ const PlexNowPlayingPage = {
         <p class="np-subtitle">${sessions.length} ${sessions.length === 1 ? 'stream' : 'streams'} active</p>
         <button class="btn-secondary btn-sm" onclick="PlexNowPlayingPage.refresh()">${UI.icon('refresh-cw', 14)} Refresh</button>
       </div>
-      <div class="np-sessions">${sessions.map(s => this.renderSession(s)).join('')}</div>
+      <div class="np-sessions">
+        ${sessions.map((s, i) => `
+          ${i > 0 ? `<div class="np-separator">${UI.icon('monitor', 13)} Stream ${i + 1}</div>` : ''}
+          ${this.renderSession(s)}
+        `).join('')}
+      </div>
     `;
 
-    // Load TMDB enrichment in background
     sessions.forEach((s, i) => this.enrichSession(s, i));
   },
 
@@ -687,12 +737,13 @@ const PlexNowPlayingPage = {
     const title = isEpisode ? (s.grandparentTitle || s.parentTitle || s.title) : s.title;
     const subtitle = isEpisode ? `S${s.parentIndex}E${s.index} · ${s.title}` : (s.year || '');
     const thumb = s.grandparentThumb || s.thumb || '';
-    const thumbUrl = thumb ? `${Services.plex.serverUrl || ''}/photo/:/transcode?width=100&height=150&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}` : '';
+    const thumbUrl = thumb ? `${Services.plex.serverUrl || ''}/photo/:/transcode?width=130&height=195&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}` : '';
 
     const viewOffset = s.viewOffset || 0;
     const duration = s.duration || 1;
-    const progress = Math.min(100, (viewOffset / duration * 100)).toFixed(0);
-    const minLeft = Math.round((duration - viewOffset) / 60000);
+    const progress = Math.min(100, (viewOffset / duration) * 100);
+    const elapsed = this.formatTime(viewOffset);
+    const remaining = this.formatTime(Math.max(0, duration - viewOffset));
 
     const player = s.Player?.title || s.Player?.platform || '';
     const user = s.User?.title || '';
@@ -706,24 +757,26 @@ const PlexNowPlayingPage = {
       <div class="np-card-top">
         ${thumbUrl
           ? `<div class="np-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
-          : `<div class="np-thumb np-thumb-ph">${UI.icon('film', 28)}</div>`
+          : `<div class="np-thumb np-thumb-ph">${UI.icon('film', 32)}</div>`
         }
         <div class="np-card-info">
           <div class="np-state-badge ${state}"><span>${UI.icon(stateIcon, 12)}</span> ${state}</div>
           <h3 class="np-title">${UI.escapeHtml(title)}</h3>
-          <p class="np-subtitle-text">${UI.escapeHtml(subtitle)}</p>
+          ${subtitle ? `<p class="np-subtitle-text">${UI.escapeHtml(subtitle)}</p>` : ''}
           <div class="np-meta">
             ${user ? `<span class="np-meta-chip">${UI.icon('user', 12)} ${UI.escapeHtml(user)}</span>` : ''}
             ${player ? `<span class="np-meta-chip">${UI.icon('monitor', 12)} ${UI.escapeHtml(player)}</span>` : ''}
-            ${minLeft > 0 ? `<span class="np-meta-chip">${UI.icon('clock', 12)} ~${minLeft}m left</span>` : ''}
           </div>
         </div>
       </div>
-      <div class="np-progress-wrap">
+      <div class="np-progress-section">
         <div class="np-progress-bar">
-          <div class="np-progress-fill" style="width:${progress}%"></div>
+          <div class="np-progress-fill" id="np-fill-${s.ratingKey}" style="width:${progress.toFixed(1)}%"></div>
         </div>
-        <span class="np-progress-pct">${progress}%</span>
+        <div class="np-time-row">
+          <span class="np-time-elapsed" id="np-elapsed-${s.ratingKey}">${elapsed}</span>
+          <span class="np-time-remaining" id="np-remaining-${s.ratingKey}">-${remaining}</span>
+        </div>
       </div>
       <div id="np-details-${s.ratingKey}" class="np-tmdb-details"></div>
     </div>`;
@@ -740,35 +793,76 @@ const PlexNowPlayingPage = {
       const match = results[0];
       this.state.details[s.ratingKey] = { tmdbId: match.id };
 
-      // Update the card to make it clickable
       const card = document.getElementById(`np-card-${s.ratingKey}`);
       if (card) card.onclick = () => App.navigate('details', { id: match.id, type: mediaType });
 
-      // Load and inject cast + extra info
       const detailsEl = document.getElementById(`np-details-${s.ratingKey}`);
       if (!detailsEl) return;
 
-      let castData = null;
-      if (isEpisode && s.parentIndex && s.index) {
-        castData = await API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}/credits`).catch(() => null);
-      } else if (mediaType === 'movie') {
-        castData = await API.tmdb(`/movie/${match.id}/credits`).catch(() => null);
-      } else {
-        castData = await API.tmdb(`/tv/${match.id}/credits`).catch(() => null);
-      }
-      const cast = (castData?.cast || []).slice(0, 6);
-      const mediaDetails = isEpisode
-        ? await API.getShowDetails(match.id).catch(() => null)
-        : await API.getMovieDetails(match.id).catch(() => null);
+      // Fetch credits, media details, and episode details in parallel
+      const [castData, mediaDetails, episodeDetails] = await Promise.all([
+        (isEpisode && s.parentIndex && s.index
+          ? API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}/credits`)
+          : mediaType === 'movie'
+            ? API.tmdb(`/movie/${match.id}/credits`)
+            : API.tmdb(`/tv/${match.id}/credits`)
+        ).catch(() => null),
+        (isEpisode ? API.getShowDetails(match.id) : API.getMovieDetails(match.id)).catch(() => null),
+        (isEpisode && s.parentIndex && s.index
+          ? API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}`)
+          : Promise.resolve(null)
+        ).catch(() => null)
+      ]);
 
-      const countries = (mediaDetails?.production_countries || []).map(c => c.name).join(', ');
+      const cast = (castData?.cast || []).slice(0, 6);
       const overview = isEpisode
-        ? (await API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}`).catch(() => null))?.overview || ''
-        : mediaDetails?.overview || '';
+        ? (episodeDetails?.overview || mediaDetails?.overview || '')
+        : (mediaDetails?.overview || '');
+      const countries = (mediaDetails?.production_countries || []).map(c => c.name).join(', ');
+      const genres = (mediaDetails?.genres || []).map(g => g.name).slice(0, 3).join(' · ');
+      const rating = mediaDetails?.vote_average ? mediaDetails.vote_average.toFixed(1) : null;
+      const voteCount = mediaDetails?.vote_count || 0;
+
+      let creator = '';
+      if (mediaType === 'movie') {
+        const dir = castData?.crew?.find(c => c.job === 'Director');
+        if (dir) creator = dir.name;
+      } else {
+        creator = mediaDetails?.created_by?.[0]?.name || '';
+      }
+
+      let budgetStr = '';
+      if (mediaType === 'movie' && mediaDetails?.budget > 0) {
+        const fmt = n => n >= 1e6 ? `$${(n / 1e6).toFixed(0)}M` : `$${(n / 1e3).toFixed(0)}K`;
+        budgetStr = fmt(mediaDetails.budget);
+        if (mediaDetails.revenue > 0) budgetStr += ` → ${fmt(mediaDetails.revenue)}`;
+      }
+
+      let networkStr = '';
+      let seasonsStr = '';
+      if (mediaType === 'tv') {
+        networkStr = mediaDetails?.networks?.[0]?.name || '';
+        const sc = mediaDetails?.number_of_seasons;
+        if (sc) seasonsStr = `${sc} season${sc > 1 ? 's' : ''}`;
+      }
+
+      const stillPath = episodeDetails?.still_path;
+      const stillUrl = stillPath ? API.imageUrl(stillPath, 'w300') : '';
+
+      const facts = [
+        genres ? `<span class="np-fact-chip">${UI.icon('tag', 11)} ${UI.escapeHtml(genres)}</span>` : '',
+        rating ? `<span class="np-fact-chip">${UI.icon('star', 11)} ${rating}/10 <span class="np-vote-count">(${voteCount.toLocaleString()})</span></span>` : '',
+        creator ? `<span class="np-fact-chip">${UI.icon(mediaType === 'movie' ? 'video' : 'user', 11)} ${UI.escapeHtml(creator)}</span>` : '',
+        budgetStr ? `<span class="np-fact-chip">${UI.icon('dollar-sign', 11)} ${UI.escapeHtml(budgetStr)}</span>` : '',
+        networkStr ? `<span class="np-fact-chip">${UI.icon('tv', 11)} ${UI.escapeHtml(networkStr)}</span>` : '',
+        seasonsStr ? `<span class="np-fact-chip">${UI.icon('layers', 11)} ${UI.escapeHtml(seasonsStr)}</span>` : '',
+        countries ? `<span class="np-fact-chip">${UI.icon('map-pin', 11)} ${UI.escapeHtml(countries)}</span>` : '',
+      ].filter(Boolean);
 
       detailsEl.innerHTML = `
-        ${overview ? `<p class="np-overview">${UI.escapeHtml(overview.substring(0, 180))}${overview.length > 180 ? '…' : ''}</p>` : ''}
-        ${countries ? `<p class="np-fact">${UI.icon('map-pin', 12)} Filmed in ${UI.escapeHtml(countries)}</p>` : ''}
+        ${stillUrl ? `<img class="np-still" src="${UI.escapeHtml(stillUrl)}" alt="">` : ''}
+        ${overview ? `<p class="np-overview">${UI.escapeHtml(overview.substring(0, 220))}${overview.length > 220 ? '…' : ''}</p>` : ''}
+        ${facts.length ? `<div class="np-fact-grid">${facts.join('')}</div>` : ''}
         ${cast.length ? `<div class="np-cast-row">${cast.map(c => {
           const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w92') : '';
           return `<div class="np-cast-chip" onclick="event.stopPropagation();App.navigate('actor-details',{id:${c.id}})">
@@ -781,8 +875,10 @@ const PlexNowPlayingPage = {
   },
 
   async refresh() {
+    this._stopLiveTick();
     this.state.sessions = [];
     this.state.details = {};
+    this.state._fetchedAt = {};
     await this.render();
   }
 };

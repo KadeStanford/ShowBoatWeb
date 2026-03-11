@@ -2625,7 +2625,7 @@ img.ep-friend-av { background: var(--slate-800); }
 .np-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 14px; overflow: hidden; cursor: pointer; transition: all var(--transition); }
 .np-card:hover { border-color: rgba(229, 160, 13, 0.4); box-shadow: 0 4px 24px rgba(229,160,13,.12); transform: translateY(-2px); }
 .np-card-top { display: flex; gap: 14px; align-items: flex-start; }
-.np-thumb { width: 80px; height: 120px; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--bg-secondary); flex-shrink: 0; border: 1px solid var(--border-subtle); }
+.np-thumb { width: 130px; height: 195px; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--bg-secondary); flex-shrink: 0; border: 1px solid var(--border-subtle); }
 .np-thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
 .np-card-info { flex: 1; min-width: 0; }
 .np-state-badge { display: inline-flex; align-items: center; gap: 5px; font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 3px 8px; border-radius: 6px; margin-bottom: 6px; }
@@ -2640,6 +2640,16 @@ img.ep-friend-av { background: var(--slate-800); }
 .np-progress-fill { height: 100%; background: linear-gradient(90deg, #e5a00d, #f59e0b); border-radius: 3px; transition: width .4s ease; }
 .np-progress-pct { font-size: .75rem; color: var(--text-muted); flex-shrink: 0; width: 36px; text-align: right; }
 .np-tmdb-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.np-progress-section { margin-top: 14px; }
+.np-time-row { display: flex; justify-content: space-between; margin-top: 5px; }
+.np-time-elapsed { font-size: .75rem; color: var(--text-muted); }
+.np-time-remaining { font-size: .75rem; color: var(--text-muted); }
+.np-separator { display: flex; align-items: center; gap: 8px; font-size: .75rem; font-weight: 700; color: #e5a00d; letter-spacing: .5px; text-transform: uppercase; padding: 4px 0 8px; opacity: .8; }
+.np-separator::after { content: ''; flex: 1; height: 1px; background: rgba(229,160,13,.25); }
+.np-still { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+.np-fact-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.np-fact-chip { display: inline-flex; align-items: center; gap: 4px; font-size: .75rem; color: var(--text-secondary); background: var(--bg-secondary); border-radius: 6px; padding: 3px 8px; border: 1px solid var(--border-subtle); }
+.np-vote-count { color: var(--text-muted); font-size: .6875rem; }
 .np-overview { font-size: .875rem; color: var(--text-secondary); margin: 0 0 8px; line-height: 1.5; }
 .np-fact { font-size: .8125rem; color: var(--text-muted); margin: 0 0 8px; display: flex; align-items: center; gap: 5px; }
 .np-cast-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -2700,9 +2710,9 @@ img.ep-friend-av { background: var(--slate-800); }
    ============================================================ */
 .plex-home-sessions { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .plex-home-sessions::-webkit-scrollbar { display: none; }
-.plex-home-card { display: flex; gap: 10px; align-items: flex-start; background: var(--bg-secondary); border: 1px solid rgba(229,160,13,.25); border-radius: 14px; padding: 10px; cursor: pointer; transition: all var(--transition); flex-shrink: 0; width: 200px; }
+.plex-home-card { display: flex; gap: 10px; align-items: flex-start; background: var(--bg-secondary); border: 1px solid rgba(229,160,13,.25); border-radius: 14px; padding: 10px; cursor: pointer; transition: all var(--transition); flex-shrink: 0; width: 240px; }
 .plex-home-card:hover { border-color: rgba(229,160,13,.6); background: rgba(229,160,13,.07); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(229,160,13,.15); }
-.plex-home-thumb { width: 48px; height: 72px; border-radius: 8px; background-size: cover; background-position: center; background-color: var(--bg-card); flex-shrink: 0; border: 1px solid var(--border-subtle); }
+.plex-home-thumb { width: 64px; height: 96px; border-radius: 8px; background-size: cover; background-position: center; background-color: var(--bg-card); flex-shrink: 0; border: 1px solid var(--border-subtle); }
 .plex-home-thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
 .plex-home-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .plex-home-state { display: inline-flex; align-items: center; gap: 3px; font-size: .625rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; border-radius: 4px; padding: 2px 5px; width: fit-content; }
@@ -2713,3 +2723,5 @@ img.ep-friend-av { background: var(--slate-800); }
 .plex-home-user { font-size: .6875rem; color: var(--text-muted); margin: 0; }
 .plex-home-bar { width: 100%; height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 4px; }
 .plex-home-fill { height: 100%; background: #e5a00d; border-radius: 2px; transition: width .4s ease; }
+.plex-home-ep-title { font-size: .6875rem; color: var(--text-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plex-home-times { display: flex; justify-content: space-between; font-size: .625rem; color: var(--text-muted); margin-top: 3px; }
