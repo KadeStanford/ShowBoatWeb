@@ -65,7 +65,7 @@ const HomePage = {
         ${this.renderHero(heroItem)}
         ${this.renderMenuGrid()}
         ${s.shames.length ? this.renderShameSection() : ''}
-        ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list"><p class="empty-text">Loading...</p></div></div>`}
+        ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll"><p class="empty-text">Loading...</p></div></div>`}
         <div class="section">
           <div class="section-header"><h3>Trending Shows</h3><button class="see-all-btn" onclick="App.navigate('discover',{tab:'tv'})">See All</button></div>
           <div class="horizontal-scroll">${this.renderHorizontalList(s.trending.shows)}</div>
@@ -84,7 +84,7 @@ const HomePage = {
     const year = (item.first_air_date || item.release_date || '').substring(0, 4);
     const overview = (item.overview || '').substring(0, 120);
     const dots = this.state.featured.map((_, i) => `<span class="carousel-dot ${i === this.state.current ? 'active' : ''}" onclick="HomePage.goToSlide(${i})"></span>`).join('');
-    return `<div class="hero" onclick="App.navigate('details',{id:${item.id},type:'${item.media_type}'})" style="background-image:linear-gradient(to bottom, transparent 40%, var(--bg-primary)), url('${bg}')">
+    return `<div class="hero" onclick="App.navigate('details',{id:${item.id},type:'${item.media_type}'})" style="background-image:url('${bg}')">
       <button class="hero-profile-btn" onclick="event.stopPropagation(); App.navigate('profile')">${UI.icon('user', 22)}</button>
       <div class="hero-content">
         <div id="hero-logo-${this.state.current}" class="hero-logo-container">
@@ -153,7 +153,7 @@ const HomePage = {
     if (hero) {
       const item = this.state.featured[i];
       const bg = item.backdrop_path ? API.imageUrl(item.backdrop_path, 'original') : '';
-      hero.style.backgroundImage = `linear-gradient(to bottom, transparent 40%, var(--bg-primary)), url('${bg}')`;
+      hero.style.backgroundImage = `url('${bg}')`;
       hero.setAttribute('onclick', `App.navigate('details',{id:${item.id},type:'${item.media_type}'})`);
       const content = hero.querySelector('.hero-content');
       if (content) {
