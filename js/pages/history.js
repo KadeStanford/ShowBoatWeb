@@ -126,7 +126,7 @@ const WatchedHistoryPage = {
       }
     }
 
-    this.state.tvShows = [...showMap.values()].sort((a, b) => b.latestAt - a.latestAt);
+    this.state.tvShows = [...showMap.values()].filter(s => s.episodes.length > 0).sort((a, b) => b.latestAt - a.latestAt);
     this.state.movies = [...movieMap.values()].sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
     this.state.items = watched;
 

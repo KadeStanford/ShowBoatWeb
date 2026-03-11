@@ -10,6 +10,8 @@ const DiscoverPage = {
     seasonsMin: '', seasonsMax: '', runtimeMin: '', runtimeMax: '',
     showFilters: false,
     watchedIds: new Set(), hideWatched: false,
+    // Quick-add
+    _sharedLists: null,
     // Scroll restore
     _savedScrollTop: 0, _savedStateKey: '', _savedGridHTML: '', _savedPage: 1
   },
@@ -498,10 +500,13 @@ const DiscoverPage = {
     const hasPlex = this.state.plexIds.has(String(item.id));
     const isWatched = this.state.watchedIds.has(String(item.id));
     const vote = item.vote_average;
-    return `<div class="media-card${isWatched ? ' is-watched' : ''}" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
+    const mediaType = type === 'multi' ? (item.media_type || 'tv') : type;
+    const safeTitle = UI.escapeHtml(title).replace(/'/g, '&#39;');
+    return `<div class="media-card${isWatched ? ' is-watched' : ''}" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${mediaType}'})">
       ${hasDot ? '<span class="activity-dot"></span>' : ''}
       ${hasPlex ? '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>' : ''}
       ${isWatched ? '<div class="watched-overlay">Watched</div>' : ''}
+      <button class="disc-quick-add" onclick="event.stopPropagation(); DiscoverPage.showQuickAdd(event, ${item.id}, '${mediaType}', '${safeTitle}', '${item.poster_path || ''}')" title="Add to…">${UI.icon('plus', 16)}</button>
       ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
       ${vote ? `<span class="disc-rating-chip">${UI.icon('star', 10)} ${vote.toFixed(1)}</span>` : ''}
       <div class="card-info">
@@ -566,5 +571,57 @@ const DiscoverPage = {
       if (gid) c.classList.toggle('active', this.state.selectedGenres.includes(gid));
     });
     this.loadContent();
+  },
+
+  // ==================== Quick-Add ====================
+  async showQuickAdd(e, id, type, name, posterPath) {
+    // Remove any existing popup
+    document.querySelectorAll('.disc-qa-popup').forEach(el => el.remove());
+
+    // Lazy-load shared lists
+    if (!this.state._sharedLists) {
+      try { this.state._sharedLists = await Services.getSharedLists(); } catch (_) { this.state._sharedLists = []; }
+    }
+    const lists = this.state._sharedLists;
+
+    const popup = document.createElement('div');
+    popup.className = 'disc-qa-popup';
+    popup.innerHTML = `
+      <button class="disc-qa-opt" onclick="event.stopPropagation(); DiscoverPage.quickAddWatchlist(${id}, '${type}', '${name}', '${posterPath}')">
+        ${UI.icon('bookmark', 16)} Watchlist
+      </button>
+      ${lists.map(l => `<button class="disc-qa-opt" onclick="event.stopPropagation(); DiscoverPage.quickAddList('${l.id}', ${id}, '${type}', '${name}', '${posterPath}')">
+        ${UI.icon('list', 16)} ${UI.escapeHtml(l.name || 'Untitled')}
+      </button>`).join('')}
+    `;
+
+    // Position relative to the card
+    const card = e.target.closest('.media-card');
+    card.style.position = 'relative';
+    card.appendChild(popup);
+
+    // Close on outside click
+    const close = (ev) => { if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener('click', close, true); } };
+    setTimeout(() => document.addEventListener('click', close, true), 0);
+  },
+
+  async quickAddWatchlist(id, type, name, posterPath) {
+    document.querySelectorAll('.disc-qa-popup').forEach(el => el.remove());
+    try {
+      await Services.toggleWatchlist({ id: Number(id), name, mediaType: type, posterPath: posterPath || null });
+      UI.toast('Added to Watchlist', 'success');
+    } catch (err) {
+      UI.toast('Failed to add', 'error');
+    }
+  },
+
+  async quickAddList(listId, id, type, name, posterPath) {
+    document.querySelectorAll('.disc-qa-popup').forEach(el => el.remove());
+    try {
+      await Services.addToSharedList(listId, { id: Number(id), name, mediaType: type, posterPath: posterPath || null });
+      UI.toast('Added to list!', 'success');
+    } catch (err) {
+      UI.toast('Failed to add', 'error');
+    }
   }
 };
