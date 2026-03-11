@@ -129,6 +129,18 @@ const WatchedHistoryPage = {
     this.state.tvShows = [...showMap.values()].sort((a, b) => b.latestAt - a.latestAt);
     this.state.movies = [...movieMap.values()].sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
     this.state.items = watched;
+
+    // Fetch total episode counts from TMDB in parallel (for progress rings)
+    await Promise.all(this.state.tvShows.map(async show => {
+      try {
+        const details = await API.getShowDetails(show.tmdbId);
+        if (details) {
+          show.totalEpisodes = details.number_of_episodes || 0;
+          if (!show.name && (details.name || details.title)) show.name = details.name || details.title;
+          if (!show.posterPath && details.poster_path) show.posterPath = details.poster_path;
+        }
+      } catch (_) {}
+    }));
   },
 
   _draw(el) {
@@ -192,9 +204,8 @@ const WatchedHistoryPage = {
   _renderShowCard(show) {
     const poster = show.posterPath ? API.imageUrl(show.posterPath, 'w185') : '';
     const eps = show.episodes.length;
-    // We don't have total episode count without an API call — show just watched count
-    // and a simple ring based on assumed "completeness" if > 0 episodes
-    const ringHtml = eps > 0 ? this._ringHtml(eps, null) : '';
+    const total = show.totalEpisodes || null;
+    const ringHtml = eps > 0 ? this._ringHtml(eps, total) : '';
 
     return `<div class="wh-card" onclick="App.navigate('details',{id:${show.tmdbId},type:'tv'})">
       ${poster
@@ -203,7 +214,7 @@ const WatchedHistoryPage = {
       }
       <div class="wh-card-info">
         <p class="wh-card-title">${UI.escapeHtml(show.name || 'Unknown Show')}</p>
-        <p class="wh-card-sub">${eps} episode${eps !== 1 ? 's' : ''} watched</p>
+        <p class="wh-card-sub">${eps}${total ? ` / ${total}` : ''} episode${eps !== 1 ? 's' : ''} watched</p>
         ${show.latestAt ? `<p class="wh-card-date">${this._fmtDate(show.latestAt)}</p>` : ''}
       </div>
       ${ringHtml}
