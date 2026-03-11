@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), plexIds: new Set(), personalRecs: null, plexSessions: [], _plexServer: null, _plexTimer: null },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -34,7 +34,21 @@ const HomePage = {
       if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
     // Friend trends + activity dots + personal recs + plex sessions
-    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); this.loadPlexSessions(); }
+    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); this.loadPlexSessions(); this.loadPlexDots(); }
+  },
+
+  async loadPlexDots() {
+    if (!Services.plex.isConnected) return;
+    try {
+      const library = Services.plex.getLibrary();
+      const ids = new Set(library.map(p => String(p.tmdbId)).filter(Boolean));
+      this.state.plexIds = ids;
+      document.querySelectorAll('.media-card-sm[data-media-id]').forEach(card => {
+        if (ids.has(card.dataset.mediaId) && !card.querySelector('.plex-card-badge')) {
+          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge">▶</span>');
+        }
+      });
+    } catch (_) {}
   },
 
   async loadPlexSessions() {
@@ -241,7 +255,7 @@ const HomePage = {
       { icon: 'search', label: 'Discover', page: 'discover', color: 'var(--emerald-500)' },
       { icon: 'bookmark', label: 'Watchlist', page: 'watchlist', color: 'var(--indigo-500)' },
       { icon: 'monitor', label: 'Plex', page: 'plex-connect', color: 'var(--amber-500)' },
-      { icon: 'check-circle', label: 'Wall of Shame', page: 'wall-of-shame', color: 'var(--rose-500)' },
+      { icon: 'flame', label: 'Wall of Shame', page: 'wall-of-shame', color: 'var(--rose-500)' },
       { icon: 'activity', label: 'Activity', page: 'activity', color: 'var(--blue-500)' },
       { icon: 'list', label: 'Lists', page: 'shared-lists', color: 'var(--teal-500)' },
       { icon: 'zap', label: 'Matcher', page: 'matcher-setup', color: 'var(--orange-500)' },
@@ -264,13 +278,13 @@ const HomePage = {
   },
 
   renderShameSection() {
-    return `<div class="section"><div class="section-header"><h3>${UI.icon('thumbs-down', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
+    return `<div class="section"><div class="section-header"><h3>${UI.icon('flame', 18)} Wall of Shame</h3><button class="see-all-btn" onclick="App.navigate('wall-of-shame')">See All</button></div>
       <div class="horizontal-scroll">${this.state.shames.map(s => {
         const poster = (s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.poster_path || s.posterPath || s.showPoster, 'w185') : '';
         const sType = (s.mediaType || s.showType || 'tv') === 'show' ? 'tv' : (s.mediaType || s.showType || 'tv');
         return `<div class="shame-card" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${sType}'})">
           ${poster ? `<img src="${poster}" alt="" class="shame-poster">` : `<div class="shame-poster placeholder">${UI.icon('tv', 24)}</div>`}
-          <div class="shame-badge">${UI.icon('thumbs-down', 12)}</div>
+          <div class="shame-badge">${UI.icon('flame', 12)}</div>
           <p class="shame-name">${UI.escapeHtml(s.shamedName || s.shamedUsername || '')}</p>
         </div>`;
       }).join('')}</div></div>`;
@@ -285,8 +299,10 @@ const HomePage = {
       const poster = posterPath ? API.imageUrl(posterPath, 'w185') : '';
       const title = item.name || item.title || item.showName || '';
       const hasDot = this.state.friendActivityIds.has(String(id));
+      const hasPlex = this.state.plexIds.has(String(id));
       return `<div class="media-card-sm" data-media-id="${id}" onclick="App.navigate('details',{id:${id},type:'${type}'})">
         ${hasDot ? '<span class="activity-dot"></span>' : ''}
+        ${hasPlex ? '<span class="plex-card-badge">▶</span>' : ''}
         ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 24)}</div>`}
         <p class="card-title">${UI.escapeHtml(title)}</p>
         ${isFriend && item.friendName ? `<p class="card-subtitle">${UI.escapeHtml(item.friendName)}</p>` : ''}

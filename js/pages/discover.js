@@ -2,7 +2,7 @@
 const DiscoverPage = {
   state: {
     query: '', results: [], tab: 'multi', genres: [], selectedGenres: [],
-    trending: [], page: 1, totalPages: 1, loading: false, friendActivityIds: new Set(),
+    trending: [], page: 1, totalPages: 1, loading: false, friendActivityIds: new Set(), plexIds: new Set(),
     _observer: null,
     // Advanced filters
     sortBy: '', yearFrom: '', yearTo: '', language: '', voteMin: '', voteMax: '',
@@ -68,6 +68,7 @@ const DiscoverPage = {
     </div>`;
     this.loadFriendActivityDots();
     this.loadWatchedIds();
+    this.loadPlexDots();
     await this.loadGenres();
     if (this.state.showFilters && isFilterable) this.renderFilters();
     await this.loadContent();
@@ -288,6 +289,20 @@ const DiscoverPage = {
     } catch (_) {}
   },
 
+  async loadPlexDots() {
+    if (!Services.plex.isConnected) return;
+    try {
+      const library = Services.plex.getLibrary();
+      const ids = new Set(library.map(p => String(p.tmdbId)).filter(Boolean));
+      this.state.plexIds = ids;
+      document.querySelectorAll('.media-card[data-media-id]').forEach(card => {
+        if (ids.has(card.dataset.mediaId) && !card.querySelector('.plex-card-badge')) {
+          card.insertAdjacentHTML('afterbegin', '<span class="plex-card-badge">▶</span>');
+        }
+      });
+    } catch (_) {}
+  },
+
   async loadFriendActivityDots() {
     try {
       const friends = await Services.getFriends();
@@ -433,10 +448,12 @@ const DiscoverPage = {
     const title = item.name || item.title || '';
     const year = (item.first_air_date || item.release_date || '').substring(0, 4);
     const hasDot = this.state.friendActivityIds.has(String(item.id));
+    const hasPlex = this.state.plexIds.has(String(item.id));
     const isWatched = this.state.watchedIds.has(String(item.id));
     const vote = item.vote_average;
     return `<div class="media-card${isWatched ? ' is-watched' : ''}" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
       ${hasDot ? '<span class="activity-dot"></span>' : ''}
+      ${hasPlex ? '<span class="plex-card-badge">▶</span>' : ''}
       ${isWatched ? '<div class="watched-overlay">Watched</div>' : ''}
       ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
       ${vote ? `<span class="disc-rating-chip">${UI.icon('star', 10)} ${vote.toFixed(1)}</span>` : ''}

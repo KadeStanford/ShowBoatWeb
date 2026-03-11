@@ -20,18 +20,33 @@ const AnalyticsPage = {
       const genreMap = {};
       [...tvGenres, ...movieGenres].forEach(g => { genreMap[g.id] = g.name; });
 
-      // Fetch TMDB details for top-rated items (limited to avoid spam)
-      const topRated = ratings.filter(r => r.rating >= 7).sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20);
-      const details = await Promise.all(topRated.map(r => {
-        const mt = r.mediaType === 'movie' ? 'movie' : 'tv';
-        return (mt === 'movie' ? API.getMovieDetails(r.tmdbId) : API.getShowDetails(r.tmdbId)).catch(() => null);
-      }));
+      // Fetch TMDB details for ALL watched items (unique shows/movies, batched)
+      // De-duplicate by tmdbId so we don't make redundant calls
+      const watchedUnique = Object.values(
+        watched
+          .filter(w => w.tmdbId && (w.mediaType === 'movie' || w.mediaType === 'tv' || w.mediaType === 'show'))
+          .reduce((acc, w) => { if (!acc[`${w.mediaType}:${w.tmdbId}`]) acc[`${w.mediaType}:${w.tmdbId}`] = w; return acc; }, {})
+      ).slice(0, 80); // cap at 80 unique titles to avoid API abuse
 
-      // Tally genres from top-rated items
+      // Also pull in rated items not already in watched
+      const ratedExtra = ratings.filter(r => r.tmdbId && !watchedUnique.some(w => w.tmdbId === r.tmdbId)).slice(0, 20);
+      const detailSources = [...watchedUnique, ...ratedExtra];
+
+      // Batch in groups of 10 so we don't fire 80 requests simultaneously
+      const details = [];
+      for (let i = 0; i < detailSources.length; i += 10) {
+        const batch = detailSources.slice(i, i + 10);
+        const results = await Promise.all(batch.map(w => {
+          const mt = w.mediaType === 'movie' ? 'movie' : 'tv';
+          return (mt === 'movie' ? API.getMovieDetails(w.tmdbId) : API.getShowDetails(w.tmdbId)).catch(() => null);
+        }));
+        details.push(...results);
+      }
+
+      // Tally genres from all watched content
       const genres = {};
-      details.forEach((d, i) => {
+      details.forEach(d => {
         if (!d || !d.genres) return;
-        const weight = topRated[i]?.rating || 1;
         d.genres.forEach(g => { genres[g.name] = (genres[g.name] || 0) + 1; });
       });
       this.state.genreData = genres;
@@ -75,11 +90,16 @@ const AnalyticsPage = {
     ratings.forEach(r => { const bucket = Math.round(r.rating || 0); if (bucket >= 0 && bucket <= 10) ratingDist[bucket]++; });
     const maxRating = Math.max(...ratingDist, 1);
 
-    // Monthly activity (from watchedAt)
-    const monthCounts = {};
-    watched.forEach(w => { if (w.watchedAt) { const d = new Date(w.watchedAt); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; monthCounts[key] = (monthCounts[key] || 0) + 1; } });
-    const monthEntries = Object.entries(monthCounts).sort().slice(-6);
-    const maxMonth = monthEntries.length ? Math.max(...monthEntries.map(e => e[1])) : 1;
+    // Activity calendar data: map day → list of titles
+    const dayActivity = {};
+    watched.forEach(w => {
+      if (w.watchedAt) {
+        const d = new Date(w.watchedAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        if (!dayActivity[key]) dayActivity[key] = [];
+        dayActivity[key].push(w.name || w.showName || '');
+      }
+    });
 
     const renderTopScroll = (items, type) => {
       if (!items.length) return '';
@@ -155,18 +175,49 @@ const AnalyticsPage = {
           </div>`).join('')}</div>
         </div>` : ''}
 
-        <!-- Monthly Activity -->
-        ${monthEntries.length ? `<div class="chart-section">
-          <h3>${UI.icon('calendar', 18)} Monthly Activity</h3>
-          <div class="bar-chart">${monthEntries.map(([month, count]) => `<div class="bar-row">
-            <span class="bar-label">${month.substring(5)}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${(count / maxMonth * 100).toFixed(0)}%"></div></div>
-            <span class="bar-value">${count}</span>
-          </div>`).join('')}</div>
+        <!-- Activity Calendar -->
+        ${Object.keys(dayActivity).length ? `<div class="chart-section activity-calendar-section">
+          <h3>${UI.icon('calendar', 18)} Activity Calendar</h3>
+          <div class="activity-calendar" id="activity-calendar">${this._renderCalendar(dayActivity)}</div>
+          <p class="calendar-legend"><span class="cal-dot-low"></span> 1–2<span class="cal-dot-mid"></span> 3–5<span class="cal-dot-high"></span> 6+</p>
         </div>` : ''}
 
         <button class="btn-primary" onclick="App.navigate('badges')" style="margin-top:16px">${UI.icon('award', 18)} View Badges</button>
       </div>`;
+  },
+
+  // Render a 12-month calendar grid with heat-map intensity per day
+  _renderCalendar(dayActivity) {
+    const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const today = new Date();
+    const months = [];
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - m, 1);
+      months.push({ year: d.getFullYear(), month: d.getMonth() }); // 0-indexed month
+    }
+
+    return months.map(({ year, month }) => {
+      const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      let cells = '';
+      // Empty cells before 1st
+      for (let i = 0; i < firstDay; i++) cells += `<div class="cal-cell cal-empty"></div>`;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const items = dayActivity[key] || [];
+        const count = items.length;
+        const heatClass = count === 0 ? '' : count <= 2 ? 'heat-low' : count <= 5 ? 'heat-mid' : 'heat-high';
+        const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+        const tooltip = count ? items.slice(0,3).join(', ') + (items.length > 3 ? ` +${items.length-3} more` : '') : '';
+        cells += `<div class="cal-cell ${heatClass}${isToday ? ' cal-today' : ''}" title="${UI.escapeHtml(tooltip)}">${count > 0 ? `<span class="cal-count">${count}</span>` : ''}</div>`;
+      }
+      return `<div class="cal-month-block">
+        <div class="cal-month-label">${MONTHS[month]} ${year}</div>
+        <div class="cal-day-headers">${DAYS.map(d=>`<div class="cal-dh">${d}</div>`).join('')}</div>
+        <div class="cal-grid">${cells}</div>
+      </div>`;
+    }).join('');
   }
 };
 

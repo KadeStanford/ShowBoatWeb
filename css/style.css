@@ -1535,6 +1535,40 @@ ul, ol { list-style: none; }
 .shame-search-title { font-weight: 600; font-size: .875rem; }
 .shame-search-type { color: var(--slate-400); font-size: .75rem; }
 
+/* Shame Sections (new layout) */
+.shame-section { margin: 0 32px 24px; }
+.shame-section .shame-items { padding: 0; }
+.shame-section-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .8125rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--slate-400);
+  padding: 0 0 10px; border-bottom: 1px solid var(--glass-border); margin-bottom: 10px;
+}
+.shame-section-badge {
+  margin-left: auto; background: var(--slate-700);
+  color: var(--slate-300); font-size: .6875rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 99px;
+}
+.shame-section-badge.shame-badge-alert { background: var(--rose-600); color: white; }
+
+/* Verdict / absolution buttons */
+.shame-absolve-btn, .shame-deny-btn {
+  display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+  border-radius: var(--radius-md); border: none; cursor: pointer;
+  font-weight: 700; font-size: .75rem; transition: all var(--transition); white-space: nowrap;
+}
+.shame-absolve-btn { background: var(--emerald-600); color: white; }
+.shame-absolve-btn:hover { filter: brightness(1.15); }
+.shame-deny-btn { background: var(--rose-700); color: white; }
+.shame-deny-btn:hover { filter: brightness(1.15); }
+.shame-verdict-prompt { color: var(--amber-400) !important; font-weight: 600; margin-top: 4px !important; }
+.shame-pending-note { color: var(--amber-400) !important; font-size: .75rem !important; margin-top: 2px !important; }
+
+/* Pending absolution card */
+.shame-list-item.pending-absolution { border-color: var(--amber-500); border-left-width: 3px; animation: shame-pulse 2.5s ease-in-out infinite; }
+@keyframes shame-pulse { 0%,100% { box-shadow: 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 12px rgba(245,158,11,.25); } }
+.shame-empty-text { color: var(--slate-500); font-size: .875rem; padding: 12px 0; text-align: center; }
+
 /* =============================================
    ACTIVITY DOTS ON CARDS
    ============================================= */
@@ -1549,6 +1583,16 @@ ul, ol { list-style: none; }
 @keyframes dot-pulse {
   0%, 100% { box-shadow: 0 0 6px rgba(16,185,129,.5); }
   50% { box-shadow: 0 0 12px rgba(16,185,129,.8); }
+}
+.plex-card-badge {
+  position: absolute; bottom: 30px; right: 5px; z-index: 3;
+  background: rgba(229,160,13,.85);
+  color: #1a1200;
+  font-size: .55rem; font-weight: 800; letter-spacing: .03em;
+  padding: 2px 5px; border-radius: 4px;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
 }
 
 /* =============================================
@@ -1734,6 +1778,46 @@ img.ep-friend-av { background: var(--slate-800); }
   transition: height .6s cubic-bezier(.4,0,.2,1); min-height: 2px;
 }
 .rbar-label { color: var(--slate-400); font-size: .75rem; margin-top: 6px; font-weight: 600; }
+
+/* =============================================
+   ACTIVITY CALENDAR
+   ============================================= */
+.activity-calendar-section { overflow-x: auto; }
+.activity-calendar {
+  display: flex; flex-wrap: wrap; gap: 20px;
+  padding-bottom: 8px;
+}
+.cal-month-block { flex: 0 0 auto; min-width: 200px; }
+.cal-month-label {
+  font-size: .75rem; font-weight: 700; color: var(--slate-300);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+}
+.cal-day-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 2px; }
+.cal-dh { font-size: .625rem; color: var(--slate-500); text-align: center; font-weight: 600; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-cell {
+  aspect-ratio: 1; border-radius: 3px; background: var(--slate-800);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 700; cursor: default; position: relative;
+  transition: transform .1s;
+}
+.cal-cell:hover { transform: scale(1.3); z-index: 2; }
+.cal-cell.cal-empty { background: transparent; cursor: default; }
+.cal-cell.cal-today { outline: 2px solid var(--indigo-400); outline-offset: 1px; }
+.cal-cell.heat-low  { background: var(--emerald-900); color: var(--emerald-300); }
+.cal-cell.heat-mid  { background: var(--emerald-700); color: var(--emerald-100); }
+.cal-cell.heat-high { background: var(--emerald-500); color: white; box-shadow: 0 0 8px rgba(16,185,129,.4); }
+.cal-count { font-size: .6rem; line-height: 1; }
+.calendar-legend {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .75rem; color: var(--slate-500); margin-top: 12px;
+}
+.cal-dot-low, .cal-dot-mid, .cal-dot-high {
+  width: 12px; height: 12px; border-radius: 3px; display: inline-block;
+}
+.cal-dot-low  { background: var(--emerald-900); }
+.cal-dot-mid  { background: var(--emerald-700); }
+.cal-dot-high { background: var(--emerald-500); }
 
 /* =============================================
    BADGES PAGE

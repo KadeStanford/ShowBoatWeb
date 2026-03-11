@@ -243,184 +243,325 @@ const FriendProfilePage = {
 
 
 const ActivityPage = {
-  state: { feed: [], loading: true },
+  state: {
+    feed: [],
+    seen: new Map(),
+    cursors: {},
+    friendUids: [],
+    loading: false,
+    allLoaded: false,
+    _observer: null
+  },
 
   async render() {
     const el = document.getElementById('page-content');
-    el.innerHTML = `<div class="activity-page">${UI.pageHeader('Activity Feed', true)}<div id="feed-content">${UI.loading()}</div></div>`;
+    el.innerHTML = `<div class="activity-page">
+      ${UI.pageHeader('Activity Feed', true)}
+      <div id="feed-content"><div class="activity-feed-v2" id="feed-list"></div><div id="feed-sentinel" style="height:1px"></div><div id="feed-spinner" style="display:none">${UI.loading()}</div></div>
+    </div>`;
+    // Reset state
+    this.state.feed = [];
+    this.state.seen = new Map();
+    this.state.cursors = {};
+    this.state.allLoaded = false;
+    this.state.loading = false;
+    if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
+
     try {
       const uid = auth.currentUser?.uid;
       const friends = uid ? await Services.getFriends() : [];
       const friendUids = friends.map(f => f.friendId || f.uid || f.docId);
-      // Fetch friend activity + own activity in parallel
-      const [friendActivity, ownActivity] = await Promise.all([
-        friendUids.length ? Services.getActivityFeed(friendUids) : Promise.resolve([]),
-        uid ? Services.getActivityFeed([uid]) : Promise.resolve([])
-      ]);
-      // Merge, deduplicate by user+media (keep most recent action per media per user), and sort
-      const allMap = new Map();
-      [...ownActivity, ...friendActivity].forEach(a => { if (!allMap.has(a.id)) allMap.set(a.id, a); });
-      const all = [...allMap.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      // Keep only the most recent entry per user+media combo (so accidental ratings don't stack)
-      const seen = new Map();
-      const deduped = [];
-      for (const a of all) {
-        const key = `${a.userId}_${a.mediaId || a.showId}_${(a.type === 'rated_episode' || a.type === 'watched_episode') ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
-        if (!seen.has(key)) { seen.set(key, true); deduped.push(a); }
-      }
-      this.state.feed = deduped;
-      this.drawFeed();
-    } catch (e) { document.getElementById('feed-content').innerHTML = UI.emptyState('Error', e.message); }
+      if (uid) friendUids.unshift(uid);
+      this.state.friendUids = [...new Set(friendUids)];
+    } catch (_) {
+      this.state.friendUids = auth.currentUser?.uid ? [auth.currentUser.uid] : [];
+    }
+
+    await this._loadPage();
+    this._setupObserver();
   },
 
-  drawFeed() {
-    const el = document.getElementById('feed-content');
+  async _loadPage() {
+    if (this.state.loading || this.state.allLoaded || !this.state.friendUids.length) return;
+    this.state.loading = true;
+    const spinner = document.getElementById('feed-spinner');
+    if (spinner) spinner.style.display = '';
+    try {
+      const { items, cursors } = await Services.getActivityFeed(this.state.friendUids, this.state.cursors, 30);
+      this.state.cursors = cursors;
+
+      // Deduplicate globally
+      const newItems = [];
+      items.forEach(a => {
+        const key = `${a.userId}_${a.mediaId || a.showId}_${(a.type === 'rated_episode' || a.type === 'watched_episode') ? `s${a.seasonNumber}e${a.episodeNumber}` : 'main'}`;
+        if (!this.state.seen.has(key)) {
+          this.state.seen.set(key, true);
+          // Filter out unrated items logged as rating=0
+          if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return;
+          newItems.push(a);
+        }
+      });
+
+      if (!items.length) this.state.allLoaded = true;
+
+      this.state.feed.push(...newItems);
+      this._appendItems(newItems);
+    } catch (e) {
+      const fc = document.getElementById('feed-content');
+      if (fc && !this.state.feed.length) fc.innerHTML = UI.emptyState('Error', e.message);
+    } finally {
+      this.state.loading = false;
+      const spinner = document.getElementById('feed-spinner');
+      if (spinner) spinner.style.display = 'none';
+      if (!this.state.feed.length && !this.state.loading) {
+        const list = document.getElementById('feed-list');
+        if (list) list.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here');
+      }
+    }
+  },
+
+  _appendItems(items) {
+    const list = document.getElementById('feed-list');
+    if (!list) return;
     const currentUid = auth.currentUser?.uid;
+    list.insertAdjacentHTML('beforeend', items.map(a => this._renderCard(a, currentUid)).join(''));
+  },
 
-    // Filter out unrated items (rating=0 is logged as unrated, shouldn't display)
-    const feed = this.state.feed.filter(a => {
-      if ((a.type === 'rated' || a.type === 'rated_episode') && (!a.rating || a.rating <= 0)) return false;
-      return true;
-    });
+  _setupObserver() {
+    const sentinel = document.getElementById('feed-sentinel');
+    if (!sentinel) return;
+    this.state._observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) this._loadPage();
+    }, { rootMargin: '300px' });
+    this.state._observer.observe(sentinel);
+  },
 
-    if (!feed.length) { el.innerHTML = UI.emptyState('No activity yet', 'Activity from you and your friends will appear here'); return; }
+  _renderCard(a, currentUid) {
+    const isMine = a.userId === currentUid;
+    const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w185') : '';
+    const isEpisode = a.type === 'rated_episode';
+    const isEpWatched = a.type === 'watched_episode';
+    const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
+    const displayName = isMine ? 'You' : (a.userName || a.username || 'Someone');
 
-    el.innerHTML = `<div class="activity-feed-v2">${feed.map(a => {
-      const isMine = a.userId === currentUid;
-      const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w185') : '';
-      const isEpisode = a.type === 'rated_episode';
-      const isEpWatched = a.type === 'watched_episode';
-      const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
-      const displayName = isMine ? 'You' : (a.userName || a.username || 'Someone');
+    let verb, dotClass, dotIcon;
+    if (isEpisode) { verb = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-rated'; dotIcon = 'star'; }
+    else if (isEpWatched) { verb = `watched S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-watched'; dotIcon = 'eye'; }
+    else if (a.type === 'watched') { verb = 'watched'; dotClass = 'dot-watched'; dotIcon = 'eye'; }
+    else if (a.type === 'rated') { verb = 'rated'; dotClass = 'dot-rated'; dotIcon = 'star'; }
+    else if (a.type === 'added_to_watchlist') { verb = 'saved to watchlist'; dotClass = 'dot-watchlist'; dotIcon = 'bookmark'; }
+    else if (a.type === 'shame') { verb = 'shamed'; dotClass = 'dot-shame'; dotIcon = 'flame'; }
+    else { verb = a.type; dotClass = 'dot-watched'; dotIcon = 'activity'; }
 
-      let verb, dotClass, dotIcon;
-      if (isEpisode) { verb = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-rated'; dotIcon = 'star'; }
-      else if (isEpWatched) { verb = `watched S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; dotClass = 'dot-watched'; dotIcon = 'eye'; }
-      else if (a.type === 'watched') { verb = 'watched'; dotClass = 'dot-watched'; dotIcon = 'eye'; }
-      else if (a.type === 'rated') { verb = `rated`; dotClass = 'dot-rated'; dotIcon = 'star'; }
-      else if (a.type === 'added_to_watchlist') { verb = 'saved to watchlist'; dotClass = 'dot-watchlist'; dotIcon = 'bookmark'; }
-      else if (a.type === 'shame') { verb = 'shamed'; dotClass = 'dot-shame'; dotIcon = 'thumbs-down'; }
-      else { verb = a.type; dotClass = 'dot-watched'; dotIcon = 'activity'; }
+    const avatarHtml = a.userPhoto
+      ? `<img src="${UI.escapeHtml(a.userPhoto)}" class="act-avatar-img" alt="">`
+      : `<div class="act-avatar-initial">${(a.userName || a.username || '?')[0].toUpperCase()}</div>`;
 
-      const avatarHtml = a.userPhoto
-        ? `<img src="${UI.escapeHtml(a.userPhoto)}" class="act-avatar-img" alt="">`
-        : `<div class="act-avatar-initial">${(a.userName || a.username || '?')[0].toUpperCase()}</div>`;
+    const ratingStars = (a.type === 'rated' || isEpisode) && a.rating
+      ? `<div class="act-rating-row">${Array.from({length: 5}, (_, i) => `<span class="act-star ${i < Math.round(a.rating / 2) ? 'filled' : ''}">${UI.icon('star', 12)}</span>`).join('')}<span class="act-rating-num">${a.rating}/10</span></div>`
+      : '';
 
-      const ratingStars = (a.type === 'rated' || isEpisode) && a.rating
-        ? `<div class="act-rating-row">${Array.from({length: 5}, (_, i) => `<span class="act-star ${i < Math.round(a.rating / 2) ? 'filled' : ''}">${UI.icon('star', 12)}</span>`).join('')}<span class="act-rating-num">${a.rating}/10</span></div>`
-        : '';
+    const episodeRow = (isEpisode || isEpWatched) && a.episodeName
+      ? `<p class="act-ep-name">${UI.escapeHtml(a.episodeName)}</p>` : '';
 
-      const episodeRow = (isEpisode || isEpWatched) && a.episodeName
-        ? `<p class="act-ep-name">${UI.escapeHtml(a.episodeName)}</p>` : '';
-
-      return `<div class="activity-card-v2" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
-        <div class="act-avatar-col">
-          <div class="act-avatar-wrap">${avatarHtml}</div>
-          <div class="act-type-dot ${dotClass}">${UI.icon(dotIcon, 10)}</div>
-        </div>
-        <div class="act-body">
-          <p class="act-headline"><strong class="act-username">${UI.escapeHtml(displayName)}</strong> <span class="act-verb">${verb}</span></p>
-          <p class="act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
-          ${episodeRow}
-          ${ratingStars}
-          ${a.comment ? `<p class="act-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
-          ${a.createdAt ? `<p class="act-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
-        </div>
-        ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
-      </div>`;
-    }).join('')}</div>`;
+    return `<div class="activity-card-v2" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
+      <div class="act-avatar-col">
+        <div class="act-avatar-wrap">${avatarHtml}</div>
+        <div class="act-type-dot ${dotClass}">${UI.icon(dotIcon, 10)}</div>
+      </div>
+      <div class="act-body">
+        <p class="act-headline"><strong class="act-username">${UI.escapeHtml(displayName)}</strong> <span class="act-verb">${verb}</span></p>
+        <p class="act-title">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
+        ${episodeRow}
+        ${ratingStars}
+        ${a.comment ? `<p class="act-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
+        ${a.createdAt ? `<p class="act-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
+      </div>
+      ${poster ? `<div class="act-thumb" style="background-image:url('${poster}')"></div>` : ''}
+    </div>`;
   }
 };
 
 const WallOfShamePage = {
-  state: { received: [], sent: [], tab: 'received' },
+  state: { received: [], sent: [], pendingAbsolutions: [], allFriends: [] },
 
   async render() {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="shame-page">${UI.pageHeader('Wall of Shame', true)}<div id="shame-content">${UI.loading()}</div></div>`;
     try {
-      const [all, sent] = await Promise.all([Services.getAllShames(), Services.getSentShames()]);
+      const [all, sent, pending, friends] = await Promise.all([
+        Services.getAllShames(),
+        Services.getSentShames(),
+        Services.getPendingAbsolutions(),
+        Services.getFriends()
+      ]);
       this.state.received = all;
       this.state.sent = sent;
+      this.state.pendingAbsolutions = pending;
+      this.state.allFriends = friends;
       this.draw();
     } catch (e) { document.getElementById('shame-content').innerHTML = UI.emptyState('Error', e.message); }
   },
 
   draw() {
     const el = document.getElementById('shame-content');
-    const activeCount = this.state.received.filter(s => s.status === 'active').length;
-    const sentActiveCount = this.state.sent.filter(s => s.status === 'active').length;
+
+    // Sections
+    const myActiveShames = this.state.received.filter(s => s.status === 'active');
+    const myPendingReceived = this.state.received.filter(s => s.status === 'pendingAbsolution');
+    const sentActive = this.state.sent.filter(s => s.status === 'active');
+    const absolvePending = this.state.pendingAbsolutions; // shames I sent where they watched it
+    const recentResolved = [...this.state.received.filter(s => s.status === 'resolved'),
+                           ...this.state.sent.filter(s => s.status === 'resolved')]
+      .sort((a, b) => (b.resolvedAt || 0) - (a.resolvedAt || 0)).slice(0, 10);
 
     el.innerHTML = `
       <div class="shame-stats">
-        <div class="shame-stat"><span class="shame-stat-num">${activeCount}</span><span class="shame-stat-label">Active Shames</span></div>
-        <div class="shame-stat"><span class="shame-stat-num">${this.state.received.length}</span><span class="shame-stat-label">Total Received</span></div>
-        <div class="shame-stat"><span class="shame-stat-num">${this.state.sent.length}</span><span class="shame-stat-label">Sent</span></div>
+        <div class="shame-stat"><span class="shame-stat-num">${myActiveShames.length + myPendingReceived.length}</span><span class="shame-stat-label">Active Shames on Me</span></div>
+        <div class="shame-stat"><span class="shame-stat-num">${sentActive.length}</span><span class="shame-stat-label">Friends I'm Shaming</span></div>
+        <div class="shame-stat"><span class="shame-stat-num">${absolvePending.length}</span><span class="shame-stat-label">Awaiting Absolution</span></div>
       </div>
-      <div class="shame-tabs">
-        <button class="shame-tab ${this.state.tab === 'received' ? 'active' : ''}" onclick="WallOfShamePage.switchTab('received')">Received${activeCount ? ` (${activeCount})` : ''}</button>
-        <button class="shame-tab ${this.state.tab === 'sent' ? 'active' : ''}" onclick="WallOfShamePage.switchTab('sent')">Sent${sentActiveCount ? ` (${sentActiveCount})` : ''}</button>
+
+      ${absolvePending.length ? `
+      <div class="shame-section">
+        <div class="shame-section-header">${UI.icon('bell', 16)} Awaiting Your Verdict
+          <span class="shame-section-badge shame-badge-alert">${absolvePending.length}</span>
+        </div>
+        <div class="shame-items">${absolvePending.map(s => this._renderAbsolveCard(s)).join('')}</div>
+      </div>` : ''}
+
+      <div class="shame-section">
+        <div class="shame-section-header">${UI.icon('flame', 16)} Friends I'm Shaming
+          ${sentActive.length ? `<span class="shame-section-badge">${sentActive.length}</span>` : ''}
+        </div>
+        ${sentActive.length
+          ? `<div class="shame-items">${sentActive.map(s => this._renderSentCard(s)).join('')}</div>`
+          : `<p class="shame-empty-text">No active shames sent</p>`}
       </div>
-      <div id="shame-list"></div>
+
+      <div class="shame-section">
+        <div class="shame-section-header">${UI.icon('skull', 16)} My Active Shames
+          ${(myActiveShames.length + myPendingReceived.length) ? `<span class="shame-section-badge shame-badge-alert">${myActiveShames.length + myPendingReceived.length}</span>` : ''}
+        </div>
+        ${(myActiveShames.length + myPendingReceived.length)
+          ? `<div class="shame-items">${[...myPendingReceived, ...myActiveShames].map(s => this._renderReceivedCard(s)).join('')}</div>`
+          : `<p class="shame-empty-text">No active shames</p>`}
+      </div>
+
+      ${recentResolved.length ? `
+      <div class="shame-section">
+        <div class="shame-section-header">${UI.icon('check-circle', 16)} Recently Absolved</div>
+        <div class="shame-items">${recentResolved.map(s => this._renderResolvedCard(s)).join('')}</div>
+      </div>` : ''}
+
       <button class="shame-someone-btn" onclick="WallOfShamePage.shameFromPage()">
-        ${UI.icon('thumbs-down', 20)} Shame a Friend
+        ${UI.icon('flame', 20)} Shame a Friend
       </button>`;
-    this.drawList();
   },
 
-  switchTab(tab) {
-    this.state.tab = tab;
-    document.querySelectorAll('.shame-tab').forEach(t => t.classList.toggle('active', t.textContent.startsWith(tab === 'received' ? 'Received' : 'Sent')));
-    this.drawList();
+  _posterHtml(s) {
+    const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w185') : '';
+    return poster ? `<img src="${poster}" class="shame-item-poster" alt="">` : `<div class="shame-item-poster placeholder">${UI.icon('tv', 20)}</div>`;
   },
 
-  drawList() {
-    const el = document.getElementById('shame-list');
-    if (!el) return;
-    const items = this.state.tab === 'received' ? this.state.received : this.state.sent;
-    if (!items.length) {
-      el.innerHTML = UI.emptyState(
-        this.state.tab === 'received' ? 'No shames received' : 'No shames sent',
-        this.state.tab === 'received' ? 'Your friends haven\'t shamed you yet!' : 'Shame a friend who won\'t watch your recommendations!'
-      );
-      return;
-    }
-    el.innerHTML = `<div class="shame-items">${items.map(s => {
-      const poster = (s.mediaPosterPath || s.showPoster) ? API.imageUrl(s.mediaPosterPath || s.showPoster, 'w185') : '';
-      const shType = (s.mediaType || s.showType || 'tv') === 'show' ? 'tv' : (s.mediaType || s.showType || 'tv');
-      const isActive = s.status === 'active';
-      const isReceived = this.state.tab === 'received';
-      const personName = isReceived ? (s.shamerName || s.shamerUsername || 'Someone') : (s.shamedName || s.shamedUsername || 'Someone');
-      const daysSince = s.createdAt ? Math.floor((Date.now() - s.createdAt) / (1000 * 60 * 60 * 24)) : 0;
-
-      return `<div class="shame-list-item ${isActive ? 'active' : 'resolved'}">
-        <div class="shame-item-left" onclick="App.navigate('details',{id:${s.mediaId || s.showId},type:'${shType}'})">
-          ${poster ? `<img src="${poster}" class="shame-item-poster" alt="">` : `<div class="shame-item-poster placeholder">${UI.icon('tv', 20)}</div>`}
-          <div class="shame-item-info">
-            <p class="shame-show">${UI.escapeHtml(s.mediaTitle || s.showName || '')}</p>
-            <p class="shame-detail">${isReceived ? `Shamed by <strong>${UI.escapeHtml(personName)}</strong>` : `You shamed <strong>${UI.escapeHtml(personName)}</strong>`}</p>
-            <div class="shame-item-meta">
-              ${isActive && daysSince > 0 ? `<span class="shame-timer">${UI.icon('clock', 12)} ${daysSince}d unresolved</span>` : ''}
-              ${!isActive ? `<span class="shame-resolved-badge">${UI.icon('check-circle', 12)} Resolved</span>` : ''}
-              ${s.createdAt ? `<span class="shame-time">${UI.timeAgo(s.createdAt)}</span>` : ''}
-            </div>
-          </div>
+  _renderAbsolveCard(s) {
+    const shType = (s.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+    const days = s.createdAt ? Math.floor((Date.now() - s.createdAt) / 86400000) : 0;
+    return `<div class="shame-list-item pending-absolution">
+      <div class="shame-item-left" onclick="App.navigate('details',{id:${s.mediaId},type:'${shType}'})">
+        ${this._posterHtml(s)}
+        <div class="shame-item-info">
+          <p class="shame-show">${UI.escapeHtml(s.mediaTitle || '')}</p>
+          <p class="shame-detail"><strong>${UI.escapeHtml(s.shamedName || 'Someone')}</strong> just watched this!</p>
+          <p class="shame-detail shame-verdict-prompt">Do you absolve them?</p>
+          ${days > 0 ? `<span class="shame-timer">${UI.icon('clock', 12)} ${days}d</span>` : ''}
         </div>
-        <div class="shame-item-actions">
-          ${isReceived && isActive ? `<button class="shame-resolve-btn" onclick="event.stopPropagation(); WallOfShamePage.resolveShame('${s.id}', '${shType}', ${s.mediaId || s.showId})" title="I watched it!">${UI.icon('check', 16)} Watched it!</button>` : ''}
-          <div class="shame-icon ${isActive ? '' : 'resolved'}">${UI.icon('thumbs-down', 20)}</div>
-        </div>
-      </div>`;
-    }).join('')}</div>`;
+      </div>
+      <div class="shame-item-actions">
+        <button class="shame-absolve-btn" onclick="event.stopPropagation(); WallOfShamePage.absolve('${s.id}')" title="Absolve">${UI.icon('check', 14)} Absolve</button>
+        <button class="shame-deny-btn" onclick="event.stopPropagation(); WallOfShamePage.denyAbsolution('${s.id}')" title="Keep shame">${UI.icon('x', 14)} Keep</button>
+      </div>
+    </div>`;
   },
 
-  async resolveShame(shameId, mediaType, mediaId) {
+  _renderSentCard(s) {
+    const shType = (s.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+    const days = s.createdAt ? Math.floor((Date.now() - s.createdAt) / 86400000) : 0;
+    return `<div class="shame-list-item active sent">
+      <div class="shame-item-left" onclick="App.navigate('details',{id:${s.mediaId},type:'${shType}'})">
+        ${this._posterHtml(s)}
+        <div class="shame-item-info">
+          <p class="shame-show">${UI.escapeHtml(s.mediaTitle || '')}</p>
+          <p class="shame-detail">You shamed <strong>${UI.escapeHtml(s.shamedName || 'Someone')}</strong></p>
+          ${days > 0 ? `<span class="shame-timer">${UI.icon('clock', 12)} ${days}d unresolved</span>` : ''}
+        </div>
+      </div>
+      <div class="shame-item-actions">
+        <div class="shame-icon">${UI.icon('flame', 20)}</div>
+      </div>
+    </div>`;
+  },
+
+  _renderReceivedCard(s) {
+    const shType = (s.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+    const days = s.createdAt ? Math.floor((Date.now() - s.createdAt) / 86400000) : 0;
+    const isPending = s.status === 'pendingAbsolution';
+    return `<div class="shame-list-item active received ${isPending ? 'pending-absolution' : ''}">
+      <div class="shame-item-left" onclick="App.navigate('details',{id:${s.mediaId},type:'${shType}'})">
+        ${this._posterHtml(s)}
+        <div class="shame-item-info">
+          <p class="shame-show">${UI.escapeHtml(s.mediaTitle || '')}</p>
+          <p class="shame-detail">Shamed by <strong>${UI.escapeHtml(s.shamerName || 'Someone')}</strong></p>
+          ${isPending ? `<p class="shame-detail shame-pending-note">${UI.icon('clock', 12)} Waiting for absolution...</p>` : ''}
+          ${!isPending && days > 0 ? `<span class="shame-timer">${UI.icon('clock', 12)} ${days}d unresolved</span>` : ''}
+        </div>
+      </div>
+      <div class="shame-item-actions">
+        <div class="shame-icon ${isPending ? 'pending' : ''}">${UI.icon('skull', 20)}</div>
+      </div>
+    </div>`;
+  },
+
+  _renderResolvedCard(s) {
+    const uid = auth.currentUser?.uid;
+    const iSent = s.shamerUid === uid;
+    const shType = (s.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
+    return `<div class="shame-list-item resolved">
+      <div class="shame-item-left" onclick="App.navigate('details',{id:${s.mediaId},type:'${shType}'})">
+        ${this._posterHtml(s)}
+        <div class="shame-item-info">
+          <p class="shame-show">${UI.escapeHtml(s.mediaTitle || '')}</p>
+          <p class="shame-detail">${iSent ? `You absolve <strong>${UI.escapeHtml(s.shamedName || 'Someone')}</strong>` : `Absolved by <strong>${UI.escapeHtml(s.shamerName || 'Someone')}</strong>`}</p>
+          ${s.resolvedAt ? `<span class="shame-time">${UI.timeAgo(s.resolvedAt)}</span>` : ''}
+        </div>
+      </div>
+      <div class="shame-item-actions">
+        <span class="shame-resolved-badge">${UI.icon('check-circle', 14)} Absolved</span>
+      </div>
+    </div>`;
+  },
+
+  async absolve(shameId) {
     try {
       await Services.resolveShame(shameId);
-      this.state.received = this.state.received.map(s => s.id === shameId ? { ...s, status: 'resolved', resolvedAt: Date.now() } : s);
+      this.state.sent = this.state.sent.map(s => s.id === shameId ? { ...s, status: 'resolved', resolvedAt: Date.now() } : s);
+      this.state.pendingAbsolutions = this.state.pendingAbsolutions.filter(s => s.id !== shameId);
       this.draw();
-      UI.toast('Shame resolved! 🎬', 'success');
-    } catch (e) { UI.toast('Error resolving shame', 'error'); }
+      UI.toast('Absolved! 🙏', 'success');
+    } catch (e) { UI.toast(e.message || 'Error', 'error'); }
+  },
+
+  async denyAbsolution(shameId) {
+    try {
+      await Services.denyAbsolution(shameId);
+      const shame = this.state.pendingAbsolutions.find(s => s.id === shameId);
+      if (shame) {
+        this.state.pendingAbsolutions = this.state.pendingAbsolutions.filter(s => s.id !== shameId);
+        this.state.sent = this.state.sent.map(s => s.id === shameId ? { ...s, status: 'active' } : s);
+      }
+      this.draw();
+      UI.toast('Shame continues! 🔥', 'success');
+    } catch (e) { UI.toast(e.message || 'Error', 'error'); }
   },
 
   async shameFromPage() {
@@ -432,8 +573,9 @@ const WallOfShamePage = {
       <div class="friend-list">${friends.map(f => {
         const fid = f.friendId || f.uid || f.docId;
         const fname = f.friendUsername || f.username || fid;
+        const fPhoto = f.photoURL;
         return `<button class="friend-pick-btn" onclick="WallOfShamePage.pickMediaForShame('${fid}','${UI.escapeHtml(fname)}')">
-          <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+          ${fPhoto ? `<img src="${UI.escapeHtml(fPhoto)}" class="friend-avatar friend-avatar-img" alt="">` : `<div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>`}
           <span>${UI.escapeHtml(fname)}</span>
         </button>`;
       }).join('')}</div>
@@ -479,9 +621,9 @@ const WallOfShamePage = {
       id: mediaId, name: mediaTitle, mediaType, posterPath: posterPath || null
     });
     UI.toast(`${friendName} has been shamed! 😈`, 'success');
-    // Refresh the list
-    const sent = await Services.getSentShames();
+    const [sent, pending] = await Promise.all([Services.getSentShames(), Services.getPendingAbsolutions()]);
     this.state.sent = sent;
-    if (this.state.tab === 'sent') this.drawList();
+    this.state.pendingAbsolutions = pending;
+    this.draw();
   }
 };

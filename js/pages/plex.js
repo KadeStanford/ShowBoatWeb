@@ -187,7 +187,9 @@ const PlexConnectPage = {
               year: m.year || m.parentYear || '',
               type: 'show',
               thumb: m.grandparentThumb || m.thumb || '',
-              lastViewedAt: m.lastViewedAt
+              lastViewedAt: m.lastViewedAt,
+              plexKey: m.key || '',
+              machineId: server.clientIdentifier || ''
             });
           });
         } else {
@@ -198,7 +200,9 @@ const PlexConnectPage = {
               year: m.year || '',
               type: 'movie',
               thumb: m.thumb || '',
-              lastViewedAt: m.lastViewedAt
+              lastViewedAt: m.lastViewedAt,
+              plexKey: m.key || '',
+              machineId: server.clientIdentifier || ''
             });
           });
         }
@@ -224,6 +228,9 @@ const PlexConnectPage = {
           const key = `${item.type}:${item.title}`;
           if (!uniqueKeys.has(key)) uniqueKeys.set(key, item);
         });
+
+        // Store all items on the instance so _validateTvMatch can use episode data
+        this._syncItems = allItems;
 
         const tmdbCache = {};
         const matchEntries = [...uniqueKeys.values()];
@@ -370,9 +377,10 @@ const PlexConnectPage = {
   },
 
   // Search TMDB for a single Plex item and return the best-scored match.
+  // For TV shows we validate by cross-checking episode titles from the Plex history
+  // against TMDB episode data for the top candidate, to avoid wrong-language matches.
   async _matchTmdb(item) {
     const { title: cleanTitle, year, region } = this._parseTitle(item.title);
-    // Plex sometimes provides the year in a separate field — use as extra signal
     const fallbackYear = item.year ? parseInt(item.year) : null;
     const searchYear = year || fallbackYear;
 
@@ -380,17 +388,31 @@ const PlexConnectPage = {
       const searchFn = item.type === 'movie' ? API.searchMovies : API.searchShows;
       let results = await searchFn.call(API, cleanTitle, 1);
 
-      // If no results under cleaned title, retry with the raw title
       if ((!results || !results.length) && cleanTitle !== item.title.trim()) {
         results = await searchFn.call(API, item.title.trim(), 1);
       }
       if (!results || !results.length) return null;
 
-      // Score all returned results and pick the winner
+      // Score all returned results and pick the top candidates
       const scored = results
         .map(r => ({ r, score: this._scoreTmdbMatch(r, cleanTitle, searchYear, region) }))
         .sort((a, b) => b.score - a.score);
 
+      // For TV shows: validate the top few candidates via episode title matching
+      if (item.type === 'show') {
+        const candidates = scored.slice(0, 3);
+        const validated = await this._validateTvMatch(item, candidates.map(c => c.r));
+        if (validated) {
+          return {
+            key: `${item.type}:${item.title}`,
+            tmdbId: validated.id,
+            posterPath: validated.poster_path,
+            tmdbTitle: validated.name || validated.title
+          };
+        }
+      }
+
+      // Fall back to the highest-scored result
       const best = scored[0].r;
       return {
         key: `${item.type}:${item.title}`,
@@ -401,6 +423,49 @@ const PlexConnectPage = {
     } catch (_) {
       return null;
     }
+  },
+
+  // Validate a TV match by checking whether known episode titles from the Plex library
+  // match TMDB episode data for each candidate show.
+  async _validateTvMatch(plexItem, candidates) {
+    // Collect episodes for this show from the raw sync data (stored on the instance during sync)
+    const allItems = this._syncItems || [];
+    const showKey = plexItem.title;
+    const plexEpisodes = allItems.filter(i =>
+      i.type === 'show' && i.title === showKey && i.episodeTitle && i.season != null && i.episode != null
+    ).slice(0, 6); // check up to 6 episodes
+
+    if (!plexEpisodes.length) return null; // can't validate without episode data
+
+    // Normalise a string for fuzzy comparison
+    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    for (const candidate of candidates) {
+      let matchCount = 0;
+      let checked = 0;
+      for (const ep of plexEpisodes) {
+        try {
+          const data = await API.tmdb(`/tv/${candidate.id}/season/${ep.season}/episode/${ep.episode}`).catch(() => null);
+          if (!data || !data.name) continue;
+          checked++;
+          const tmdbNorm = norm(data.name);
+          const plexNorm = norm(ep.episodeTitle);
+          // Count as match if titles share enough characters
+          if (tmdbNorm === plexNorm ||
+              tmdbNorm.includes(plexNorm) ||
+              plexNorm.includes(tmdbNorm) ||
+              (tmdbNorm.length > 4 && plexNorm.length > 4 && tmdbNorm.slice(0, 8) === plexNorm.slice(0, 8))
+          ) {
+            matchCount++;
+          }
+        } catch (_) {}
+      }
+      // Require at least 1 confirmed title match (or all checked match if only 1 ep available)
+      if (checked > 0 && matchCount >= Math.max(1, Math.floor(checked * 0.5))) {
+        return candidate;
+      }
+    }
+    return null;
   }
 };
 

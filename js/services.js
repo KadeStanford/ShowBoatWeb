@@ -339,22 +339,61 @@ const Services = {
     const uid = this._uid(); if (!uid) return;
     const snap = await db.collection('users').doc(uid).collection('shames')
       .where('mediaId', '==', Number(tmdbId)).where('status', '==', 'active').get();
+    if (snap.empty) return;
     const batch = db.batch();
     snap.docs.forEach(d => {
-      batch.update(d.ref, { status: 'resolved', resolvedAt: Date.now() });
-      batch.update(db.collection('shames').doc(d.id), { status: 'resolved', resolvedAt: Date.now() });
+      // Notify the shamer rather than auto-resolving — they must do the absolving
+      batch.update(d.ref, { status: 'pendingAbsolution', watchedAt: Date.now() });
+      batch.update(db.collection('shames').doc(d.id), { status: 'pendingAbsolution', watchedAt: Date.now() });
+      // Write a notification so the shamer sees it
+      const shamerUid = d.data().shamerUid;
+      if (shamerUid) {
+        db.collection('users').doc(shamerUid).collection('notifications').add({
+          type: 'shame_watched',
+          shameId: d.id,
+          shamedName: d.data().shamedName || '',
+          mediaTitle: d.data().mediaTitle || '',
+          createdAt: Date.now(),
+          read: false
+        }).catch(() => {});
+      }
     });
-    if (!snap.empty) await batch.commit();
+    await batch.commit();
   },
 
   async resolveShame(shameId) {
     const uid = this._uid(); if (!uid) return;
-    const userRef = db.collection('users').doc(uid).collection('shames').doc(shameId);
+    // Fetch the shame to verify the caller is the shamer
     const globalRef = db.collection('shames').doc(shameId);
+    const doc = await globalRef.get();
+    if (!doc.exists) throw new Error('Shame not found');
+    const shame = doc.data();
+    if (shame.shamerUid !== uid) throw new Error('Only the person who gave the shame can remove it');
+    const shamedUid = shame.shamedUid;
     const batch = db.batch();
-    batch.update(userRef, { status: 'resolved', resolvedAt: Date.now() });
     batch.update(globalRef, { status: 'resolved', resolvedAt: Date.now() });
+    batch.update(db.collection('users').doc(shamedUid).collection('shames').doc(shameId), { status: 'resolved', resolvedAt: Date.now() });
     await batch.commit();
+  },
+
+  async denyAbsolution(shameId) {
+    const uid = this._uid(); if (!uid) return;
+    const globalRef = db.collection('shames').doc(shameId);
+    const doc = await globalRef.get();
+    if (!doc.exists) throw new Error('Shame not found');
+    const shame = doc.data();
+    if (shame.shamerUid !== uid) throw new Error('Only the shamer can act on this');
+    const batch = db.batch();
+    batch.update(globalRef, { status: 'active' });
+    batch.update(db.collection('users').doc(shame.shamedUid).collection('shames').doc(shameId), { status: 'active' });
+    await batch.commit();
+  },
+
+  async getPendingAbsolutions() {
+    const uid = this._uid(); if (!uid) return [];
+    const snap = await db.collection('shames')
+      .where('shamerUid', '==', uid).where('status', '==', 'pendingAbsolution').get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
   async getAllShames() {
@@ -490,24 +529,34 @@ const Services = {
     await db.collection('users').doc(uid).collection('activity').add(data);
   },
 
-  async getActivityFeed(friendUids = []) {
-    if (friendUids.length === 0) return [];
+  // Fetch a page of activity from one or more users.
+  // cursors is a map of uid → last Firestore DocumentSnapshot (for pagination).
+  // Returns { items, cursors } where the new cursors map can be passed back for the next page.
+  async getActivityFeed(friendUids = [], cursors = {}, pageSize = 20) {
+    if (friendUids.length === 0) return { items: [], cursors: {} };
+    const perUser = Math.max(1, Math.ceil(pageSize / friendUids.length));
+    const nextCursors = { ...cursors };
     const activities = [];
     await Promise.all(friendUids.map(async uid => {
       try {
-        const snap = await db.collection('users').doc(uid).collection('activity')
-          .orderBy('createdAt', 'desc').limit(50).get();
-        snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
+        let q = db.collection('users').doc(uid).collection('activity')
+          .orderBy('createdAt', 'desc').limit(perUser);
+        if (cursors[uid]) q = q.startAfter(cursors[uid]);
+        const snap = await q.get();
+        if (!snap.empty) {
+          snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
+          nextCursors[uid] = snap.docs[snap.docs.length - 1];
+        }
       } catch (_) {
-        // Fallback without ordering
+        // Fallback without ordering (no cursor support in this path)
         try {
-          const snap = await db.collection('users').doc(uid).collection('activity').limit(50).get();
+          const snap = await db.collection('users').doc(uid).collection('activity').limit(perUser).get();
           snap.docs.forEach(d => activities.push({ id: d.id, ...d.data() }));
         } catch (_2) {}
       }
     }));
     activities.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    return activities;
+    return { items: activities, cursors: nextCursors };
   },
 
   // ==================== USER PROFILE ====================

@@ -73,7 +73,7 @@ const DetailsPage = {
                 ${runtime ? `<span class="meta-chip">${runtime}m</span>` : ''}
                 ${status ? `<span class="status-badge">${status}</span>` : ''}
                 ${d.vote_average ? `<span class="meta-chip rating-chip">${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
-                ${this.state.plexItem ? `<span class="plex-badge" onclick="event.stopPropagation();window.open('https://app.plex.tv/desktop/#!/search?query='+encodeURIComponent('${UI.escapeHtml(title).replace(/'/g, "\\'")}')+'+plex','_blank')">▶ Play on Plex</span>` : ''}
+                ${this.state.plexItem ? `<span class="plex-badge" onclick="event.stopPropagation();DetailsPage._openInPlex()">▶ Play on Plex</span>` : ''}
               </div>
               ${genres.length ? `<div class="details-genres">${genres.map(g => `<span class="genre-tag">${UI.escapeHtml(g)}</span>`).join('')}</div>` : ''}
               <div class="details-stats-row">
@@ -482,6 +482,16 @@ const DetailsPage = {
     // Reload the friends tab
     const ep = this.state.episodes[this._epIdx];
     if (ep) this._loadFriendEpisodeRatings(ep.season_number, ep.episode_number);
+  },
+
+  _openInPlex() {
+    const p = this.state.plexItem;
+    if (p?.machineId && p?.plexKey) {
+      window.open(`https://app.plex.tv/desktop/#!/server/${encodeURIComponent(p.machineId)}/details?key=${encodeURIComponent(p.plexKey)}`, '_blank');
+    } else {
+      const title = this.state.details?.name || this.state.details?.title || '';
+      window.open(`https://app.plex.tv/desktop/#!/search?query=${encodeURIComponent(title)}`, '_blank');
+    }
   },
 
   showMoreActions() {
