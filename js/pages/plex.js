@@ -62,9 +62,8 @@ const PlexConnectPage = {
               const resources = await PlexAPI.getResources(result.authToken);
               const server = resources?.find(r => r.provides === 'server');
               if (server) {
-                const conn = server.connections?.find(c => c.local === false) || server.connections?.[0];
-                if (conn) Services.plex.connect(conn.uri, result.authToken);
                 serverName = server.name || '';
+                Services.plex.connect(serverName, result.authToken);
               } else {
                 Services.plex.connect('', result.authToken);
               }
@@ -96,26 +95,42 @@ const PlexConnectPage = {
     btn.disabled = true; btn.innerHTML = `${UI.icon('activity', 18)} Syncing...`;
     try {
       const token = Services.plex.token;
-      const serverUrl = Services.plex.serverUrl;
       if (!token) { UI.toast('Not connected to Plex', 'error'); return; }
-      if (serverUrl) {
-        // Fetch library sections
-        const res = await fetch(`${serverUrl}/library/sections?X-Plex-Token=${encodeURIComponent(token)}`, { headers: { Accept: 'application/json' } });
-        const data = await res.json();
-        const sections = data?.MediaContainer?.Directory || [];
-        // Fetch recently watched from each section
-        const allItems = [];
-        for (const section of sections.filter(s => s.type === 'show' || s.type === 'movie')) {
-          try {
-            const r = await fetch(`${serverUrl}/library/sections/${section.key}/recentlyViewed?X-Plex-Token=${encodeURIComponent(token)}`, { headers: { Accept: 'application/json' } });
-            const d = await r.json();
-            (d?.MediaContainer?.Metadata || []).forEach(m => allItems.push({ title: m.title, year: m.year, type: section.type }));
-          } catch (_) {}
+
+      // Use plex.tv cloud API to get watch history — works without direct server access
+      const allItems = [];
+
+      // Fetch recently watched from plex.tv (no CORS / cert issues)
+      try {
+        const res = await fetch('https://plex.tv/api/v2/user/watch-history?filter=watched&sort=viewedAt:desc&count=100', {
+          headers: { ...PlexAPI.headers(), 'X-Plex-Token': token }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          (data?.MediaContainer?.Metadata || []).forEach(m => {
+            allItems.push({ title: m.title || m.grandparentTitle || '', year: m.year || '', type: m.type === 'episode' ? 'show' : (m.type || 'movie') });
+          });
         }
+      } catch (_) {}
+
+      // Also get library info from the resources if we have a server
+      if (!allItems.length) {
+        // Try resources to at least list available libraries
+        try {
+          const resources = await PlexAPI.getResources(token);
+          const server = resources?.find(r => r.provides === 'server');
+          if (server) {
+            allItems.push({ title: `Server: ${server.name}`, year: '', type: 'info' });
+            UI.toast(`Found server "${server.name}" but watch history requires Plex Pass or is unavailable. Items stored locally will show below.`, 'info');
+          }
+        } catch (_) {}
+      }
+
+      if (allItems.length && allItems[0].type !== 'info') {
         Services.plex.setLibrary(allItems);
         UI.toast(`Synced ${allItems.length} items from Plex`, 'success');
-      } else {
-        UI.toast('No Plex server URL configured', 'info');
+      } else if (!allItems.length) {
+        UI.toast('No watch history found. Make sure you have recently watched items on Plex.', 'info');
       }
     } catch (e) {
       UI.toast('Sync failed: ' + e.message, 'error');
