@@ -1,10 +1,10 @@
 /* ShowBoat — Show/Movie Details Page */
 const DetailsPage = {
-  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {} },
+  state: { id: null, type: 'tv', details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null },
 
   async render(params) {
     const rawType = params.type || 'tv';
-    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {} };
+    this.state = { id: params.id, type: rawType === 'show' ? 'tv' : rawType, details: null, credits: null, inWatchlist: false, isWatched: false, rating: 0, review: '', seasonNum: 1, episodes: [], friendActivity: [], logoUrl: null, loading: true, friendEpRatings: {}, plexItem: null };
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
@@ -16,12 +16,13 @@ const DetailsPage = {
         details = await API.getMovieDetails(this.state.id);
       }
       this.state.details = details;
-      const [credits, inWl, isW, rat, logo] = await Promise.all([
+      const [credits, inWl, isW, rat, logo, plexItem] = await Promise.all([
         API.getMediaCredits(this.state.id, this.state.type),
         Services.isInWatchlist(this.state.id).catch(() => false),
         Services.isWatched(this.state.id, this.state.type).catch(() => false),
         Services.getRating(this.state.id).catch(() => null),
-        API.fetchLogo(this.state.id, this.state.type).catch(() => null)
+        API.fetchLogo(this.state.id, this.state.type).catch(() => null),
+        Services.findInPlexHistory(this.state.id).catch(() => null)
       ]);
       this.state.credits = credits;
       this.state.inWatchlist = inWl;
@@ -29,6 +30,7 @@ const DetailsPage = {
       this.state.rating = rat?.rating || 0;
       this.state.review = rat?.review || '';
       this.state.logoUrl = logo ? API.imageUrl(logo, 'w500') : null;
+      this.state.plexItem = plexItem || null;
       if (this.state.type === 'tv' && details.seasons?.length) {
         const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
         this.state.seasonNum = firstSeason.season_number;
@@ -71,6 +73,7 @@ const DetailsPage = {
                 ${runtime ? `<span class="meta-chip">${runtime}m</span>` : ''}
                 ${status ? `<span class="status-badge">${status}</span>` : ''}
                 ${d.vote_average ? `<span class="meta-chip rating-chip">${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
+                ${this.state.plexItem ? `<span class="plex-badge" onclick="event.stopPropagation();window.open('https://app.plex.tv/desktop/#!/search?query='+encodeURIComponent('${UI.escapeHtml(title).replace(/'/g, "\\'")}')+'+plex','_blank')">▶ Play on Plex</span>` : ''}
               </div>
               ${genres.length ? `<div class="details-genres">${genres.map(g => `<span class="genre-tag">${UI.escapeHtml(g)}</span>`).join('')}</div>` : ''}
               <div class="details-stats-row">

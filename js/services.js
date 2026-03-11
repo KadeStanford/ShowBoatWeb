@@ -397,8 +397,14 @@ const Services = {
   async removeFromSharedList(listId, itemId) {
     const list = await this.getSharedListDetail(listId);
     if (!list) return;
-    const updated = (list.items || []).filter(i => i.id !== itemId);
+    const updated = (list.items || []).filter(i => String(i.id) !== String(itemId));
     await db.collection('sharedLists').doc(listId).update({ items: updated });
+  },
+
+  async inviteToSharedList(listId, friendUid) {
+    await db.collection('sharedLists').doc(listId).update({
+      members: firebase.firestore.FieldValue.arrayUnion(friendUid)
+    });
   },
 
   // ==================== RECOMMENDATIONS ====================
@@ -574,6 +580,27 @@ const Services = {
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
 
+  async findInPlexHistory(tmdbId) {
+    const uid = this._uid(); if (!uid) return null;
+    if (!this.plex.isConnected) return null;
+    try {
+      const id = Number(tmdbId);
+      const snap = await db.collection('users').doc(uid).collection('plexHistory')
+        .where('tmdbId', '==', id).limit(1).get();
+      if (!snap.empty) return { docId: snap.docs[0].id, ...snap.docs[0].data() };
+    } catch (_) {}
+    return null;
+  },
+
+  async updatePlexHistoryMatch(docId, tmdbId, posterPath, mediaType) {
+    const uid = this._uid(); if (!uid) return;
+    await db.collection('users').doc(uid).collection('plexHistory').doc(docId).update({
+      tmdbId: Number(tmdbId),
+      posterPath: posterPath || null,
+      type: mediaType || 'show',
+    });
+  },
+
   // Backport Plex-synced items into the user's activity log.
   // Creates one "watched" entry per unique TMDB ID (most recent play date).
   // Uses a stable doc ID so re-syncing is idempotent.
@@ -616,12 +643,10 @@ const Services = {
       if (count >= BATCH_LIMIT) await flush();
     }
 
-    // Episode-level watched entries for recent episodes (last 90 days)
-    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    // Episode-level watched entries — ALL episodes, no date/count limit
     const episodeItems = items.filter(item =>
-      item.type === 'show' && item.tmdbId && item.season != null && item.episode != null &&
-      (item.lastViewedAt ? item.lastViewedAt * 1000 : 0) >= cutoff
-    ).slice(0, 150); // cap to avoid spamming
+      item.type === 'show' && item.tmdbId && item.season != null && item.episode != null
+    );
 
     for (const item of episodeItems) {
       const docId = `plex_ep_${item.tmdbId}_s${item.season}e${item.episode}`;

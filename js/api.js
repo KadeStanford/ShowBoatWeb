@@ -66,6 +66,14 @@ const API = {
     const data = await this.tmdb('/tv/on_the_air', { page });
     return data?.results || [];
   },
+  async getSimilar(id, type = 'tv', page = 1) {
+    const data = await this.tmdb(`/${type}/${id}/similar`, { page });
+    return data?.results || [];
+  },
+  async getRecommendations(id, type = 'tv', page = 1) {
+    const data = await this.tmdb(`/${type}/${id}/recommendations`, { page });
+    return data?.results || [];
+  },
 
   // --- Details (return raw TMDB data with credits & images appended) ---
   async getShowDetails(id) {

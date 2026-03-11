@@ -50,7 +50,8 @@ const PlexConnectPage = {
       <h3>Connected to Plex</h3>
       ${this.state.server ? `<p class="plex-server">Server: ${UI.escapeHtml(this.state.server)}</p>` : ''}
       <div class="plex-actions">
-        <button class="btn-primary" onclick="App.navigate('plex-watched')">${UI.icon('check-circle', 18)} View Plex Watched</button>
+        <button class="btn-primary" onclick="App.navigate('plex-now-playing')">${UI.icon('play-circle', 18)} Now Playing</button>
+        <button class="btn-secondary" onclick="App.navigate('plex-watched')">${UI.icon('check-circle', 18)} View Plex Watched</button>
         <button class="btn-secondary" onclick="PlexConnectPage.syncNow()" id="plex-sync-btn">${UI.icon('activity', 18)} Sync Now</button>
         <button class="btn-secondary" style="border-color:var(--rose-500);color:var(--rose-400)" onclick="PlexConnectPage.disconnect()">${UI.icon('x', 18)} Disconnect</button>
       </div>
@@ -326,6 +327,9 @@ const PlexConnectPage = {
       }
     }
 
+    // Strip any remaining parenthetical content (e.g. "Show Name (Network)" or "Hacks (2021)")
+    title = title.replace(/\s*\([^)]*\)\s*/g, '').trim();
+
     return { title, year, region };
   },
 
@@ -474,12 +478,13 @@ const PlexWatchedPage = {
           ? `S${item.season}E${item.episode}${item.episodeTitle ? ' — ' + UI.escapeHtml(item.episodeTitle) : ''}`
           : (item.year ? `${item.year}` : '');
         const onclick = item.tmdbId ? `onclick="App.navigate('details',{id:${item.tmdbId},type:'${item.type === 'show' ? 'tv' : 'movie'}'})"`  : '';
+        const fixBtn = item.docId ? `<button class="fix-match-btn" onclick="event.stopPropagation(); PlexWatchedPage.showFixMatch('${item.docId}','${UI.escapeHtml(item.title || '')}','${item.type || 'show'}')" title="Fix TMDB match">${UI.icon('search', 12)} Fix Match</button>` : '';
         html += `<div class="plex-history-item" ${onclick} style="${item.tmdbId ? 'cursor:pointer' : ''}">
           ${poster ? `<img src="${poster}" class="plex-poster" alt="" loading="lazy">` : `<div class="plex-poster placeholder">${UI.icon(item.type === 'movie' ? 'film' : 'tv', 24)}</div>`}
           <div class="plex-item-info">
             <p class="plex-item-title">${UI.escapeHtml(item.title || '')}</p>
             ${subtitle ? `<p class="plex-item-sub">${subtitle}</p>` : ''}
-            <span class="plex-tag">${item.type === 'movie' ? 'Movie' : 'TV'}</span>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="plex-tag">${item.type === 'movie' ? 'Movie' : 'TV'}</span>${fixBtn}</div>
           </div>
         </div>`;
       });
@@ -487,5 +492,210 @@ const PlexWatchedPage = {
     }
     html += '</div>';
     content.innerHTML = html;
+  },
+
+  showFixMatch(docId, rawTitle, type) {
+    const mediaType = type === 'movie' ? 'movie' : 'tv';
+    UI.showModal('Fix TMDB Match', `
+      <p style="color:var(--text-secondary);margin-bottom:12px;font-size:.875rem">Search for the correct TMDB entry for <strong>${UI.escapeHtml(rawTitle)}</strong></p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="fix-match-input" class="modal-input" type="text" placeholder="Search title…" value="${UI.escapeHtml(rawTitle)}" style="flex:1">
+        <button class="btn-primary btn-sm" onclick="PlexWatchedPage.runFixMatchSearch('${docId}','${mediaType}')">${UI.icon('search', 14)}</button>
+      </div>
+      <div id="fix-match-results" style="max-height:320px;overflow-y:auto">${UI.loading()}</div>
+    `);
+    // Auto-search on open
+    setTimeout(() => PlexWatchedPage.runFixMatchSearch(docId, mediaType), 100);
+  },
+
+  async runFixMatchSearch(docId, mediaType) {
+    const input = document.getElementById('fix-match-input');
+    const resultsEl = document.getElementById('fix-match-results');
+    if (!input || !resultsEl) return;
+    const query = input.value.trim();
+    if (!query) return;
+    resultsEl.innerHTML = UI.loading();
+    try {
+      const results = mediaType === 'movie'
+        ? await API.searchMovies(query)
+        : await API.searchShows(query);
+      const trimmed = results.slice(0, 12);
+      if (!trimmed.length) { resultsEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px">No results found</p>'; return; }
+      resultsEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">${trimmed.map(r => {
+        const poster = r.poster_path ? API.imageUrl(r.poster_path, 'w92') : '';
+        const title = UI.escapeHtml(r.name || r.title || '');
+        const year = (r.first_air_date || r.release_date || '').substring(0, 4);
+        return `<div class="fix-match-result" onclick="PlexWatchedPage.applyFixedMatch('${docId}','${r.id}','${r.poster_path || ''}','${mediaType}')">
+          ${poster ? `<img src="${poster}" style="width:40px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">` : `<div style="width:40px;height:60px;background:var(--bg-tertiary);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center">${UI.icon('film', 16)}</div>`}
+          <div style="flex:1;min-width:0"><p style="font-weight:600;margin:0 0 2px;font-size:.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</p><p style="color:var(--text-muted);margin:0;font-size:.75rem">${year} &bull; ${mediaType === 'movie' ? 'Movie' : 'TV'} &bull; ID: ${r.id}</p></div>
+        </div>`;
+      }).join('')}</div>`;
+    } catch (e) { resultsEl.innerHTML = `<p style="color:var(--rose-400);text-align:center;padding:20px">${UI.escapeHtml(e.message)}</p>`; }
+  },
+
+  async applyFixedMatch(docId, tmdbId, posterPath, tmdbType) {
+    try {
+      await Services.updatePlexHistoryMatch(docId, tmdbId, posterPath || null, tmdbType === 'movie' ? 'movie' : 'show');
+      UI.closeModal();
+      const item = this.state.items.find(i => i.docId === docId);
+      if (item) { item.tmdbId = Number(tmdbId); if (posterPath) item.posterPath = posterPath; }
+      this.draw();
+    } catch (e) { alert('Error saving match: ' + e.message); }
+  }
+};
+
+/* ---------- Plex Companion — Now Playing ---------- */
+const PlexNowPlayingPage = {
+  state: { sessions: [], loading: false, details: {} },
+
+  async render() {
+    const el = document.getElementById('page-content');
+    el.innerHTML = `<div class="plex-now-playing-page">${UI.pageHeader('Now Playing', true)}<div id="np-content">${UI.loading()}</div></div>`;
+    if (!Services.plex.isConnected) {
+      document.getElementById('np-content').innerHTML = UI.emptyState('Not Connected', 'Connect your Plex account first.') + `<div style="padding:0 16px"><button class="btn-primary" onclick="App.navigate('plex-connect')">${UI.icon('monitor', 18)} Connect Plex</button></div>`;
+      return;
+    }
+    try {
+      const token = Services.plex.token;
+      const resources = await PlexAPI.getResources(token);
+      const server = resources?.find(r => r.provides?.includes('server'));
+      if (!server) { document.getElementById('np-content').innerHTML = UI.emptyState('No Server', 'Could not find a Plex server on your account.'); return; }
+      const data = await PlexAPI.serverFetch(token, server, '/status/sessions');
+      const sessions = data?.MediaContainer?.Metadata || [];
+      this.state.sessions = sessions;
+      this.draw(server, token);
+    } catch (e) {
+      document.getElementById('np-content').innerHTML = UI.emptyState('Error', e.message);
+    }
+  },
+
+  draw(server, token) {
+    const el = document.getElementById('np-content');
+    const sessions = this.state.sessions;
+
+    if (!sessions.length) {
+      el.innerHTML = `<div class="np-empty">
+        ${UI.icon('monitor', 48)}
+        <h3>Nothing Playing Right Now</h3>
+        <p>Start playing something on Plex and it will appear here.</p>
+        <button class="btn-secondary" onclick="PlexNowPlayingPage.refresh()">${UI.icon('refresh-cw', 16)} Refresh</button>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="np-header">
+        <p class="np-subtitle">${sessions.length} ${sessions.length === 1 ? 'stream' : 'streams'} active</p>
+        <button class="btn-secondary btn-sm" onclick="PlexNowPlayingPage.refresh()">${UI.icon('refresh-cw', 14)} Refresh</button>
+      </div>
+      <div class="np-sessions">${sessions.map(s => this.renderSession(s)).join('')}</div>
+    `;
+
+    // Load TMDB enrichment in background
+    sessions.forEach((s, i) => this.enrichSession(s, i));
+  },
+
+  renderSession(s) {
+    const isEpisode = s.type === 'episode';
+    const title = isEpisode ? (s.grandparentTitle || s.parentTitle || s.title) : s.title;
+    const subtitle = isEpisode ? `S${s.parentIndex}E${s.index} · ${s.title}` : (s.year || '');
+    const thumb = s.grandparentThumb || s.thumb || '';
+    const thumbUrl = thumb ? `${Services.plex.serverUrl || ''}/photo/:/transcode?width=100&height=150&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}` : '';
+
+    const viewOffset = s.viewOffset || 0;
+    const duration = s.duration || 1;
+    const progress = Math.min(100, (viewOffset / duration * 100)).toFixed(0);
+    const minLeft = Math.round((duration - viewOffset) / 60000);
+
+    const player = s.Player?.title || s.Player?.platform || '';
+    const user = s.User?.title || '';
+    const state = s.Player?.state || 'playing';
+    const stateIcon = state === 'paused' ? 'pause' : 'play';
+
+    const tmdbId = this.state.details[s.ratingKey]?.tmdbId;
+    const mediaType = isEpisode ? 'tv' : 'movie';
+
+    return `<div class="np-card" id="np-card-${s.ratingKey}" onclick="${tmdbId ? `App.navigate('details',{id:${tmdbId},type:'${mediaType}'})` : ''}">
+      <div class="np-card-top">
+        ${thumbUrl
+          ? `<div class="np-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
+          : `<div class="np-thumb np-thumb-ph">${UI.icon('film', 28)}</div>`
+        }
+        <div class="np-card-info">
+          <div class="np-state-badge ${state}"><span>${UI.icon(stateIcon, 12)}</span> ${state}</div>
+          <h3 class="np-title">${UI.escapeHtml(title)}</h3>
+          <p class="np-subtitle-text">${UI.escapeHtml(subtitle)}</p>
+          <div class="np-meta">
+            ${user ? `<span class="np-meta-chip">${UI.icon('user', 12)} ${UI.escapeHtml(user)}</span>` : ''}
+            ${player ? `<span class="np-meta-chip">${UI.icon('monitor', 12)} ${UI.escapeHtml(player)}</span>` : ''}
+            ${minLeft > 0 ? `<span class="np-meta-chip">${UI.icon('clock', 12)} ~${minLeft}m left</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="np-progress-wrap">
+        <div class="np-progress-bar">
+          <div class="np-progress-fill" style="width:${progress}%"></div>
+        </div>
+        <span class="np-progress-pct">${progress}%</span>
+      </div>
+      <div id="np-details-${s.ratingKey}" class="np-tmdb-details"></div>
+    </div>`;
+  },
+
+  async enrichSession(s, idx) {
+    try {
+      const isEpisode = s.type === 'episode';
+      const title = isEpisode ? (s.grandparentTitle || '') : (s.title || '');
+      const mediaType = isEpisode ? 'tv' : 'movie';
+      const searchFn = isEpisode ? API.searchShows.bind(API) : API.searchMovies.bind(API);
+      const results = await searchFn(title, 1);
+      if (!results.length) return;
+      const match = results[0];
+      this.state.details[s.ratingKey] = { tmdbId: match.id };
+
+      // Update the card to make it clickable
+      const card = document.getElementById(`np-card-${s.ratingKey}`);
+      if (card) card.onclick = () => App.navigate('details', { id: match.id, type: mediaType });
+
+      // Load and inject cast + extra info
+      const detailsEl = document.getElementById(`np-details-${s.ratingKey}`);
+      if (!detailsEl) return;
+
+      let castData = null;
+      if (isEpisode && s.parentIndex && s.index) {
+        castData = await API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}/credits`).catch(() => null);
+      } else if (mediaType === 'movie') {
+        castData = await API.tmdb(`/movie/${match.id}/credits`).catch(() => null);
+      } else {
+        castData = await API.tmdb(`/tv/${match.id}/credits`).catch(() => null);
+      }
+      const cast = (castData?.cast || []).slice(0, 6);
+      const mediaDetails = isEpisode
+        ? await API.getShowDetails(match.id).catch(() => null)
+        : await API.getMovieDetails(match.id).catch(() => null);
+
+      const countries = (mediaDetails?.production_countries || []).map(c => c.name).join(', ');
+      const overview = isEpisode
+        ? (await API.tmdb(`/tv/${match.id}/season/${s.parentIndex}/episode/${s.index}`).catch(() => null))?.overview || ''
+        : mediaDetails?.overview || '';
+
+      detailsEl.innerHTML = `
+        ${overview ? `<p class="np-overview">${UI.escapeHtml(overview.substring(0, 180))}${overview.length > 180 ? '…' : ''}</p>` : ''}
+        ${countries ? `<p class="np-fact">${UI.icon('map-pin', 12)} Filmed in ${UI.escapeHtml(countries)}</p>` : ''}
+        ${cast.length ? `<div class="np-cast-row">${cast.map(c => {
+          const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w92') : '';
+          return `<div class="np-cast-chip" onclick="event.stopPropagation();App.navigate('actor-details',{id:${c.id}})">
+            ${photo ? `<img src="${photo}" alt="">` : `<div class="np-cast-ph">${(c.name||'?')[0]}</div>`}
+            <span>${UI.escapeHtml((c.name||'').split(' ')[0])}</span>
+          </div>`;
+        }).join('')}</div>` : ''}
+      `;
+    } catch (_) {}
+  },
+
+  async refresh() {
+    this.state.sessions = [];
+    this.state.details = {};
+    await this.render();
   }
 };

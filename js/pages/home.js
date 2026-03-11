@@ -1,6 +1,6 @@
 /* ShowBoat — Home Page */
 const HomePage = {
-  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set() },
+  state: { featured: [], current: 0, timer: null, trending: { shows: [], movies: [] }, friendTrends: [], shames: [], friendActivityIds: new Set(), personalRecs: null },
 
   async render() {
     const el = document.getElementById('page-content');
@@ -33,8 +33,34 @@ const HomePage = {
       const logo = await API.fetchLogo(item.id, item.media_type);
       if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
-    // Friend trends + activity dots
-    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); }
+    // Friend trends + activity dots + personal recs
+    if (uid) { this.loadFriendTrends(); this.loadFriendActivityDots(); this.loadPersonalRecs(); }
+  },
+
+  async loadPersonalRecs() {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const watched = await Services.getWatched(uid);
+      if (!watched.length) return;
+      // Pick a random recently watched item with a TMDB id
+      const candidates = watched.filter(w => (w.tmdbId || w.mediaId || w.showId) && (w.mediaType || w.showType || w.type));
+      if (!candidates.length) return;
+      const pick = candidates[Math.floor(Math.random() * Math.min(candidates.length, 10))];
+      const id = pick.tmdbId || pick.mediaId || pick.showId;
+      let type = pick.mediaType || pick.showType || pick.type || 'tv';
+      if (type === 'show') type = 'tv';
+      const recs = await API.getRecommendations(id, type);
+      const filtered = recs.filter(r => !watched.some(w => (w.tmdbId || w.mediaId || w.showId) === r.id)).slice(0, 10);
+      if (!filtered.length) return;
+      this.state.personalRecs = { recs: filtered, title: pick.showName || pick.mediaTitle || pick.name || pick.title || '' };
+      // Patch into DOM if already drawn
+      const sec = document.getElementById('personal-recs-section');
+      if (sec) {
+        sec.innerHTML = `<div class="section-header"><h3>Because You Watched <em>${UI.escapeHtml(this.state.personalRecs.title)}</em></h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div><div class="horizontal-scroll">${this.renderHorizontalList(filtered)}</div>`;
+        sec.style.display = '';
+      }
+    } catch (_) {}
   },
 
   async loadFriendActivityDots() {
@@ -86,6 +112,7 @@ const HomePage = {
       <div class="home-page">
         ${this.renderHero()}
         ${this.renderMenuGrid()}
+        ${this.renderDynamicSection()}
         ${s.shames.length ? this.renderShameSection() : ''}
         ${s.friendTrends.length ? `<div class="section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll">${this.renderHorizontalList(s.friendTrends, true)}</div></div>` : `<div class="section" id="friend-trends-section"><div class="section-header"><h3>Trending Among Friends</h3></div><div id="friend-trends-list" class="horizontal-scroll"><p class="empty-text">Loading...</p></div></div>`}
         <div class="section">
@@ -96,7 +123,11 @@ const HomePage = {
           <div class="section-header"><h3>Trending Movies</h3><button class="see-all-btn" onclick="App.navigate('discover',{tab:'movie'})">See All</button></div>
           <div class="horizontal-scroll">${this.renderHorizontalList(s.trending.movies)}</div>
         </div>
+        <div class="section" id="personal-recs-section" ${!s.personalRecs?.recs?.length ? 'style="display:none"' : ''}>
+          ${s.personalRecs?.recs?.length ? `<div class="section-header"><h3>Because You Watched <em>${UI.escapeHtml(s.personalRecs.title)}</em></h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div><div class="horizontal-scroll">${this.renderHorizontalList(s.personalRecs.recs)}</div>` : ''}
+        </div>
       </div>`;
+    if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
   },
 
   renderHero() {
@@ -138,13 +169,26 @@ const HomePage = {
       { icon: 'search', label: 'Discover', page: 'discover', color: 'var(--emerald-500)' },
       { icon: 'bookmark', label: 'Watchlist', page: 'watchlist', color: 'var(--indigo-500)' },
       { icon: 'monitor', label: 'Plex', page: 'plex-connect', color: 'var(--amber-500)' },
-      { icon: 'check-circle', label: 'Watched', page: 'analytics', color: 'var(--purple-500)' },
+      { icon: 'check-circle', label: 'Wall of Shame', page: 'wall-of-shame', color: 'var(--rose-500)' },
       { icon: 'activity', label: 'Activity', page: 'activity', color: 'var(--blue-500)' },
-      { icon: 'list', label: 'Lists', page: 'shared-lists', color: 'var(--rose-500)' },
+      { icon: 'list', label: 'Lists', page: 'shared-lists', color: 'var(--teal-500)' },
       { icon: 'zap', label: 'Matcher', page: 'matcher-setup', color: 'var(--orange-500)' },
       { icon: 'bar-chart-2', label: 'Stats', page: 'analytics', color: 'var(--teal-500)' }
     ];
     return `<div class="menu-grid">${items.map(i => `<button class="menu-item" onclick="App.navigate('${i.page}')"><div class="menu-icon" style="background:${i.color}20;color:${i.color}">${UI.icon(i.icon, 22)}</div><span>${i.label}</span></button>`).join('')}</div>`;
+  },
+
+  renderDynamicSection() {
+    // Rotating "Top Picks" section — shows top-rated from trending with variety
+    const s = this.state;
+    const pool = [...s.trending.shows.slice(0, 5), ...s.trending.movies.slice(0, 5)]
+      .filter(i => i.vote_average >= 7.5 && i.backdrop_path);
+    if (!pool.length) return '';
+    const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, 6);
+    return `<div class="section">
+      <div class="section-header"><h3>${UI.icon('zap', 16)} Top Picks Right Now</h3><button class="see-all-btn" onclick="App.navigate('discover')">See All</button></div>
+      <div class="horizontal-scroll">${this.renderHorizontalList(shuffled)}</div>
+    </div>`;
   },
 
   renderShameSection() {

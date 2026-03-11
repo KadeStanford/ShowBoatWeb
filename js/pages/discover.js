@@ -2,12 +2,14 @@
 const DiscoverPage = {
   state: {
     query: '', results: [], tab: 'multi', genres: [], selectedGenres: [],
-    trending: [], page: 1, loading: false, friendActivityIds: new Set(),
+    trending: [], page: 1, totalPages: 1, loading: false, friendActivityIds: new Set(),
+    _observer: null,
     // Advanced filters
     sortBy: '', yearFrom: '', yearTo: '', language: '', voteMin: '', voteMax: '',
     castQuery: '', castId: '', castName: '', networkQuery: '', networkId: '', networkName: '',
     seasonsMin: '', seasonsMax: '', runtimeMin: '', runtimeMax: '',
-    showFilters: false
+    showFilters: false,
+    watchedIds: new Set(), hideWatched: false
   },
 
   languages: [
@@ -65,6 +67,7 @@ const DiscoverPage = {
       <div id="discover-results">${UI.loading()}</div>
     </div>`;
     this.loadFriendActivityDots();
+    this.loadWatchedIds();
     await this.loadGenres();
     if (this.state.showFilters && isFilterable) this.renderFilters();
     await this.loadContent();
@@ -81,6 +84,7 @@ const DiscoverPage = {
     if (this.state.networkId) c++;
     if (this.state.seasonsMin || this.state.seasonsMax) c++;
     if (this.state.runtimeMin || this.state.runtimeMax) c++;
+    if (this.state.hideWatched) c++;
     return c;
   },
 
@@ -164,6 +168,7 @@ const DiscoverPage = {
         </div>` : ''}
       </div>
       <div class="adv-filters-actions">
+        <label class="filter-check-label"><input type="checkbox" ${this.state.hideWatched ? 'checked' : ''} onchange="DiscoverPage.state.hideWatched=this.checked; DiscoverPage.loadContent()"> Hide Watched</label>
         <button class="btn-primary btn-sm" onclick="DiscoverPage.applyFilters()">Apply Filters</button>
         <button class="btn-secondary btn-sm" onclick="DiscoverPage.resetFilters()">Reset All</button>
       </div>
@@ -266,6 +271,23 @@ const DiscoverPage = {
     this.loadContent();
   },
 
+  async loadWatchedIds() {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const watched = await Services.getWatched(uid);
+      const ids = new Set(watched.map(w => String(w.tmdbId || w.mediaId || w.showId || w.id)).filter(Boolean));
+      this.state.watchedIds = ids;
+      document.querySelectorAll('.media-card[data-media-id]').forEach(card => {
+        if (ids.has(String(card.dataset.mediaId))) {
+          card.classList.add('is-watched');
+          if (!card.querySelector('.watched-overlay')) card.insertAdjacentHTML('afterbegin', '<div class="watched-overlay">Watched</div>');
+        }
+      });
+      if (this.state.hideWatched) this.loadContent();
+    } catch (_) {}
+  },
+
   async loadFriendActivityDots() {
     try {
       const friends = await Services.getFriends();
@@ -297,65 +319,110 @@ const DiscoverPage = {
     }
   },
 
+  async _fetchPage(page) {
+    if (this.state.query) {
+      let endpoint;
+      if (this.state.tab === 'multi') endpoint = '/search/multi';
+      else if (this.state.tab === 'person') endpoint = '/search/person';
+      else if (this.state.tab === 'tv') endpoint = '/search/tv';
+      else endpoint = '/search/movie';
+      const data = await API.tmdb(endpoint, { query: this.state.query, page });
+      return { results: data?.results || [], totalPages: data?.total_pages || 1 };
+    } else if (this.state.tab === 'tv' || this.state.tab === 'movie') {
+      const params = { page };
+      if (this.state.selectedGenres.length) params.with_genres = this.state.selectedGenres.join(',');
+      if (this.state.sortBy) params.sort_by = this.state.sortBy;
+      if (this.state.language) params.with_original_language = this.state.language;
+      if (this.state.voteMin) params['vote_average.gte'] = this.state.voteMin;
+      if (this.state.voteMax) params['vote_average.lte'] = this.state.voteMax;
+      if (this.state.castId) params.with_cast = this.state.castId;
+      if (this.state.runtimeMin) params['with_runtime.gte'] = this.state.runtimeMin;
+      if (this.state.runtimeMax) params['with_runtime.lte'] = this.state.runtimeMax;
+      if (this.state.sortBy?.startsWith('vote_average')) params['vote_count.gte'] = 50;
+      if (this.state.tab === 'tv') {
+        if (this.state.yearFrom) params['first_air_date.gte'] = `${this.state.yearFrom}-01-01`;
+        if (this.state.yearTo) params['first_air_date.lte'] = `${this.state.yearTo}-12-31`;
+        if (this.state.networkId) params.with_networks = this.state.networkId;
+      } else {
+        if (this.state.yearFrom) params['primary_release_date.gte'] = `${this.state.yearFrom}-01-01`;
+        if (this.state.yearTo) params['primary_release_date.lte'] = `${this.state.yearTo}-12-31`;
+      }
+      const hasFilters = Object.keys(params).length > 1;
+      const data = hasFilters
+        ? await API.tmdb(`/discover/${this.state.tab}`, params)
+        : await API.tmdb(`/trending/${this.state.tab}/week`, { page });
+      return { results: data?.results || [], totalPages: Math.min(data?.total_pages || 1, 500) };
+    } else {
+      const type = this.state.tab === 'multi' ? 'all' : this.state.tab === 'person' ? 'person' : this.state.tab;
+      const data = await API.tmdb(`/trending/${type}/week`, { page });
+      return { results: data?.results || [], totalPages: Math.min(data?.total_pages || 1, 500) };
+    }
+  },
+
+  _setupObserver() {
+    if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
+    const sentinel = document.getElementById('discover-sentinel');
+    if (!sentinel) return;
+    this.state._observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !this.state.loading && this.state.page < this.state.totalPages) {
+        this.loadMoreContent();
+      }
+    }, { rootMargin: '300px' });
+    this.state._observer.observe(sentinel);
+  },
+
   async loadContent() {
     const el = document.getElementById('discover-results');
     if (!el) return;
+    if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
+    this.state.page = 1;
     this.state.loading = true;
+    el.innerHTML = UI.loading();
     try {
-      let results;
-      if (this.state.query) {
-        if (this.state.tab === 'multi') results = await API.searchMulti(this.state.query, this.state.page);
-        else if (this.state.tab === 'person') results = await API.searchPeople(this.state.query, this.state.page);
-        else if (this.state.tab === 'tv') results = await API.searchShows(this.state.query, this.state.page);
-        else results = await API.searchMovies(this.state.query, this.state.page);
-      } else if (this.state.tab === 'tv' || this.state.tab === 'movie') {
-        // Build discover params from all filters
-        const params = { page: this.state.page };
-        if (this.state.selectedGenres.length) params.with_genres = this.state.selectedGenres.join(',');
-        if (this.state.sortBy) params.sort_by = this.state.sortBy;
-        if (this.state.language) params.with_original_language = this.state.language;
-        if (this.state.voteMin) params['vote_average.gte'] = this.state.voteMin;
-        if (this.state.voteMax) params['vote_average.lte'] = this.state.voteMax;
-        if (this.state.castId) params.with_cast = this.state.castId;
-        if (this.state.runtimeMin) params['with_runtime.gte'] = this.state.runtimeMin;
-        if (this.state.runtimeMax) params['with_runtime.lte'] = this.state.runtimeMax;
-        // Require at least some votes for rating-sorted results
-        if (this.state.sortBy && this.state.sortBy.startsWith('vote_average')) params['vote_count.gte'] = 50;
-        if (this.state.tab === 'tv') {
-          if (this.state.yearFrom) params['first_air_date.gte'] = `${this.state.yearFrom}-01-01`;
-          if (this.state.yearTo) params['first_air_date.lte'] = `${this.state.yearTo}-12-31`;
-          if (this.state.networkId) params.with_networks = this.state.networkId;
-        } else {
-          if (this.state.yearFrom) params['primary_release_date.gte'] = `${this.state.yearFrom}-01-01`;
-          if (this.state.yearTo) params['primary_release_date.lte'] = `${this.state.yearTo}-12-31`;
-        }
-        const hasFilters = Object.keys(params).length > 1;
-        if (hasFilters) {
-          results = await API.discoverMedia(this.state.tab, params);
-        } else {
-          results = await API.getTrending(this.state.tab);
-        }
-        // Client-side filter by season count if needed (TMDB discover doesn't support this natively)
-        if ((this.state.seasonsMin || this.state.seasonsMax) && this.state.tab === 'tv') {
-          const min = parseInt(this.state.seasonsMin) || 0;
-          const max = parseInt(this.state.seasonsMax) || 999;
-          // We need to fetch details for each to check season count. Filter client-side.
-          const detailed = await Promise.all(results.map(r => API.getShowDetails(r.id).catch(() => null)));
-          results = results.filter((r, i) => {
-            const d = detailed[i];
-            if (!d) return true;
-            const seasons = d.number_of_seasons || 0;
-            return seasons >= min && seasons <= max;
-          });
-        }
-      } else {
-        results = await API.getTrending(this.state.tab === 'multi' ? 'all' : this.state.tab === 'person' ? 'person' : this.state.tab);
+      let { results, totalPages } = await this._fetchPage(1);
+      this.state.totalPages = totalPages;
+      // Season filter (client-side, disable load-more when active)
+      if ((this.state.seasonsMin || this.state.seasonsMax) && this.state.tab === 'tv') {
+        const min = parseInt(this.state.seasonsMin) || 0;
+        const max = parseInt(this.state.seasonsMax) || 999;
+        const detailed = await Promise.all(results.map(r => API.getShowDetails(r.id).catch(() => null)));
+        results = results.filter((r, i) => { const d = detailed[i]; if (!d) return true; const s = d.number_of_seasons || 0; return s >= min && s <= max; });
+        this.state.totalPages = 1; // season filter can't paginate cleanly
       }
       this.state.results = results;
-      el.innerHTML = results.length ? `<div class="media-grid">${results.map(item => this.renderCard(item)).join('')}</div>` : UI.emptyState('No results', 'Try different search terms or filters');
+      let filtered = results;
+      if (this.state.hideWatched && this.state.watchedIds.size) {
+        filtered = results.filter(r => !this.state.watchedIds.has(String(r.id)));
+      }
+      el.innerHTML = filtered.length
+        ? `<div class="media-grid" id="discover-grid">${filtered.map(item => this.renderCard(item)).join('')}</div><div id="discover-sentinel" style="height:1px;margin-bottom:20px"></div>`
+        : UI.emptyState('No results', 'Try different search terms or filters');
+      if (filtered.length && this.state.totalPages > 1) this._setupObserver();
+      if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
     } catch (e) {
       el.innerHTML = UI.emptyState('Error', e.message);
     }
+    this.state.loading = false;
+  },
+
+  async loadMoreContent() {
+    if (this.state.loading || this.state.page >= this.state.totalPages) return;
+    this.state.loading = true;
+    this.state.page++;
+    const sentinel = document.getElementById('discover-sentinel');
+    if (sentinel) sentinel.innerHTML = `<div class="load-more-spinner">${UI.icon('loader', 22)}</div>`;
+    try {
+      let { results } = await this._fetchPage(this.state.page);
+      if (this.state.hideWatched && this.state.watchedIds.size) {
+        results = results.filter(r => !this.state.watchedIds.has(String(r.id)));
+      }
+      const grid = document.getElementById('discover-grid');
+      if (grid && results.length) grid.insertAdjacentHTML('beforeend', results.map(item => this.renderCard(item)).join(''));
+      if (sentinel) sentinel.innerHTML = '';
+      if (this.state.page >= this.state.totalPages && this.state._observer) {
+        this.state._observer.disconnect(); this.state._observer = null;
+      }
+    } catch (_) {}
     this.state.loading = false;
   },
 
@@ -366,12 +433,16 @@ const DiscoverPage = {
     const title = item.name || item.title || '';
     const year = (item.first_air_date || item.release_date || '').substring(0, 4);
     const hasDot = this.state.friendActivityIds.has(String(item.id));
-    return `<div class="media-card" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
+    const isWatched = this.state.watchedIds.has(String(item.id));
+    const vote = item.vote_average;
+    return `<div class="media-card${isWatched ? ' is-watched' : ''}" data-media-id="${item.id}" onclick="App.navigate('details',{id:${item.id},type:'${type === 'multi' ? (item.media_type || 'tv') : type}'})">
       ${hasDot ? '<span class="activity-dot"></span>' : ''}
+      ${isWatched ? '<div class="watched-overlay">Watched</div>' : ''}
       ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
+      ${vote ? `<span class="disc-rating-chip">${UI.icon('star', 10)} ${vote.toFixed(1)}</span>` : ''}
       <div class="card-info">
         <p class="card-title">${UI.escapeHtml(title)}</p>
-        <div class="card-meta">${year ? `<span>${year}</span>` : ''}${item.vote_average ? `<span>${UI.icon('star', 12)} ${item.vote_average.toFixed(1)}</span>` : ''}</div>
+        <div class="card-meta">${year ? `<span>${year}</span>` : ''}</div>
       </div>
     </div>`;
   },
@@ -398,18 +469,22 @@ const DiscoverPage = {
   },
 
   clearSearch() {
+    if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
     this.state.query = '';
     this.state.page = 1;
+    this.state.totalPages = 1;
     const input = document.getElementById('discover-search');
     if (input) input.value = '';
     this.loadContent();
   },
 
   setTab(tab) {
+    if (this.state._observer) { this.state._observer.disconnect(); this.state._observer = null; }
     this.state.tab = tab;
     this.state.query = '';
     this.state.selectedGenres = [];
     this.state.page = 1;
+    this.state.totalPages = 1;
     this.state.showFilters = false;
     const input = document.getElementById('discover-search');
     if (input) input.value = '';

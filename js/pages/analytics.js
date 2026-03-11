@@ -175,23 +175,104 @@ const BadgesPage = {
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="badges-page">${UI.pageHeader('Badges', true)}<div id="badges-content">${UI.loading()}</div></div>`;
     try {
-      const stats = await Services.getUserStats();
+      const [stats, profile] = await Promise.all([
+        Services.getUserStats(),
+        Services.getUserProfile(auth.currentUser?.uid).catch(() => ({}))
+      ]);
       const badges = calculateBadges(stats);
+      const displayedIds = new Set(profile?.displayedBadges || []);
       const earned = badges.filter(b => b.earned);
       const locked = badges.filter(b => !b.earned);
+
+      // Group earned by category
+      const earnedByCategory = {};
+      earned.forEach(b => { earnedByCategory[b.category] = earnedByCategory[b.category] || []; earnedByCategory[b.category].push(b); });
+
+      const renderBadge = (b, showToggle = false) => {
+        const tierData = BADGE_TIERS[b.tier] || BADGE_TIERS.bronze;
+        const isDisplayed = displayedIds.has(b.id);
+        const progressPct = b.progress.toFixed(0);
+        return `<div class="badge-card-v2 ${b.earned ? 'earned' : 'locked'}" data-tier="${b.tier}">
+          <div class="badge-card-shine"></div>
+          <div class="badge-tier-dot" style="background:${tierData.color}" title="${tierData.label}"></div>
+          <div class="badge-icon-wrap" style="background:${tierData.bg};border-color:${tierData.color}40">
+            <span class="badge-emoji-v2">${b.icon}</span>
+          </div>
+          <p class="badge-name-v2">${UI.escapeHtml(b.name)}</p>
+          <p class="badge-desc-v2">${UI.escapeHtml(b.desc)}</p>
+          ${b.earned
+            ? `<div class="badge-tier-label" style="color:${tierData.color}">${tierData.label}</div>`
+            : `<div class="badge-progress-wrap"><div class="badge-progress-bar-v2"><div class="badge-progress-fill-v2" style="width:${progressPct}%;background:${tierData.color}"></div></div><span class="badge-progress-pct">${progressPct}%</span></div>`
+          }
+          ${showToggle && b.earned ? `<button class="badge-display-btn ${isDisplayed ? 'active' : ''}" onclick="BadgesPage.toggleDisplay('${b.id}','${b.name}')" title="${isDisplayed ? 'Remove from profile' : 'Show on profile'}">
+            ${isDisplayed ? UI.icon('eye-off', 14) + ' Showing' : UI.icon('eye', 14) + ' Display'}
+          </button>` : ''}
+        </div>`;
+      };
+
+      const categories = ['Watcher', 'Critic', 'Social', 'Plex'];
       document.getElementById('badges-content').innerHTML = `
-        <div class="badges-summary"><span class="badge-count">${earned.length}/${badges.length}</span> badges earned</div>
-        ${earned.length ? `<div class="section"><h3>Earned</h3><div class="badges-grid">${earned.map(b => `<div class="badge-card earned">
-          <span class="badge-emoji">${b.icon}</span>
-          <p class="badge-name">${UI.escapeHtml(b.name)}</p>
-          <p class="badge-desc">${UI.escapeHtml(b.description)}</p>
-        </div>`).join('')}</div></div>` : ''}
-        ${locked.length ? `<div class="section"><h3>Locked</h3><div class="badges-grid">${locked.map(b => `<div class="badge-card locked">
-          <span class="badge-emoji">${b.icon}</span>
-          <p class="badge-name">${UI.escapeHtml(b.name)}</p>
-          <p class="badge-desc">${UI.escapeHtml(b.description)}</p>
-          <div class="badge-progress"><div class="badge-progress-fill" style="width:${Math.min(100, (b.progress || 0)).toFixed(0)}%"></div></div>
-        </div>`).join('')}</div></div>` : ''}`;
+        <div class="badges-header-strip">
+          <div class="badges-summary-v2">
+            <div class="badges-progress-ring">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-tertiary)" stroke-width="6"/>
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--indigo-500)" stroke-width="6"
+                  stroke-dasharray="${(earned.length / badges.length * 201).toFixed(1)} 201"
+                  stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              </svg>
+              <div class="badges-ring-label"><span class="ring-num">${earned.length}</span><span class="ring-total">/${badges.length}</span></div>
+            </div>
+            <div>
+              <p class="badges-earned-text"><strong>${earned.length}</strong> badges earned</p>
+              <p class="badges-sub-text">${badges.length - earned.length} still to unlock</p>
+            </div>
+          </div>
+          ${displayedIds.size
+            ? `<div class="badges-displayed-preview">
+                <p class="badges-displayed-label">${UI.icon('eye', 14)} On your profile</p>
+                <div class="badges-displayed-chips">${[...displayedIds].slice(0, 5).map(id => {
+                  const b = badges.find(x => x.id === id);
+                  return b ? `<span class="displayed-badge-chip" title="${UI.escapeHtml(b.name)}">${b.icon}</span>` : '';
+                }).join('')}</div>
+              </div>`
+            : `<p class="badges-tip">${UI.icon('info', 14)} Earned badges can be displayed on your profile</p>`
+          }
+        </div>
+
+        ${categories.map(cat => {
+          const catEarned = earned.filter(b => b.category === cat);
+          const catLocked = locked.filter(b => b.category === cat);
+          if (!catEarned.length && !catLocked.length) return '';
+          return `<div class="badge-category-section">
+            <h3 class="badge-cat-title">${UI.icon(
+              cat === 'Watcher' ? 'tv' : cat === 'Critic' ? 'edit-3' : cat === 'Social' ? 'users' : 'monitor',
+              16)} ${cat}</h3>
+            ${catEarned.length ? `<div class="badges-grid-v2">${catEarned.map(b => renderBadge(b, true)).join('')}</div>` : ''}
+            ${catLocked.length ? `<div class="badges-grid-v2 locked-group">${catLocked.map(b => renderBadge(b, false)).join('')}</div>` : ''}
+          </div>`;
+        }).join('')}
+      `;
     } catch (e) { document.getElementById('badges-content').innerHTML = UI.emptyState('Error', e.message); }
+  },
+
+  async toggleDisplay(badgeId, badgeName) {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const profile = await Services.getUserProfile(uid).catch(() => ({}));
+      let displayed = profile?.displayedBadges || [];
+      if (displayed.includes(badgeId)) {
+        displayed = displayed.filter(id => id !== badgeId);
+        UI.toast(`${badgeName} removed from profile`, 'success');
+      } else {
+        if (displayed.length >= 5) { UI.toast('You can display up to 5 badges', 'error'); return; }
+        displayed = [...displayed, badgeId];
+        UI.toast(`${badgeName} added to profile!`, 'success');
+      }
+      await db.collection('users').doc(uid).update({ displayedBadges: displayed });
+      this.render();
+    } catch (e) { UI.toast('Error updating badges', 'error'); }
   }
 };
+

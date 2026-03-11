@@ -25,6 +25,7 @@ const App = {
     'badges':             { render: () => BadgesPage.render(), auth: true, nav: true },
     'plex-connect':       { render: () => PlexConnectPage.render(), auth: true, nav: true },
     'plex-watched':       { render: () => PlexWatchedPage.render(), auth: true, nav: true },
+    'plex-now-playing':   { render: () => PlexNowPlayingPage.render(), auth: true, nav: true },
     'shared-lists':       { render: () => SharedListsPage.render(), auth: true, nav: true },
     'shared-list-detail': { render: (p) => SharedListDetailPage.render(p), auth: true, nav: true },
     'actor-details':      { render: (p) => ActorDetailsPage.render(p), auth: true, nav: true },
@@ -119,21 +120,25 @@ const App = {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
 
-    // Render page
+    // Render page with transition
     const el = document.getElementById('page-content');
-    const result = route.render(params);
-    // If render returns HTML string (sync pages like auth)
-    if (typeof result === 'string') el.innerHTML = result;
-    // Async renders handle el.innerHTML themselves
+    el.classList.add('page-exit');
+    setTimeout(() => {
+      el.classList.remove('page-exit');
+      el.classList.add('page-enter');
+      const result = route.render(params);
+      if (typeof result === 'string') el.innerHTML = result;
+      setTimeout(() => el.classList.remove('page-enter'), 300);
+    }, 120);
 
     // Scroll to top
     el.scrollTop = 0;
     window.scrollTo(0, 0);
 
-    // Trigger entrance animations
+    // Trigger entrance animations — 200ms fallback for sync pages (auth)
+    // Async pages call Animate.afterPageRender() themselves after drawing
     if (typeof Animate !== 'undefined') {
-      // Small delay to let async renders populate the DOM
-      setTimeout(() => Animate.afterPageRender(), 50);
+      setTimeout(() => Animate.afterPageRender(), 200);
     }
   },
 

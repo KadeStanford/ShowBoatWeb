@@ -63,12 +63,34 @@ const ProfilePage = {
     document.getElementById('profile-photo-input')?.click();
   },
 
+  async _compressImage(file) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const objUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 400;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => { URL.revokeObjectURL(objUrl); resolve(blob || file); }, 'image/jpeg', 0.75);
+      };
+      img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
+      img.src = objUrl;
+    });
+  },
+
   async handlePhotoUpload(file) {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { UI.toast('Photo must be under 5MB', 'error'); return; }
+    if (file.size > 10 * 1024 * 1024) { UI.toast('Photo must be under 10MB', 'error'); return; }
     UI.toast('Uploading photo...', 'info');
     try {
-      const url = await Services.uploadProfilePhoto(file);
+      const compressed = await this._compressImage(file);
+      const url = await Services.uploadProfilePhoto(compressed);
       if (this.state.profile) this.state.profile.photoURL = url;
       // Update avatar in place without full redraw
       const wrap = document.querySelector('.profile-avatar-wrap');
@@ -81,8 +103,14 @@ const ProfilePage = {
   },
 
   async logout() {
-    if (confirm('Are you sure you want to sign out?')) {
-      await auth.signOut();
-    }
+    UI.showModal('Sign Out', `<p style="color:var(--slate-300);margin-bottom:20px">Are you sure you want to sign out of ShowBoat?</p>
+      <div class="modal-buttons" style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="UI.closeModal()">Cancel</button>
+        <button class="btn-primary" style="background:var(--rose-600);box-shadow:none" onclick="UI.closeModal();ProfilePage._doLogout()">Sign Out</button>
+      </div>`);
+  },
+
+  async _doLogout() {
+    try { await auth.signOut(); } catch (e) { UI.toast('Sign out failed', 'error'); }
   }
 };
