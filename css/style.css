@@ -2479,14 +2479,76 @@ img.ep-friend-av { background: var(--slate-800); }
 .list-card-date { font-size: .6875rem; color: var(--text-muted); margin: 4px 0 0; }
 .lists-empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 60px 24px; gap: 12px; }
 .lists-empty-icon { color: var(--text-muted); margin-bottom: 8px; }
-.list-detail-header { padding: 16px 20px; }
-.list-detail-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.list-detail-title-row h2 { font-size: 1.5rem; font-weight: 700; margin: 0; }
-.list-detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.list-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.sort-select-sm { background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 8px; padding: 6px 10px; font-size: .8125rem; }
-.list-empty-body { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 60px 24px; gap: 10px; color: var(--text-secondary); }
-.list-empty-body .hint { font-size: .875rem; color: var(--text-muted); }
+/* --- Shared List Detail (redesign) --- */
+.sld-page { min-height: 100vh; }
+.sld-hero { position: relative; overflow: hidden; border-radius: 0 0 var(--radius-lg) var(--radius-lg); min-height: 200px; }
+.sld-hero-bg { position: absolute; inset: 0; display: flex; }
+.sld-hero-poster { flex: 1; background-size: cover; background-position: center top; filter: blur(20px) brightness(.35) saturate(1.2); transform: scale(1.15); }
+.sld-hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,.4) 0%, var(--bg-primary) 100%); }
+.sld-hero-content { position: relative; z-index: 1; padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+.sld-hero-content .back-btn-float { position: relative; top: auto; left: auto; width: 36px; height: 36px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-primary); cursor: pointer; backdrop-filter: blur(8px); transition: background var(--transition); }
+.sld-hero-content .back-btn-float:hover { background: rgba(255,255,255,.15); }
+.sld-hero-info { display: flex; flex-direction: column; gap: 10px; }
+.sld-title { font-size: 1.75rem; font-weight: 800; margin: 0; letter-spacing: -.02em; line-height: 1.2; }
+.sld-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+.sld-stat { display: inline-flex; align-items: center; gap: 5px; font-size: .8125rem; color: var(--text-secondary); }
+.sld-stat strong { color: var(--text-primary); font-weight: 600; }
+.sld-members-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.sld-members-avatars { display: flex; }
+.sld-member { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--bg-primary); margin-left: -8px; overflow: hidden; background: rgba(99,102,241,.25); display: flex; align-items: center; justify-content: center; }
+.sld-member:first-child { margin-left: 0; }
+.sld-member img { width: 100%; height: 100%; object-fit: cover; }
+.sld-member span { font-size: .7rem; font-weight: 700; color: var(--indigo-300); }
+.sld-members-label { font-size: .8125rem; color: var(--text-muted); }
+/* Toolbar */
+.sld-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 24px; flex-wrap: wrap; }
+.sld-sort { background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 10px; padding: 7px 12px; font-size: .8125rem; backdrop-filter: blur(8px); }
+.sld-toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sld-action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 10px; font-size: .8125rem; font-weight: 500; border: 1px solid var(--border-subtle); background: rgba(255,255,255,.04); color: var(--text-secondary); cursor: pointer; transition: all var(--transition); }
+.sld-action-btn:hover { background: rgba(255,255,255,.08); color: var(--text-primary); border-color: var(--indigo-500); }
+.sld-action-btn.sld-danger { color: var(--rose-400); }
+.sld-action-btn.sld-danger:hover { border-color: var(--rose-400); background: rgba(244,63,94,.08); }
+/* Card Grid */
+.sld-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 18px; padding: 4px 24px 40px; }
+.sld-card { cursor: pointer; transition: transform var(--transition); position: relative; }
+.sld-card:hover { transform: translateY(-4px); }
+.sld-card-poster { position: relative; border-radius: var(--radius-md); overflow: hidden; aspect-ratio: 2/3; background: var(--bg-tertiary); }
+.sld-card-poster img { width: 100%; height: 100%; object-fit: cover; }
+.sld-card-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+.sld-card-remove { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.65); border: none; color: rgba(255,255,255,.8); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity var(--transition), background var(--transition); backdrop-filter: blur(4px); }
+.sld-card:hover .sld-card-remove { opacity: 1; }
+.sld-card-remove:hover { background: var(--rose-500); color: white; }
+.sld-card-type { position: absolute; bottom: 6px; left: 6px; padding: 2px 8px; border-radius: 6px; font-size: .625rem; font-weight: 600; background: rgba(0,0,0,.6); color: rgba(255,255,255,.85); backdrop-filter: blur(4px); text-transform: uppercase; letter-spacing: .04em; }
+.sld-card-title { font-size: .8125rem; font-weight: 600; margin: 8px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Empty State */
+.sld-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 60px 24px 40px; gap: 10px; }
+.sld-empty-icon { color: var(--text-muted); margin-bottom: 4px; }
+.sld-empty h3 { font-size: 1.125rem; font-weight: 700; margin: 0; }
+.sld-empty p { font-size: .875rem; color: var(--text-secondary); margin: 0 0 12px; }
+/* Invite Friend Modal */
+.sld-invite-modal {}
+.sld-invite-desc { font-size: .875rem; color: var(--text-secondary); margin: 0 0 14px; }
+.sld-invite-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.sld-invite-friend { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,.03); cursor: pointer; transition: all var(--transition); width: 100%; text-align: left; color: var(--text-primary); }
+.sld-invite-friend:hover { background: rgba(99,102,241,.08); border-color: var(--indigo-500); }
+.sld-invite-friend.invited { border-color: var(--emerald-500); background: rgba(16,185,129,.08); pointer-events: none; }
+.sld-invite-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: rgba(99,102,241,.2); display: flex; align-items: center; justify-content: center; }
+.sld-invite-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sld-invite-avatar span { font-size: .8125rem; font-weight: 700; color: var(--indigo-300); }
+.sld-invite-name { flex: 1; font-size: .9375rem; font-weight: 500; }
+.sld-invite-add { color: var(--indigo-400); flex-shrink: 0; transition: color var(--transition); }
+.sld-invite-friend.invited .sld-invite-add { color: var(--emerald-400); }
+.sld-invite-none { font-size: .875rem; color: var(--text-muted); text-align: center; padding: 20px 0; margin: 0; }
+/* Responsive */
+@media (max-width: 480px) {
+  .sld-hero-content { padding: 16px 16px 22px; }
+  .sld-title { font-size: 1.35rem; }
+  .sld-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 14px; padding: 4px 16px 32px; }
+  .sld-toolbar { padding: 12px 16px; }
+}
+@media (min-width: 1440px) {
+  .sld-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+}
 
 /* --- Task 10: Matcher restyle --- */
 .matcher-setup-hero { text-align: center; padding: 24px 20px 16px; }

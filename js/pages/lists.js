@@ -124,7 +124,7 @@ const SharedListsPage = {
 };
 
 const SharedListDetailPage = {
-  state: { id: '', list: null, items: [], sortBy: 'added' },
+  state: { id: '', list: null, items: [], sortBy: 'added', friends: [] },
 
   async render(params) {
     if (!params?.id) return;
@@ -133,9 +133,13 @@ const SharedListDetailPage = {
     const el = document.getElementById('page-content');
     el.innerHTML = UI.loading();
     try {
-      const data = await Services.getSharedListDetail(params.id);
+      const [data, friends] = await Promise.all([
+        Services.getSharedListDetail(params.id),
+        Services.getFriends()
+      ]);
       this.state.list = data;
       this.state.items = data?.items || [];
+      this.state.friends = friends;
       this.draw(el);
       if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
     } catch (e) { el.innerHTML = UI.pageHeader('List', true) + UI.emptyState('Error', e.message); }
@@ -145,52 +149,88 @@ const SharedListDetailPage = {
     const l = this.state.list || {};
     const uid = auth.currentUser?.uid;
     const isOwner = l.createdBy === uid;
-    const memberCount = l.members?.length || 1;
+    const members = l.members || [];
     const sorted = this.getSortedItems();
-    el.innerHTML = `<div class="list-detail-page">
-      <div class="list-detail-header">
-        <button class="back-btn-float" onclick="App.back()" style="position:relative;top:auto;left:auto;margin-bottom:12px">${UI.icon('arrow-left', 22)}</button>
-        <div class="list-detail-title-row">
-          <h2 id="list-detail-title">${UI.escapeHtml(l.name || 'Shared List')}</h2>
-          ${isOwner ? `<button class="icon-btn" onclick="SharedListDetailPage.showRename()" title="Rename">${UI.icon('edit-2', 18)}</button>` : ''}
+
+    // Build member avatars
+    const memberAvatars = members.map(mUid => {
+      const f = this.state.friends.find(fr => fr.uid === mUid);
+      const name = mUid === uid ? 'You' : (f?.username || 'Member');
+      const initial = name.charAt(0).toUpperCase();
+      const photo = f?.photoURL;
+      return `<div class="sld-member" title="${UI.escapeHtml(name)}">
+        ${photo ? `<img src="${photo}" alt="">` : `<span>${initial}</span>`}
+      </div>`;
+    }).join('');
+
+    // Type stats
+    const items = this.state.items;
+    const movieCount = items.filter(i => (i.mediaType || 'tv') === 'movie').length;
+    const tvCount = items.length - movieCount;
+
+    el.innerHTML = `<div class="sld-page">
+      <div class="sld-hero">
+        <div class="sld-hero-bg">
+          ${items.slice(0, 3).map(i => i.posterPath ? `<div class="sld-hero-poster" style="background-image:url('${API.imageUrl(i.posterPath, 'w342')}')"></div>` : '').join('')}
+          <div class="sld-hero-overlay"></div>
         </div>
-        <div class="list-detail-meta">
-          <span class="meta-pill">${UI.icon('film', 12)} <span id="items-count-pill">${this.state.items.length}</span> item${this.state.items.length !== 1 ? 's' : ''}</span>
-          <span class="meta-pill">${UI.icon('users', 12)} ${memberCount} member${memberCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="list-detail-actions">
-          <select class="sort-select-sm" onchange="SharedListDetailPage.setSortBy(this.value)">
-            <option value="added" ${this.state.sortBy === 'added' ? 'selected' : ''}>Recently Added</option>
-            <option value="name" ${this.state.sortBy === 'name' ? 'selected' : ''}>A \u2192 Z</option>
-            <option value="type" ${this.state.sortBy === 'type' ? 'selected' : ''}>Type</option>
-          </select>
-          ${isOwner ? `<button class="btn-outline btn-sm" onclick="SharedListDetailPage.showInvite()">${UI.icon('user-plus', 14)} Invite</button>` : ''}
-          ${isOwner ? `<button class="btn-outline btn-sm" style="color:var(--rose-400);border-color:var(--rose-400)" onclick="SharedListDetailPage.confirmDelete()">${UI.icon('trash-2', 14)} Delete</button>` : ''}
+        <div class="sld-hero-content">
+          <button class="back-btn-float" onclick="App.back()">${UI.icon('arrow-left', 20)}</button>
+          <div class="sld-hero-info">
+            <h1 class="sld-title">${UI.escapeHtml(l.name || 'Shared List')}</h1>
+            <div class="sld-stats">
+              <span class="sld-stat">${UI.icon('film', 14)} <strong id="sld-count">${items.length}</strong> item${items.length !== 1 ? 's' : ''}</span>
+              ${tvCount ? `<span class="sld-stat">${UI.icon('tv', 14)} ${tvCount} show${tvCount !== 1 ? 's' : ''}</span>` : ''}
+              ${movieCount ? `<span class="sld-stat">${UI.icon('clapperboard', 14)} ${movieCount} movie${movieCount !== 1 ? 's' : ''}</span>` : ''}
+            </div>
+            <div class="sld-members-row">
+              <div class="sld-members-avatars">${memberAvatars}</div>
+              <span class="sld-members-label">${members.length} member${members.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="list-items-content">
+
+      <div class="sld-toolbar">
+        <select class="sld-sort" onchange="SharedListDetailPage.setSortBy(this.value)">
+          <option value="added" ${this.state.sortBy === 'added' ? 'selected' : ''}>Recently Added</option>
+          <option value="name" ${this.state.sortBy === 'name' ? 'selected' : ''}>A → Z</option>
+          <option value="type" ${this.state.sortBy === 'type' ? 'selected' : ''}>Type</option>
+        </select>
+        <div class="sld-toolbar-actions">
+          ${isOwner ? `<button class="sld-action-btn" onclick="SharedListDetailPage.showRename()">${UI.icon('edit-2', 16)} Rename</button>` : ''}
+          ${isOwner ? `<button class="sld-action-btn" onclick="SharedListDetailPage.showInvite()">${UI.icon('user-plus', 16)} Invite</button>` : ''}
+          ${isOwner ? `<button class="sld-action-btn sld-danger" onclick="SharedListDetailPage.confirmDelete()">${UI.icon('trash-2', 16)} Delete</button>` : ''}
+        </div>
+      </div>
+
+      <div id="sld-items">
         ${sorted.length
-          ? `<div class="media-grid">${sorted.map(item => this.renderItem(item)).join('')}</div>`
-          : `<div class="list-empty-body">
-              ${UI.icon('plus-circle', 40)}
-              <p>This list is empty</p>
-              <p class="hint">Browse shows and movies, then add them from their detail page</p>
-              <button class="btn-primary" onclick="App.navigate('discover')">${UI.icon('search', 16)} Browse</button>
-            </div>`}
+          ? `<div class="sld-grid">${sorted.map(item => this.renderItem(item)).join('')}</div>`
+          : this._emptyHtml()}
       </div>
+    </div>`;
+  },
+
+  _emptyHtml() {
+    return `<div class="sld-empty">
+      <div class="sld-empty-icon">${UI.icon('plus-circle', 48)}</div>
+      <h3>This list is empty</h3>
+      <p>Browse shows and movies, then add them from their detail page</p>
+      <button class="btn-primary" onclick="App.navigate('discover')">${UI.icon('search', 16)} Browse</button>
     </div>`;
   },
 
   renderItem(item) {
     const poster = (item.posterPath || item.showPoster) ? API.imageUrl(item.posterPath || item.showPoster, 'w342') : '';
     const type = (item.mediaType || item.showType || 'tv') === 'show' ? 'tv' : (item.mediaType || item.showType || 'tv');
-    return `<div class="media-card" style="position:relative" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${type}'})">
-      ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
-      <div class="card-info">
-        <p class="card-title">${UI.escapeHtml(item.name || item.showName || '')}</p>
-        <div class="card-meta"><span>${type === 'movie' ? 'Movie' : 'Show'}</span></div>
+    return `<div class="sld-card" onclick="App.navigate('details',{id:${item.id || item.showId},type:'${type}'})">
+      <div class="sld-card-poster">
+        ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="sld-card-ph">${UI.icon('film', 28)}</div>`}
+        <button class="sld-card-remove" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 14)}</button>
+        <span class="sld-card-type">${type === 'movie' ? 'Movie' : 'Show'}</span>
       </div>
-      <button class="card-remove-btn" onclick="event.stopPropagation(); SharedListDetailPage.removeItem('${item.id}')" title="Remove">${UI.icon('x', 16)}</button>
+      <p class="sld-card-title">${UI.escapeHtml(item.name || item.showName || '')}</p>
     </div>`;
   },
 
@@ -203,44 +243,53 @@ const SharedListDetailPage = {
 
   setSortBy(val) {
     this.state.sortBy = val;
-    const content = document.getElementById('list-items-content');
+    const content = document.getElementById('sld-items');
     if (!content) return;
     const sorted = this.getSortedItems();
     content.innerHTML = sorted.length
-      ? `<div class="media-grid">${sorted.map(i => this.renderItem(i)).join('')}</div>`
-      : `<div class="list-empty-body">${UI.icon('plus-circle', 40)}<p>This list is empty</p></div>`;
+      ? `<div class="sld-grid">${sorted.map(i => this.renderItem(i)).join('')}</div>`
+      : this._emptyHtml();
   },
 
-  showInvite() {
-    const listId = this.state.id;
-    UI.showModal('Invite to List', `<div>
-      <p style="color:var(--text-secondary);font-size:.875rem;margin-bottom:12px">Share this list ID with a friend so they can join:</p>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px">
-        <input type="text" readonly value="${listId}" class="modal-input" style="flex:1;font-family:monospace;font-size:.8rem">
-        <button class="btn-primary btn-sm" onclick="navigator.clipboard.writeText('${listId}').then(()=>UI.toast('Copied!','success'))">Copy</button>
-      </div>
-      <div style="border-top:1px solid var(--border-subtle);padding-top:16px">
-        <label style="display:block;margin-bottom:8px;font-size:.875rem;color:var(--text-secondary)">Or add by User ID:</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="invite-uid" class="modal-input" placeholder="Friend's user ID" style="flex:1">
-          <button class="btn-primary btn-sm" onclick="SharedListDetailPage.inviteFriend()">Add</button>
-        </div>
-      </div>
-      <div class="modal-buttons" style="display:flex;justify-content:flex-end;margin-top:16px">
+  async showInvite() {
+    const members = new Set(this.state.list?.members || []);
+    const available = this.state.friends.filter(f => !members.has(f.uid));
+
+    const friendListHtml = available.length
+      ? available.map(f => {
+          const initial = (f.username || '?').charAt(0).toUpperCase();
+          const photo = f.photoURL;
+          return `<button class="sld-invite-friend" onclick="SharedListDetailPage.inviteFriend('${f.uid}', this)">
+            <div class="sld-invite-avatar">
+              ${photo ? `<img src="${photo}" alt="">` : `<span>${initial}</span>`}
+            </div>
+            <span class="sld-invite-name">${UI.escapeHtml(f.username || 'Friend')}</span>
+            <span class="sld-invite-add">${UI.icon('plus', 16)}</span>
+          </button>`;
+        }).join('')
+      : `<p class="sld-invite-none">All your friends are already in this list!</p>`;
+
+    UI.showModal('Invite Friends', `<div class="sld-invite-modal">
+      <p class="sld-invite-desc">Add friends to collaborate on this list</p>
+      <div class="sld-invite-list">${friendListHtml}</div>
+      <div class="modal-buttons" style="margin-top:16px">
         <button class="btn-secondary" onclick="UI.closeModal()">Done</button>
       </div>
     </div>`);
   },
 
-  async inviteFriend() {
-    const friendUid = document.getElementById('invite-uid')?.value.trim();
-    if (!friendUid) { UI.toast('Enter a user ID', 'error'); return; }
+  async inviteFriend(friendUid, btnEl) {
     try {
       await Services.inviteToSharedList(this.state.id, friendUid);
-      UI.toast('Friend added to list!', 'success');
-      UI.closeModal();
+      if (btnEl) {
+        btnEl.classList.add('invited');
+        btnEl.querySelector('.sld-invite-add').innerHTML = UI.icon('check', 16);
+        btnEl.disabled = true;
+      }
+      // Refresh list data
       const data = await Services.getSharedListDetail(this.state.id);
       this.state.list = data;
+      UI.toast('Friend added!', 'success');
     } catch (e) { UI.toast('Failed to add friend', 'error'); }
   },
 
@@ -262,7 +311,7 @@ const SharedListDetailPage = {
     try {
       await db.collection('sharedLists').doc(this.state.id).update({ name });
       if (this.state.list) this.state.list.name = name;
-      const title = document.getElementById('list-detail-title');
+      const title = document.querySelector('.sld-title');
       if (title) title.textContent = name;
       UI.toast('Renamed!', 'success');
     } catch (e) { UI.toast('Failed to rename', 'error'); }
@@ -288,14 +337,14 @@ const SharedListDetailPage = {
     try {
       await Services.removeFromSharedList(this.state.id, itemId);
       this.state.items = this.state.items.filter(i => String(i.id) !== String(itemId));
-      const content = document.getElementById('list-items-content');
+      const content = document.getElementById('sld-items');
       if (content) {
         const sorted = this.getSortedItems();
         content.innerHTML = sorted.length
-          ? `<div class="media-grid">${sorted.map(i => this.renderItem(i)).join('')}</div>`
-          : `<div class="list-empty-body">${UI.icon('plus-circle', 40)}<p>This list is empty</p><p class="hint">Browse shows and movies, then add them from their detail page</p><button class="btn-primary" onclick="App.navigate('discover')">${UI.icon('search', 16)} Browse</button></div>`;
+          ? `<div class="sld-grid">${sorted.map(i => this.renderItem(i)).join('')}</div>`
+          : this._emptyHtml();
       }
-      const countEl = document.getElementById('items-count-pill');
+      const countEl = document.getElementById('sld-count');
       if (countEl) countEl.textContent = this.state.items.length;
       UI.toast('Removed from list', 'success');
     } catch (e) { UI.toast('Error removing item', 'error'); }
