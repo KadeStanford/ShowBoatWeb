@@ -1,7 +1,7 @@
 {
   "name": "ShowBoat",
   "short_name": "ShowBoat",
-  "description": "Your personal media tracker — track shows, connect with friends, and discover the next thing to watch.",
+  "description": "ShowBoat — Track shows and movies, rate episodes, connect with friends, and discover the next thing to watch.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",

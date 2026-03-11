@@ -4,7 +4,7 @@ const AuthPages = {
     return `<div class="auth-page">
       <div class="auth-logo">${UI.icon('tv', 40)}</div>
       <h1 class="auth-title">ShowBoat</h1>
-      <p class="auth-subtitle">Your personal media tracker</p>
+      <p class="auth-subtitle">Track shows & movies with friends</p>
       <form class="auth-form" onsubmit="AuthPages.handleLogin(event)">
         <div class="input-group">
           <label>Email Address</label>
@@ -26,6 +26,10 @@ const AuthPages = {
           Don't have an account? <a href="#" onclick="App.navigate('signup'); return false;">Create Account</a>
         </div>
       </form>
+      <div class="tmdb-attribution">
+        <img src="img/tmdb-logo.svg" alt="TMDB" class="tmdb-attr-logo">
+        <p>This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
+      </div>
     </div>`;
   },
 
@@ -34,7 +38,7 @@ const AuthPages = {
       <div style="width:100%;max-width:400px">
         <button class="back-btn" onclick="App.navigate('login')" style="width:40px;height:40px;border-radius:50%;background:var(--slate-900);border:1px solid var(--slate-800);display:flex;align-items:center;justify-content:center;margin-bottom:24px;color:white">${UI.icon('arrow-left', 20)}</button>
         <h1 class="auth-title">Create Account</h1>
-        <p class="auth-subtitle" style="margin-bottom:32px">Join ShowBoat today</p>
+        <p class="auth-subtitle" style="margin-bottom:32px">Join ShowBoat &mdash; track shows with friends</p>
         <form class="auth-form" onsubmit="AuthPages.handleSignup(event)">
           <div class="input-group">
             <label>Username</label>

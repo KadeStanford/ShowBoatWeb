@@ -42,6 +42,11 @@ const ProfilePage = {
         <button class="profile-menu-item" onclick="App.navigate('matcher-history')">${UI.icon('zap', 20)} <span>Matcher History</span> ${UI.icon('chevron-right', 18)}</button>
       </div>
       <button class="btn-logout" onclick="ProfilePage.logout()">${UI.icon('log-out', 18)} Sign Out</button>
+      <div class="tmdb-attribution">
+        <img src="img/tmdb-logo.svg" alt="TMDB" class="tmdb-attr-logo">
+        <p>This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
+      </div>
+      <p class="app-version">ShowBoat &middot; <a href="https://showboat.me" style="color:var(--accent)">showboat.me</a></p>
     </div>`;
   },
 

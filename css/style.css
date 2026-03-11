@@ -194,6 +194,19 @@ ul, ol { list-style: none; }
 .auth-footer a { color: var(--emerald-400); font-weight: 700; }
 .toggle-password { cursor: pointer; color: var(--slate-400); background: none; border: none; display: flex; }
 
+/* TMDB Attribution */
+.tmdb-attribution {
+  display: flex; align-items: center; gap: 12px; margin-top: 32px; padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+}
+.tmdb-attr-logo { height: 16px; width: auto; flex-shrink: 0; opacity: .7; }
+.tmdb-attribution p {
+  color: var(--slate-500); font-size: .6875rem; line-height: 1.5; margin: 0;
+}
+.app-version {
+  color: var(--slate-600); font-size: .6875rem; text-align: center; margin-top: 16px;
+}
+
 /* =============================================
    HOME PAGE
    ============================================= */
