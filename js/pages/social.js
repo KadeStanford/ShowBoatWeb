@@ -165,14 +165,29 @@ const ActivityPage = {
     const currentUid = auth.currentUser?.uid;
     el.innerHTML = `<div class="activity-items">${this.state.feed.map(a => {
       const poster = (a.mediaPosterPath || a.showPoster) ? API.imageUrl(a.mediaPosterPath || a.showPoster, 'w92') : '';
-      const actionText = a.type === 'watched' ? 'watched' : a.type === 'rated' ? `rated ${a.rating || '?'}/10` : a.type === 'added_to_watchlist' ? 'added to watchlist' : a.type === 'shame' ? 'shamed' : a.type;
+      const isEpisode = a.type === 'rated_episode';
+      let actionText;
+      if (isEpisode) {
+        actionText = `rated S${a.seasonNumber || '?'}E${a.episodeNumber || '?'} — ${a.rating || '?'}/10`;
+      } else if (a.type === 'watched') {
+        actionText = 'watched';
+      } else if (a.type === 'rated') {
+        actionText = `rated ${a.rating || '?'}/10`;
+      } else if (a.type === 'added_to_watchlist') {
+        actionText = 'added to watchlist';
+      } else if (a.type === 'shame') {
+        actionText = 'shamed';
+      } else {
+        actionText = a.type;
+      }
       const displayName = a.userId === currentUid ? 'You' : (a.userName || a.username || 'Someone');
       const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
       return `<div class="activity-item" onclick="App.navigate('details',{id:${a.mediaId || a.showId},type:'${aType}'})">
         ${poster ? `<img src="${poster}" class="activity-poster" alt="">` : `<div class="activity-poster placeholder">${UI.icon('film', 16)}</div>`}
         <div class="activity-info">
           <p><strong>${UI.escapeHtml(displayName)}</strong> ${actionText}</p>
-          <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}</p>
+          <p class="activity-show">${UI.escapeHtml(a.mediaTitle || a.showName || '')}${isEpisode && a.episodeName ? ` — ${UI.escapeHtml(a.episodeName)}` : ''}</p>
+          ${a.comment ? `<p class="activity-comment">"${UI.escapeHtml(a.comment)}"</p>` : ''}
           ${a.createdAt ? `<p class="activity-time">${UI.timeAgo(a.createdAt)}</p>` : ''}
         </div>
       </div>`;

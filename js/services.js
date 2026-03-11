@@ -120,6 +120,29 @@ const Services = {
     this._logActivity('rated', { id: tmdbId, name: meta.name, mediaType: meta.mediaType, posterPath: meta.posterPath, rating });
   },
 
+  // ==================== EPISODE RATINGS ====================
+  async rateEpisode(tmdbId, season, episode, rating, comment, meta = {}) {
+    const uid = this._uid(); if (!uid) return;
+    const docId = `${tmdbId}_s${season}_e${episode}`;
+    await db.collection('users').doc(uid).collection('episodeRatings').doc(docId).set({
+      tmdbId: Number(tmdbId), seasonNumber: season, episodeNumber: episode,
+      rating, comment: comment || '', ratedAt: Date.now(),
+      showName: meta.showName || '', posterPath: meta.posterPath || null,
+      episodeName: meta.episodeName || ''
+    }, { merge: true });
+    this._logActivity('rated_episode', {
+      id: tmdbId, name: meta.showName, mediaType: 'tv', posterPath: meta.posterPath,
+      rating, comment, seasonNumber: season, episodeNumber: episode, episodeName: meta.episodeName
+    });
+  },
+
+  async getEpisodeRating(tmdbId, season, episode, userId) {
+    const uid = userId || this._uid(); if (!uid) return null;
+    const docId = `${tmdbId}_s${season}_e${episode}`;
+    const doc = await db.collection('users').doc(uid).collection('episodeRatings').doc(docId).get();
+    return doc.exists ? doc.data() : null;
+  },
+
   // ==================== FRIENDS ====================
   async getFriends() {
     const uid = this._uid(); if (!uid) return [];
@@ -296,12 +319,18 @@ const Services = {
   async _logActivity(type, media) {
     const uid = this._uid(); if (!uid) return;
     const me = this._user();
-    await db.collection('users').doc(uid).collection('activity').add({
+    const data = {
       type, mediaId: media.id, mediaTitle: media.name || media.title,
       mediaType: media.mediaType || 'tv', mediaPosterPath: media.posterPath || null,
       userId: uid, userName: me.displayName || '', userPhoto: me.photoURL || null,
-      createdAt: Date.now(), ...(media.rating != null && { rating: media.rating })
-    });
+      createdAt: Date.now()
+    };
+    if (media.rating != null) data.rating = media.rating;
+    if (media.comment) data.comment = media.comment;
+    if (media.seasonNumber != null) data.seasonNumber = media.seasonNumber;
+    if (media.episodeNumber != null) data.episodeNumber = media.episodeNumber;
+    if (media.episodeName) data.episodeName = media.episodeName;
+    await db.collection('users').doc(uid).collection('activity').add(data);
   },
 
   async getActivityFeed(friendUids = []) {

@@ -640,9 +640,16 @@ ul, ol { list-style: none; }
 /* Rating Section */
 .rating-section { margin-bottom: 28px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 24px; }
 .rating-section label { color: var(--slate-300); font-weight: 600; font-size: .9375rem; display: block; margin-bottom: 14px; }
-.rating-slider-row { display: flex; align-items: center; gap: 16px; }
-.rating-slider { flex: 1; accent-color: var(--amber-400); height: 6px; }
-.rating-value { font-size: 2rem; font-weight: 800; color: var(--amber-400); min-width: 52px; text-align: center; }
+
+/* Star Rating */
+.star-rating-row { display: flex; align-items: center; gap: 4px; }
+.stars-container { display: flex; align-items: center; gap: 2px; }
+.star { cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease; display: inline-flex; }
+.star:hover { transform: scale(1.2); }
+.star svg { display: block; }
+.star.preview-filled svg path:first-child { fill: var(--accent) !important; }
+.star.preview-dim { opacity: 0.35; }
+.rating-number { font-size: 1.5rem; font-weight: 800; color: var(--amber-400); min-width: 52px; text-align: center; margin-left: 12px; }
 
 /* Detail Action Buttons in sidebar */
 .detail-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -684,8 +691,51 @@ ul, ol { list-style: none; }
 .episode-modal img.modal-still { width: 100%; border-radius: var(--radius-md); }
 .episode-modal h3 { color: white; font-weight: 700; }
 .modal-date { color: var(--slate-400); font-size: .875rem; }
-.modal-rating { display: flex; align-items: center; gap: 4px; color: var(--amber-400); font-weight: 600; }
+.modal-tmdb-rating { display: flex; align-items: center; gap: 4px; color: var(--amber-400); font-weight: 600; }
+.tmdb-label { color: var(--slate-500); font-size: .75rem; font-weight: 400; }
 .modal-overview { color: var(--slate-300); line-height: 1.6; font-size: .9375rem; }
+
+/* Episode rating section inside modal */
+.ep-rating-section { border-top: 1px solid var(--glass-border); padding-top: 16px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px; }
+.ep-rating-section label { color: var(--slate-300); font-weight: 600; font-size: .875rem; }
+.ep-comment-input {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--slate-800); border: 1px solid var(--glass-border);
+  color: white; font-size: .875rem; font-family: inherit;
+  resize: vertical; min-height: 60px; transition: border-color var(--transition);
+}
+.ep-comment-input:focus { outline: none; border-color: var(--accent); }
+.ep-comment-input::placeholder { color: var(--slate-500); }
+.ep-save-btn {
+  padding: 12px 20px; border-radius: var(--radius-md);
+  background: var(--accent); color: white; font-weight: 700;
+  font-size: .875rem; cursor: pointer; border: none;
+  transition: all var(--transition);
+}
+.ep-save-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+/* Friends' episode ratings */
+.ep-friend-ratings { border-top: 1px solid var(--glass-border); padding-top: 16px; margin-top: 4px; }
+.ep-friend-ratings h4 { color: var(--slate-300); font-weight: 600; font-size: .875rem; margin-bottom: 12px; }
+.ep-friend-rating-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.ep-friend-rating-item:last-child { border-bottom: none; }
+.ep-friend-rating-info { flex: 1; }
+.ep-friend-rating-info strong { color: white; font-size: .875rem; }
+.ep-friend-score { color: var(--amber-400); font-weight: 700; margin-left: 8px; }
+.ep-friend-comment { color: var(--slate-400); font-size: .8125rem; font-style: italic; margin-top: 4px; line-height: 1.4; }
+
+/* Activity comment */
+.activity-comment { color: var(--slate-400); font-size: .8125rem; font-style: italic; margin-top: 4px; line-height: 1.4; }
+
+/* Floating modal close button (for headerless modals) */
+.modal-close-float {
+  position: absolute; top: 12px; right: 12px; z-index: 10;
+  background: rgba(0,0,0,0.5); border: none; border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  color: white; cursor: pointer; transition: background var(--transition);
+}
+.modal-close-float:hover { background: rgba(0,0,0,0.8); }
+.modal-box { position: relative; }
 
 /* Details page responsive */
 @media (max-width: 900px) {

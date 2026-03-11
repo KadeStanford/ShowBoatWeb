@@ -63,15 +63,23 @@ const UI = {
   },
 
   // --- Modal ---
-  showModal(title, contentHtml, opts = {}) {
+  showModal(titleOrContent, contentHtml, opts = {}) {
     const overlay = document.getElementById('modal-overlay');
-    overlay.innerHTML = `<div class="modal-box">
-      <div class="modal-header">
-        <h2>${this._esc(title)}</h2>
-        <button class="modal-close" onclick="UI.closeModal()">${this.icon('x', 18)}</button>
-      </div>
-      <div class="modal-body">${contentHtml}</div>
-    </div>`;
+    if (contentHtml === undefined || contentHtml === null) {
+      // Single argument: full HTML content, no title header
+      overlay.innerHTML = `<div class="modal-box">
+        <button class="modal-close modal-close-float" onclick="UI.closeModal()">${this.icon('x', 18)}</button>
+        <div class="modal-body">${titleOrContent}</div>
+      </div>`;
+    } else {
+      overlay.innerHTML = `<div class="modal-box">
+        <div class="modal-header">
+          <h2>${this._esc(titleOrContent)}</h2>
+          <button class="modal-close" onclick="UI.closeModal()">${this.icon('x', 18)}</button>
+        </div>
+        <div class="modal-body">${contentHtml}</div>
+      </div>`;
+    }
     overlay.classList.remove('hidden');
     overlay.onclick = (e) => { if (e.target === overlay) this.closeModal(); };
   },

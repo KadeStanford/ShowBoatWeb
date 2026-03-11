@@ -96,9 +96,8 @@ const DetailsPage = {
             <div class="details-main">
               <div class="rating-section">
                 <label>Your Rating</label>
-                <div class="rating-slider-row">
-                  <input type="range" min="0" max="10" step="0.5" value="${this.state.rating}" class="rating-slider" oninput="DetailsPage.onRate(this.value)" id="rating-slider">
-                  <span class="rating-value" id="rating-val">${this.state.rating > 0 ? this.state.rating : '—'}</span>
+                <div class="star-rating-row" id="star-rating">
+                  ${this.renderStars(this.state.rating)}
                 </div>
               </div>
               ${d.overview ? `<div class="section overview-section"><h3>Overview</h3><p class="overview-text">${UI.escapeHtml(d.overview)}</p></div>` : ''}
@@ -113,6 +112,54 @@ const DetailsPage = {
           </div>
         </div>
       </div>`;
+  },
+
+  renderStars(rating, opts = {}) {
+    const { prefix = '', size = 22, interactive = true, onRate = 'DetailsPage.setRating' } = opts;
+    const halfStars = Math.round((rating || 0) * 2) / 2;
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+      const starVal = i * 2;
+      const filled = halfStars >= starVal;
+      const half = !filled && halfStars >= starVal - 1;
+      const cls = filled ? 'star filled' : half ? 'star half' : 'star empty';
+      if (interactive) {
+        html += `<span class="${cls}" data-value="${starVal}" onclick="${onRate}(${starVal})" onmouseenter="DetailsPage.previewStars('${prefix}',${starVal})" onmouseleave="DetailsPage.previewStars('${prefix}',0)">
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="${filled || half ? 'var(--accent)' : 'none'}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>${half ? `<clipPath id="halfclip${prefix}${i}"><rect x="0" y="0" width="12" height="24"/></clipPath><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="var(--accent)" clip-path="url(#halfclip${prefix}${i})" stroke="none"/>` : ''}</svg>
+        </span>`;
+      } else {
+        html += `<span class="${cls}">
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="${filled || half ? 'var(--accent)' : 'none'}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>${half ? `<clipPath id="halfclip${prefix}${i}"><rect x="0" y="0" width="12" height="24"/></clipPath><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="var(--accent)" clip-path="url(#halfclip${prefix}${i})" stroke="none"/>` : ''}</svg>
+        </span>`;
+      }
+    }
+    const val = rating > 0 ? rating : '—';
+    return `<div class="stars-container" id="stars-${prefix}">${html}</div><span class="rating-number" id="rating-num-${prefix}">${val}/10</span>`;
+  },
+
+  previewStars(prefix, hoverVal) {
+    const container = document.getElementById(`stars-${prefix}`);
+    if (!container) return;
+    const stars = container.querySelectorAll('.star');
+    stars.forEach(s => {
+      const v = parseInt(s.dataset.value);
+      if (hoverVal > 0) {
+        s.classList.toggle('preview-filled', v <= hoverVal);
+        s.classList.toggle('preview-dim', v > hoverVal);
+      } else {
+        s.classList.remove('preview-filled', 'preview-dim');
+      }
+    });
+  },
+
+  async setRating(val) {
+    const rating = val / 2 >= 0.5 ? val : 0;
+    this.state.rating = rating;
+    const container = document.getElementById('star-rating');
+    if (container) container.innerHTML = this.renderStars(rating);
+    const d = this.state.details;
+    await Services.rateMedia(this.state.id, rating, { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type });
+    UI.toast(`Rated ${rating}/10`, 'success');
   },
 
   renderSeasons(seasons) {
@@ -217,31 +264,91 @@ const DetailsPage = {
     }
   },
 
-  rateTimeout: null,
-  onRate(val) {
-    const display = document.getElementById('rating-val');
-    if (display) display.textContent = val > 0 ? val : '—';
-    clearTimeout(this.rateTimeout);
-    this.rateTimeout = setTimeout(async () => {
-      this.state.rating = parseFloat(val);
-      const d = this.state.details;
-      await Services.rateMedia(this.state.id, parseFloat(val), { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type });
-      UI.toast(`Rated ${val}/10`, 'success');
-    }, 500);
+  async setEpisodeRating(val) {
+    this._epRating = val;
+    const container = document.getElementById('ep-star-rating');
+    if (container) container.innerHTML = this.renderStars(val, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 });
   },
 
   showEpisodeDetails(idx) {
     const ep = this.state.episodes[idx];
     if (!ep) return;
+    this._epRating = 0;
+    this._epIdx = idx;
     const still = ep.still_path ? API.imageUrl(ep.still_path, 'w500') : '';
+    // Load any existing episode rating
+    this._loadEpisodeRating(ep.season_number, ep.episode_number);
     UI.showModal(`
       <div class="episode-modal">
         ${still ? `<img src="${still}" class="modal-still" alt="">` : ''}
         <h3>S${ep.season_number}E${ep.episode_number}: ${UI.escapeHtml(ep.name || '')}</h3>
         ${ep.air_date ? `<p class="modal-date">${ep.air_date}</p>` : ''}
-        ${ep.vote_average ? `<p class="modal-rating">${UI.icon('star', 14)} ${ep.vote_average.toFixed(1)}</p>` : ''}
+        ${ep.vote_average ? `<p class="modal-tmdb-rating">${UI.icon('star', 14)} ${ep.vote_average.toFixed(1)} <span class="tmdb-label">TMDB</span></p>` : ''}
         ${ep.overview ? `<p class="modal-overview">${UI.escapeHtml(ep.overview)}</p>` : ''}
+        <div class="ep-rating-section">
+          <label>Your Rating</label>
+          <div class="star-rating-row" id="ep-star-rating">
+            ${this.renderStars(0, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 })}
+          </div>
+          <label>Comment</label>
+          <textarea id="ep-comment" class="ep-comment-input" placeholder="What did you think of this episode?" rows="3"></textarea>
+          <button class="ep-save-btn" onclick="DetailsPage.saveEpisodeRating()">Save Rating</button>
+        </div>
+        <div id="ep-friends-ratings"></div>
       </div>`);
+    this._loadFriendEpisodeRatings(ep.season_number, ep.episode_number);
+  },
+
+  async _loadEpisodeRating(season, episode) {
+    try {
+      const existing = await Services.getEpisodeRating(this.state.id, season, episode);
+      if (existing) {
+        this._epRating = existing.rating || 0;
+        const container = document.getElementById('ep-star-rating');
+        if (container) container.innerHTML = this.renderStars(this._epRating, { prefix: 'ep', onRate: 'DetailsPage.setEpisodeRating', size: 20 });
+        const comment = document.getElementById('ep-comment');
+        if (comment && existing.comment) comment.value = existing.comment;
+      }
+    } catch (_) {}
+  },
+
+  async saveEpisodeRating() {
+    const ep = this.state.episodes[this._epIdx];
+    if (!ep) return;
+    const comment = (document.getElementById('ep-comment')?.value || '').trim();
+    const d = this.state.details;
+    await Services.rateEpisode(this.state.id, ep.season_number, ep.episode_number, this._epRating, comment, {
+      showName: d.name || d.title, posterPath: d.poster_path, episodeName: ep.name
+    });
+    UI.toast('Episode rating saved!', 'success');
+    UI.closeModal();
+  },
+
+  async _loadFriendEpisodeRatings(season, episode) {
+    try {
+      const friends = await Services.getFriends();
+      const ratings = [];
+      for (const f of friends.slice(0, 10)) {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        const r = await Services.getEpisodeRating(this.state.id, season, episode, fid).catch(() => null);
+        if (r) ratings.push({ ...r, friendName: fname });
+      }
+      const el = document.getElementById('ep-friends-ratings');
+      if (el && ratings.length) {
+        el.innerHTML = `<div class="ep-friend-ratings">
+          <h4>Friends' Ratings</h4>
+          ${ratings.map(r => `<div class="ep-friend-rating-item">
+            <div class="friend-avatar">${(r.friendName || '?')[0].toUpperCase()}</div>
+            <div class="ep-friend-rating-info">
+              <strong>${UI.escapeHtml(r.friendName)}</strong>
+              <span class="ep-friend-score">${r.rating}/10</span>
+              ${r.comment ? `<p class="ep-friend-comment">${UI.escapeHtml(r.comment)}</p>` : ''}
+            </div>
+          </div>`).join('')}
+        </div>`;
+      }
+    } catch (_) {}
   },
 
   showMoreActions() {

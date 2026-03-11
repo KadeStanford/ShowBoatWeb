@@ -1,4 +1,4 @@
-const CACHE_NAME = 'showboat-v16';
+const CACHE_NAME = 'showboat-v17';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
