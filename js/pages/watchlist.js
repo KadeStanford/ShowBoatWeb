@@ -39,16 +39,16 @@ const WatchlistPage = {
         el.innerHTML = UI.emptyState('users', 'Need more items', 'Add at least 2 shows or movies to find shared actors');
         return;
       }
-      // Fetch credits for watchlist items (limit to 15 for performance)
+      // Fetch credits for all watchlist items (limit to 30 for performance)
       const actorMap = {};
-      const itemsToCheck = items.slice(0, 15);
+      const itemsToCheck = items.slice(0, 30);
       await Promise.all(itemsToCheck.map(async (item) => {
         try {
-          let type = item.mediaType || 'tv';
+          let type = item.mediaType || item.showType || item.type || 'tv';
           if (type === 'show') type = 'tv';
           const id = item.id;
           const credits = await API.getMediaCredits(id, type);
-          const cast = (credits?.cast || []).slice(0, 20);
+          const cast = (credits?.cast || []).slice(0, 25);
           cast.forEach(c => {
             if (!actorMap[c.id]) {
               actorMap[c.id] = { id: c.id, name: c.name, profile_path: c.profile_path, shows: [] };

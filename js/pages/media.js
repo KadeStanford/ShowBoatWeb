@@ -227,41 +227,66 @@ const SharedActorsPage = {
     el.innerHTML = UI.loading();
     try {
       const friendName = params.friendName || 'Friend';
-      // Get my watched and friend's watched, find shared actors
       const [myWatched, friendWatched] = await Promise.all([
         Services.getWatched(), Services.getWatched(params.friendId)
       ]);
-      // Gather unique media IDs from both
-      const myIds = new Set(myWatched.map(w => w.tmdbId || w.id));
-      const friendIds = new Set(friendWatched.map(w => w.tmdbId || w.id));
-      // Find overlapping shows
-      const shared = [...myIds].filter(id => friendIds.has(id));
+      // Deduplicate to show/movie level only (skip episode-level docs)
+      const dedup = (list) => {
+        const map = new Map();
+        for (const w of list) {
+          const id = w.tmdbId || w.id;
+          if (!id) continue;
+          // Skip episode-level entries — keep only show/movie level
+          if (w.seasonNumber != null && w.episodeNumber != null) {
+            if (map.has(id)) continue;
+            // Add as show-level if we haven't seen this tmdbId yet
+          }
+          let type = w.mediaType || w.showType || w.type || 'tv';
+          if (type === 'show') type = 'tv';
+          if (!map.has(id)) map.set(id, { id, type, name: w.name || w.title || '' });
+        }
+        return map;
+      };
+      const myMap = dedup(myWatched);
+      const friendMap = dedup(friendWatched);
+      // Find overlapping media
+      const sharedMedia = [];
+      for (const [id, item] of myMap) {
+        if (friendMap.has(id)) sharedMedia.push(item);
+      }
 
-      if (!shared.length) {
-        el.innerHTML = `${UI.pageHeader(`Shared with ${friendName}`, true)}${UI.emptyState('No shared shows', 'Watch more of the same shows to find shared actors')}`;
+      if (!sharedMedia.length) {
+        el.innerHTML = `${UI.pageHeader(`Shared with ${UI.escapeHtml(friendName)}`, true)}${UI.emptyState('No shared shows', 'Watch more of the same shows to find shared actors')}`;
         return;
       }
 
-      // Get credits for shared shows (limit to 5 for performance)
-      const actorCounts = {};
-      for (const showId of shared.slice(0, 5)) {
+      // Fetch credits for shared media (limit to 20 for performance)
+      const actorMap = {};
+      const toCheck = sharedMedia.slice(0, 20);
+      await Promise.all(toCheck.map(async (item) => {
         try {
-          const credits = await API.getMediaCredits(showId, 'tv');
-          (credits?.cast || []).forEach(c => {
-            if (!actorCounts[c.id]) actorCounts[c.id] = { ...c, count: 0 };
-            actorCounts[c.id].count++;
+          const credits = await API.getMediaCredits(item.id, item.type);
+          (credits?.cast || []).slice(0, 25).forEach(c => {
+            if (!actorMap[c.id]) actorMap[c.id] = { id: c.id, name: c.name, profile_path: c.profile_path, shows: [] };
+            actorMap[c.id].shows.push(item.name);
           });
         } catch (_) {}
-      }
-      const sharedActors = Object.values(actorCounts).filter(a => a.count > 1).sort((a, b) => b.count - a.count);
+      }));
+      const sharedActors = Object.values(actorMap).filter(a => a.shows.length >= 2).sort((a, b) => b.shows.length - a.shows.length);
 
       el.innerHTML = `<div class="shared-actors-page">
         ${UI.pageHeader(`Shared Actors with ${UI.escapeHtml(friendName)}`, true)}
+        <p style="padding:0 32px;color:var(--slate-400);font-size:.8125rem;margin-bottom:12px">${sharedMedia.length} shared title${sharedMedia.length !== 1 ? 's' : ''}</p>
         ${sharedActors.length ? `<div class="cast-list">${sharedActors.map(a => {
           const photo = a.profile_path ? API.imageUrl(a.profile_path, 'w185') : '';
           return `<div class="cast-list-item" onclick="App.navigate('actor-details',{id:${a.id}})">
             ${photo ? `<img src="${photo}" class="cast-photo" alt="" loading="lazy">` : `<div class="cast-photo placeholder">${UI.icon('user', 20)}</div>`}
-            <div class="cast-info"><p class="cast-name">${UI.escapeHtml(a.name || '')}</p><p class="cast-char">In ${a.count} shared shows</p></div>
+            <div class="cast-info">
+              <p class="cast-name">${UI.escapeHtml(a.name || '')}</p>
+              <p class="cast-char">In ${a.shows.length} shared titles</p>
+              <p style="color:var(--slate-500);font-size:.75rem;margin-top:2px">${a.shows.slice(0, 3).map(s => UI.escapeHtml(s)).join(', ')}${a.shows.length > 3 ? '...' : ''}</p>
+            </div>
+            <span style="color:var(--emerald-400);font-weight:800;font-size:1.25rem;flex-shrink:0">${a.shows.length}</span>
           </div>`;
         }).join('')}</div>` : UI.emptyState('No shared actors found', 'Need more overlapping shows')}
       </div>`;
