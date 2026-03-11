@@ -17,9 +17,9 @@ const DetailsPage = {
       this.state.details = details;
       const [credits, inWl, isW, rat] = await Promise.all([
         API.getMediaCredits(this.state.id, this.state.type),
-        Services.isInWatchlist(this.state.id),
-        Services.isWatched(this.state.id),
-        Services.getRating(this.state.id)
+        Services.isInWatchlist(this.state.id).catch(() => false),
+        Services.isWatched(this.state.id).catch(() => false),
+        Services.getRating(this.state.id).catch(() => null)
       ]);
       this.state.credits = credits;
       this.state.inWatchlist = inWl;

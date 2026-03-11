@@ -16,7 +16,7 @@ const HomePage = {
     const uid = auth.currentUser?.uid;
     const [trendTV, trendMov, shames] = await Promise.all([
       API.getTrending('tv'), API.getTrending('movie'),
-      uid ? Services.getActiveShames() : Promise.resolve([])
+      uid ? Services.getActiveShames().catch(() => []) : Promise.resolve([])
     ]);
     this.state.trending.shows = trendTV.slice(0, 10);
     this.state.trending.movies = trendMov.slice(0, 10);
