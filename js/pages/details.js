@@ -18,13 +18,13 @@ const DetailsPage = {
       const [credits, inWl, isW, rat] = await Promise.all([
         API.getMediaCredits(this.state.id, this.state.type),
         Services.isInWatchlist(this.state.id).catch(() => false),
-        Services.isWatched(this.state.id).catch(() => false),
+        Services.isWatched(this.state.id, this.state.type).catch(() => false),
         Services.getRating(this.state.id).catch(() => null)
       ]);
       this.state.credits = credits;
       this.state.inWatchlist = inWl;
       this.state.isWatched = isW;
-      this.state.rating = rat || 0;
+      this.state.rating = rat?.rating || 0;
       if (this.state.type === 'tv' && details.seasons?.length) {
         const firstSeason = details.seasons.find(s => s.season_number >= 1) || details.seasons[0];
         this.state.seasonNum = firstSeason.season_number;
@@ -40,17 +40,19 @@ const DetailsPage = {
     const d = this.state.details;
     if (!d) return;
     const backdrop = d.backdrop_path ? API.imageUrl(d.backdrop_path, 'original') : '';
-    const poster = d.poster_path ? API.imageUrl(d.poster_path, 'w342') : '';
+    const poster = d.poster_path ? API.imageUrl(d.poster_path, 'w500') : '';
     const title = d.name || d.title || '';
     const year = (d.first_air_date || d.release_date || '').substring(0, 4);
     const runtime = d.episode_run_time?.[0] || d.runtime;
-    const genres = (d.genres || []).map(g => g.name).join(', ');
+    const genres = (d.genres || []).map(g => g.name);
     const status = d.status || '';
     const cast = this.state.credits?.cast?.slice(0, 20) || [];
+    const network = d.networks?.[0]?.name || '';
+    const totalEps = d.number_of_episodes || 0;
 
     el.innerHTML = `
       <div class="details-page">
-        <div class="details-hero" style="background-image:linear-gradient(to bottom, transparent 30%, var(--bg-primary)), url('${backdrop}')">
+        <div class="details-hero" style="background-image:linear-gradient(to bottom, transparent 40%, var(--bg-primary) 100%), url('${backdrop}')">
           <button class="back-btn-float" onclick="App.back()">${UI.icon('arrow-left', 22)}</button>
         </div>
         <div class="details-body">
@@ -59,42 +61,52 @@ const DetailsPage = {
             <div class="details-info">
               <h1>${UI.escapeHtml(title)}</h1>
               <div class="details-meta">
-                ${year ? `<span>${year}</span>` : ''}
-                ${runtime ? `<span>${runtime}m</span>` : ''}
+                ${year ? `<span class="meta-chip">${year}</span>` : ''}
+                ${runtime ? `<span class="meta-chip">${runtime}m</span>` : ''}
                 ${status ? `<span class="status-badge">${status}</span>` : ''}
-                ${d.vote_average ? `<span>${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
+                ${d.vote_average ? `<span class="meta-chip rating-chip">${UI.icon('star', 14)} ${d.vote_average.toFixed(1)}</span>` : ''}
               </div>
-              ${genres ? `<p class="details-genres">${UI.escapeHtml(genres)}</p>` : ''}
-              ${d.number_of_seasons ? `<p class="detail-seasons">${d.number_of_seasons} Season${d.number_of_seasons > 1 ? 's' : ''}</p>` : ''}
+              ${genres.length ? `<div class="details-genres">${genres.map(g => `<span class="genre-tag">${UI.escapeHtml(g)}</span>`).join('')}</div>` : ''}
+              <div class="details-stats-row">
+                ${d.number_of_seasons ? `<span>${d.number_of_seasons} Season${d.number_of_seasons > 1 ? 's' : ''}</span>` : ''}
+                ${totalEps ? `<span>${totalEps} Episodes</span>` : ''}
+                ${network ? `<span>${UI.escapeHtml(network)}</span>` : ''}
+              </div>
+              <div class="actions-row">
+                <button class="action-btn ${this.state.inWatchlist ? 'active' : ''}" onclick="DetailsPage.toggleWatchlist()">
+                  ${UI.icon('bookmark', 20)}
+                  <span>${this.state.inWatchlist ? 'In Watchlist' : 'Watchlist'}</span>
+                </button>
+                <button class="action-btn ${this.state.isWatched ? 'active' : ''}" onclick="DetailsPage.toggleWatched()">
+                  ${UI.icon('check-circle', 20)}
+                  <span>${this.state.isWatched ? 'Watched' : 'Mark Watched'}</span>
+                </button>
+                <button class="action-btn" onclick="DetailsPage.showMoreActions()">
+                  ${UI.icon('more-horizontal', 20)}
+                  <span>More</span>
+                </button>
+              </div>
             </div>
           </div>
-          <div class="actions-row">
-            <button class="action-btn ${this.state.inWatchlist ? 'active' : ''}" onclick="DetailsPage.toggleWatchlist()">
-              ${UI.icon(this.state.inWatchlist ? 'bookmark' : 'bookmark', 20)}
-              <span>${this.state.inWatchlist ? 'In Watchlist' : 'Watchlist'}</span>
-            </button>
-            <button class="action-btn ${this.state.isWatched ? 'active' : ''}" onclick="DetailsPage.toggleWatched()">
-              ${UI.icon('check-circle', 20)}
-              <span>${this.state.isWatched ? 'Watched' : 'Mark Watched'}</span>
-            </button>
-            <button class="action-btn" onclick="DetailsPage.showMoreActions()">
-              ${UI.icon('more-horizontal', 20)}
-              <span>More</span>
-            </button>
-          </div>
-          <div class="rating-section">
-            <label>Your Rating</label>
-            <div class="rating-slider-row">
-              <input type="range" min="0" max="10" step="0.5" value="${this.state.rating}" class="rating-slider" oninput="DetailsPage.onRate(this.value)" id="rating-slider">
-              <span class="rating-value" id="rating-val">${this.state.rating > 0 ? this.state.rating : '—'}</span>
+          <div class="details-content-grid">
+            <div class="details-main">
+              <div class="rating-section">
+                <label>Your Rating</label>
+                <div class="rating-slider-row">
+                  <input type="range" min="0" max="10" step="0.5" value="${this.state.rating}" class="rating-slider" oninput="DetailsPage.onRate(this.value)" id="rating-slider">
+                  <span class="rating-value" id="rating-val">${this.state.rating > 0 ? this.state.rating : '—'}</span>
+                </div>
+              </div>
+              ${d.overview ? `<div class="section overview-section"><h3>Overview</h3><p class="overview-text">${UI.escapeHtml(d.overview)}</p></div>` : ''}
+              ${this.state.type === 'tv' && d.seasons?.length ? this.renderSeasons(d.seasons) : ''}
+              <div id="episodes-container">${this.state.episodes.length ? this.renderEpisodeList() : ''}</div>
+            </div>
+            <div class="details-sidebar">
+              ${cast.length ? this.renderCastSidebar(cast) : ''}
+              <div id="friend-activity-section"></div>
+              ${this.renderActionButtons()}
             </div>
           </div>
-          ${d.overview ? `<div class="section"><h3>Overview</h3><p class="overview-text">${UI.escapeHtml(d.overview)}</p></div>` : ''}
-          ${this.state.type === 'tv' && d.seasons?.length ? this.renderSeasons(d.seasons) : ''}
-          <div id="episodes-container">${this.state.episodes.length ? this.renderEpisodeList() : ''}</div>
-          ${cast.length ? this.renderCast(cast) : ''}
-          <div id="friend-activity-section"></div>
-          ${this.renderActionButtons()}
         </div>
       </div>`;
   },
@@ -102,7 +114,7 @@ const DetailsPage = {
   renderSeasons(seasons) {
     const filteredSeasons = seasons.filter(s => s.season_number >= 0);
     return `<div class="section seasons-section">
-      <div class="section-header"><h3>Seasons</h3></div>
+      <h3>Seasons</h3>
       <div class="season-tabs">${filteredSeasons.map(s => `<button class="season-tab ${s.season_number === this.state.seasonNum ? 'active' : ''}" onclick="DetailsPage.selectSeason(${s.season_number})">S${s.season_number}</button>`).join('')}</div>
     </div>`;
   },
@@ -124,10 +136,10 @@ const DetailsPage = {
     }).join('')}</div>`;
   },
 
-  renderCast(cast) {
-    return `<div class="section">
-      <div class="section-header"><h3>Cast</h3><button class="see-all-btn" onclick="App.navigate('cast-list',{id:${this.state.id},type:'${this.state.type}'})">See All</button></div>
-      <div class="horizontal-scroll cast-row">${cast.slice(0, 10).map(c => {
+  renderCastSidebar(cast) {
+    return `<div class="section cast-section">
+      <div class="cast-header"><h3>Cast</h3><button class="see-all-btn" onclick="App.navigate('cast-list',{id:${this.state.id},type:'${this.state.type}'})">See All</button></div>
+      <div class="cast-grid">${cast.slice(0, 8).map(c => {
         const photo = c.profile_path ? API.imageUrl(c.profile_path, 'w185') : '';
         return `<div class="cast-card" onclick="App.navigate('actor-details',{id:${c.id}})">
           ${photo ? `<img src="${photo}" alt="" loading="lazy">` : `<div class="cast-placeholder">${UI.icon('user', 24)}</div>`}
@@ -164,7 +176,7 @@ const DetailsPage = {
 
   async toggleWatchlist() {
     const d = this.state.details;
-    const item = { id: this.state.id, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, addedAt: Date.now() };
+    const item = { id: Number(this.state.id), name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type };
     this.state.inWatchlist = !this.state.inWatchlist;
     if (this.state.inWatchlist) { await Services.addToWatchlist(item); UI.toast('Added to watchlist', 'success'); }
     else { await Services.removeFromWatchlist(this.state.id); UI.toast('Removed from watchlist', 'success'); }
@@ -175,15 +187,13 @@ const DetailsPage = {
   async toggleWatched() {
     const d = this.state.details;
     if (this.state.isWatched) {
-      await Services.unmarkWatched(this.state.id);
+      await Services.markUnwatched(this.state.id, this.state.type);
       this.state.isWatched = false;
       UI.toast('Unmarked as watched', 'success');
     } else {
-      await Services.markWatched({ id: this.state.id, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, watchedAt: Date.now() });
+      await Services.markWatched(this.state.id, this.state.type, null, null, { name: d.name || d.title, posterPath: d.poster_path });
       this.state.isWatched = true;
       UI.toast('Marked as watched!', 'success');
-      // Auto-resolve shames
-      await Services._resolveShames(this.state.id);
     }
     const btn = document.querySelectorAll('.actions-row .action-btn')[1];
     if (btn) { btn.classList.toggle('active', this.state.isWatched); btn.querySelector('span').textContent = this.state.isWatched ? 'Watched' : 'Mark Watched'; }
@@ -193,10 +203,10 @@ const DetailsPage = {
     const d = this.state.details;
     const isWatched = btn.classList.contains('active');
     if (isWatched) {
-      await Services.unmarkWatched(`${this.state.id}_s${season}e${episode}`);
+      await Services.markUnwatched(this.state.id, 'tv', season, episode);
       btn.classList.remove('active');
     } else {
-      await Services.markWatched({ id: `${this.state.id}_s${season}e${episode}`, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: 'tv', season, episode, watchedAt: Date.now() });
+      await Services.markWatched(this.state.id, 'tv', season, episode, { name: d.name || d.title, posterPath: d.poster_path });
       btn.classList.add('active');
     }
   },
@@ -209,7 +219,7 @@ const DetailsPage = {
     this.rateTimeout = setTimeout(async () => {
       this.state.rating = parseFloat(val);
       const d = this.state.details;
-      await Services.rateShow(this.state.id, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type, rating: parseFloat(val), ratedAt: Date.now() });
+      await Services.rateMedia(this.state.id, parseFloat(val), { name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type });
       UI.toast(`Rated ${val}/10`, 'success');
     }, 500);
   },
@@ -247,17 +257,21 @@ const DetailsPage = {
     UI.showModal(`<div class="friend-picker">
       <h3>Shame a Friend for not watching</h3>
       <p class="modal-subtitle">${UI.escapeHtml(d.name || d.title || '')}</p>
-      <div class="friend-list">${friends.map(f => `<button class="friend-pick-btn" onclick="DetailsPage.doShame('${f.friendId}','${UI.escapeHtml(f.friendUsername || '')}')">
-        <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
-        <span>${UI.escapeHtml(f.friendUsername || f.friendId)}</span>
-      </button>`).join('')}</div>
+      <div class="friend-list">${friends.map(f => {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        return `<button class="friend-pick-btn" onclick="DetailsPage.doShame('${fid}','${UI.escapeHtml(fname)}')">
+          <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+          <span>${UI.escapeHtml(fname)}</span>
+        </button>`;
+      }).join('')}</div>
     </div>`);
   },
 
-  async doShame(friendId, friendUsername) {
+  async doShame(friendId, friendName) {
     UI.closeModal();
     const d = this.state.details;
-    await Services.shameFriend({ friendId, friendUsername, showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    await Services.shameFriend(friendId, friendName, null, { id: Number(this.state.id), name: d.name || d.title, mediaType: this.state.type, posterPath: d.poster_path });
     UI.toast('Friend shamed!', 'success');
   },
 
@@ -268,17 +282,21 @@ const DetailsPage = {
     UI.showModal(`<div class="friend-picker">
       <h3>Recommend to a Friend</h3>
       <p class="modal-subtitle">${UI.escapeHtml(d.name || d.title || '')}</p>
-      <div class="friend-list">${friends.map(f => `<button class="friend-pick-btn" onclick="DetailsPage.doRecommend('${f.friendId}')">
-        <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
-        <span>${UI.escapeHtml(f.friendUsername || f.friendId)}</span>
-      </button>`).join('')}</div>
+      <div class="friend-list">${friends.map(f => {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        return `<button class="friend-pick-btn" onclick="DetailsPage.doRecommend('${fid}')">
+          <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+          <span>${UI.escapeHtml(fname)}</span>
+        </button>`;
+      }).join('')}</div>
     </div>`);
   },
 
   async doRecommend(friendId) {
     UI.closeModal();
     const d = this.state.details;
-    await Services.sendRecommendation(friendId, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    await Services.sendRecommendation(friendId, { id: Number(this.state.id), name: d.name || d.title, mediaType: this.state.type, posterPath: d.poster_path });
     UI.toast('Recommendation sent!', 'success');
   },
 
@@ -298,7 +316,7 @@ const DetailsPage = {
   async doAddToList(listId) {
     UI.closeModal();
     const d = this.state.details;
-    await Services.addToSharedList(listId, { showId: this.state.id, showName: d.name || d.title, showPoster: d.poster_path, showType: this.state.type });
+    await Services.addToSharedList(listId, { id: Number(this.state.id), name: d.name || d.title, mediaType: this.state.type, posterPath: d.poster_path });
     UI.toast('Added to list!', 'success');
   },
 
@@ -306,20 +324,24 @@ const DetailsPage = {
     try {
       const friends = await Services.getFriends();
       const activity = [];
-      for (const f of friends.slice(0, 20)) {
-        const [inWl, isW] = await Promise.all([
-          Services.isInWatchlist(this.state.id, f.friendId),
-          Services.isWatched(this.state.id, f.friendId)
+      for (const f of friends.slice(0, 10)) {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        const [wl, w] = await Promise.all([
+          Services.getWatchlist(fid).catch(() => []),
+          Services.getWatched(fid).catch(() => [])
         ]);
-        if (inWl || isW) activity.push({ ...f, inWatchlist: inWl, isWatched: isW });
+        const inWl = wl.some(item => String(item.id || item.tmdbId) === String(this.state.id));
+        const isW = w.some(item => String(item.tmdbId) === String(this.state.id));
+        if (inWl || isW) activity.push({ fid, fname, inWatchlist: inWl, isWatched: isW });
       }
       this.state.friendActivity = activity;
       const section = document.getElementById('friend-activity-section');
       if (section && activity.length) {
-        section.innerHTML = `<div class="section"><h3>Friends Activity</h3>
+        section.innerHTML = `<div class="section"><h3>Friends</h3>
           <div class="friend-activity-list">${activity.map(f => `<div class="friend-activity-item">
-            <div class="friend-avatar">${(f.friendUsername || '?')[0].toUpperCase()}</div>
-            <span class="friend-name">${UI.escapeHtml(f.friendUsername || '')}</span>
+            <div class="friend-avatar">${(f.fname || '?')[0].toUpperCase()}</div>
+            <span class="friend-name">${UI.escapeHtml(f.fname)}</span>
             <span class="friend-status ${f.isWatched ? 'watched' : 'watchlist'}">${f.isWatched ? 'Watched' : 'In Watchlist'}</span>
           </div>`).join('')}</div></div>`;
       }

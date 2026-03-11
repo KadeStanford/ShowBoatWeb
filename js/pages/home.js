@@ -31,7 +31,7 @@ const HomePage = {
     // Fetch logos in background
     this.state.featured.forEach(async (item, i) => {
       const logo = await API.fetchLogo(item.id, item.media_type);
-      if (logo) { this.state.featured[i].logoUrl = logo; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(logo)}" alt="" class="hero-logo-img">`; }
+      if (logo) { const url = API.imageUrl(logo, 'w500'); this.state.featured[i].logoUrl = url; const el = document.getElementById(`hero-logo-${i}`); if (el) el.innerHTML = `<img src="${UI.escapeHtml(url)}" alt="" class="hero-logo-img">`; }
     });
     // Friend trends
     if (uid) this.loadFriendTrends();
