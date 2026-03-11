@@ -2466,6 +2466,7 @@ img.ep-friend-av { background: var(--slate-800); }
   white-space: nowrap; text-align: left;
 }
 .disc-qa-opt:hover { background: var(--slate-700); color: white; }
+.disc-qa-divider { height: 1px; background: var(--slate-700); margin: 2px 8px; }
 
 /* --- Task 6: Watched badge + filter --- */
 .watched-overlay {

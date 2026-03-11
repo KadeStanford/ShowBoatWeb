@@ -593,6 +593,13 @@ const DiscoverPage = {
       ${lists.map(l => `<button class="disc-qa-opt" onclick="event.stopPropagation(); DiscoverPage.quickAddList('${l.id}', ${id}, '${type}', '${name}', '${posterPath}')">
         ${UI.icon('list', 16)} ${UI.escapeHtml(l.name || 'Untitled')}
       </button>`).join('')}
+      <div class="disc-qa-divider"></div>
+      <button class="disc-qa-opt" onclick="event.stopPropagation(); DiscoverPage.quickRecommend(${id}, '${type}', '${name}', '${posterPath}')">
+        ${UI.icon('send', 16)} Recommend
+      </button>
+      <button class="disc-qa-opt" onclick="event.stopPropagation(); DiscoverPage.quickShame(${id}, '${type}', '${name}', '${posterPath}')">
+        ${UI.icon('thumbs-down', 16)} Shame
+      </button>
     `;
 
     // Position relative to the card
@@ -623,5 +630,53 @@ const DiscoverPage = {
     } catch (err) {
       UI.toast('Failed to add', 'error');
     }
+  },
+
+  async quickRecommend(id, type, name, posterPath) {
+    document.querySelectorAll('.disc-qa-popup').forEach(el => el.remove());
+    const friends = await Services.getFriends();
+    if (!friends.length) { UI.toast('Add friends first!', 'error'); return; }
+    UI.showModal(`<div class="friend-picker">
+      <h3>Recommend to a Friend</h3>
+      <p class="modal-subtitle">${UI.escapeHtml(name)}</p>
+      <div class="friend-list">${friends.map(f => {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        return `<button class="friend-pick-btn" onclick="DiscoverPage.doRecommend('${fid}', ${id}, '${type}', '${UI.escapeHtml(name).replace(/'/g, '&#39;')}', '${posterPath}')">
+          <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+          <span>${UI.escapeHtml(fname)}</span>
+        </button>`;
+      }).join('')}</div>
+    </div>`);
+  },
+
+  async doRecommend(friendId, id, type, name, posterPath) {
+    UI.closeModal();
+    await Services.sendRecommendation(friendId, { id: Number(id), name, mediaType: type, posterPath: posterPath || null });
+    UI.toast('Recommendation sent!', 'success');
+  },
+
+  async quickShame(id, type, name, posterPath) {
+    document.querySelectorAll('.disc-qa-popup').forEach(el => el.remove());
+    const friends = await Services.getFriends();
+    if (!friends.length) { UI.toast('Add friends first!', 'error'); return; }
+    UI.showModal(`<div class="friend-picker">
+      <h3>Shame a Friend</h3>
+      <p class="modal-subtitle">${UI.escapeHtml(name)}</p>
+      <div class="friend-list">${friends.map(f => {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        return `<button class="friend-pick-btn" onclick="DiscoverPage.doShame('${fid}', '${UI.escapeHtml(fname).replace(/'/g, '&#39;')}', ${id}, '${type}', '${UI.escapeHtml(name).replace(/'/g, '&#39;')}', '${posterPath}')">
+          <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
+          <span>${UI.escapeHtml(fname)}</span>
+        </button>`;
+      }).join('')}</div>
+    </div>`);
+  },
+
+  async doShame(friendId, friendName, id, type, name, posterPath) {
+    UI.closeModal();
+    await Services.shameFriend(friendId, friendName, null, { id: Number(id), name, mediaType: type, posterPath: posterPath || null });
+    UI.toast('Friend shamed!', 'success');
   }
 };
