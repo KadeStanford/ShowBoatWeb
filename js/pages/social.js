@@ -50,23 +50,23 @@ const FriendsPage = {
     try {
       const results = await Services.searchUsers(this.state.search);
       const uid = auth.currentUser.uid;
-      const filtered = results.filter(u => u.id !== uid);
+      const filtered = results.filter(u => u.uid !== uid);
       if (!filtered.length) { el.innerHTML = '<p class="empty-text">No users found</p>'; return; }
-      const friendIds = new Set(this.state.friends.map(f => f.friendId));
+      const friendIds = new Set(this.state.friends.map(f => f.friendId || f.uid || f.docId));
       el.innerHTML = `<div class="search-result-items">${filtered.map(u => {
-        const isFriend = friendIds.has(u.id);
+        const isFriend = friendIds.has(u.uid);
         return `<div class="friend-item">
           <div class="friend-avatar">${(u.username || '?')[0].toUpperCase()}</div>
-          <div class="friend-info"><p class="friend-name">${UI.escapeHtml(u.username || u.id)}</p></div>
-          ${isFriend ? `<span class="already-friend">Friends ✓</span>` : `<button class="add-friend-btn" onclick="FriendsPage.addFriend('${u.id}','${UI.escapeHtml(u.username || '')}')">${UI.icon('user-plus', 18)} Add</button>`}
+          <div class="friend-info"><p class="friend-name">${UI.escapeHtml(u.username || u.uid)}</p></div>
+          ${isFriend ? `<span class="already-friend">Friends ✓</span>` : `<button class="add-friend-btn" onclick="FriendsPage.addFriend('${u.uid}','${UI.escapeHtml(u.username || '')}')">${UI.icon('user-plus', 18)} Add</button>`}
         </div>`;
       }).join('')}</div>`;
     } catch (_) { el.innerHTML = '<p class="empty-text">Search error</p>'; }
   },
 
   async addFriend(id, username) {
-    await Services.addFriend(id, username);
-    this.state.friends.push({ friendId: id, friendUsername: username });
+    await Services.addFriend(id, { username });
+    this.state.friends.push({ uid: id, username: username });
     UI.toast(`${username} added as friend!`, 'success');
     this.doSearch();
     this.drawFriends();
@@ -75,7 +75,7 @@ const FriendsPage = {
   async removeFriend(id) {
     if (!confirm('Remove this friend?')) return;
     await Services.removeFriend(id);
-    this.state.friends = this.state.friends.filter(f => f.friendId !== id);
+    this.state.friends = this.state.friends.filter(f => (f.friendId || f.uid || f.docId) !== id);
     this.drawFriends();
     UI.toast('Friend removed', 'success');
   }

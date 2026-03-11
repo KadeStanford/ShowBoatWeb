@@ -42,8 +42,10 @@ const HomePage = {
       const friends = await Services.getFriends();
       const allItems = [];
       for (const f of friends.slice(0, 15)) {
-        const watched = await Services.getWatched(f.friendId);
-        watched.slice(0, 5).forEach(w => allItems.push({ ...w, friendName: f.friendUsername || f.friendId }));
+        const fid = f.friendId || f.uid || f.docId;
+        const fname = f.friendUsername || f.username || fid;
+        const watched = await Services.getWatched(fid);
+        watched.slice(0, 5).forEach(w => allItems.push({ ...w, friendName: fname }));
       }
       const counts = {};
       allItems.forEach(item => {

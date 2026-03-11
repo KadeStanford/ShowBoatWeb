@@ -4,8 +4,8 @@ const Services = {
   _uid() { return this._user()?.uid; },
 
   // ==================== WATCHLIST ====================
-  async getWatchlist() {
-    const uid = this._uid(); if (!uid) return [];
+  async getWatchlist(userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
     const snap = await db.collection('users').doc(uid).collection('watchlist').orderBy('addedAt', 'desc').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
@@ -41,8 +41,8 @@ const Services = {
   },
 
   // ==================== WATCHED ====================
-  async getWatched() {
-    const uid = this._uid(); if (!uid) return [];
+  async getWatched(userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
     const snap = await db.collection('users').doc(uid).collection('watched').orderBy('watchedAt', 'desc').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
@@ -89,8 +89,8 @@ const Services = {
   },
 
   // ==================== RATINGS ====================
-  async getRatings() {
-    const uid = this._uid(); if (!uid) return [];
+  async getRatings(userId) {
+    const uid = userId || this._uid(); if (!uid) return [];
     const snap = await db.collection('users').doc(uid).collection('ratings').get();
     return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
   },
