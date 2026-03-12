@@ -4,7 +4,7 @@ const MatcherSetupPage = {
 
   async render() {
     const el = document.getElementById('page-content');
-    el.innerHTML = `<div class="matcher-page">${UI.pageHeader('Movie Night Matcher', true)}<div id="matcher-setup">${UI.loading()}</div></div>`;
+    el.innerHTML = `<div class="matcher-page-v2"><div id="matcher-setup">${UI.loading()}</div></div>`;
     try {
       this.state.friends = await Services.getFriends();
       this.draw();
@@ -15,39 +15,45 @@ const MatcherSetupPage = {
     const el = document.getElementById('matcher-setup');
     if (!this.state.friends.length) { el.innerHTML = UI.emptyState('No friends', 'Add friends to start matching!'); return; }
     el.innerHTML = `
-      <div class="matcher-setup-content">
-        <p class="setup-desc">Pick a friend and swipe on shows/movies together. Find what you both want to watch!</p>
-        <div class="setup-section">
-          <h3>Select a Friend</h3>
-          <div class="friend-select-list">${this.state.friends.map(f => { const fid = f.uid || f.docId; const fname = f.username || fid; return `<button class="friend-select-btn ${this.state.selected === fid ? 'active' : ''}" onclick="MatcherSetupPage.selectFriend('${fid}','${UI.escapeHtml(fname)}')">
-            <div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>
-            <span>${UI.escapeHtml(fname)}</span>
-          </button>`; }).join('')}</div>
-        </div>
-        <div class="setup-section">
-          <h3>Content Type</h3>
-          <div class="filter-tabs">
-            <button class="filter-tab ${this.state.type === 'movie' ? 'active' : ''}" onclick="MatcherSetupPage.setType('movie')">Movies</button>
-            <button class="filter-tab ${this.state.type === 'tv' ? 'active' : ''}" onclick="MatcherSetupPage.setType('tv')">TV Shows</button>
-          </div>
-        </div>
-        <button class="btn-primary start-matcher-btn" onclick="MatcherSetupPage.start()" ${!this.state.selected ? 'disabled' : ''}>Start Matching</button>
-      </div>`;
+      <div class="matcher-setup-hero">
+        <div class="mt-hero-glow"></div>
+        <div class="mt-hero-icon">${UI.icon('zap', 26)}</div>
+        <h3>Movie Night Matcher</h3>
+        <p class="setup-desc">Swipe together, find your next watch</p>
+      </div>
+      <div class="mt-section-label">${UI.icon('users', 14)} Select a Friend</div>
+      <div class="matcher-friend-grid">${this.state.friends.map(f => {
+        const fid = f.uid || f.docId;
+        const fname = f.username || fid;
+        const photo = f.photoURL;
+        const initial = (fname || '?')[0].toUpperCase();
+        return `<div class="matcher-friend-card ${this.state.selected === fid ? 'active' : ''}" onclick="MatcherSetupPage.selectFriend('${fid}','${UI.escapeHtml(fname)}')">
+          <div class="matcher-friend-check">${UI.icon('check', 12)}</div>
+          <div class="matcher-friend-avatar">${photo ? `<img src="${UI.escapeHtml(photo)}" alt="">` : initial}</div>
+          <span class="matcher-friend-name">${UI.escapeHtml(fname)}</span>
+        </div>`;
+      }).join('')}</div>
+      <div class="mt-section-label">${UI.icon('tv', 14)} Content Type</div>
+      <div class="matcher-type-row">
+        <button class="matcher-type-btn ${this.state.type === 'movie' ? 'active' : ''}" onclick="MatcherSetupPage.setType('movie')">${UI.icon('clapperboard', 22)} Movies</button>
+        <button class="matcher-type-btn ${this.state.type === 'tv' ? 'active' : ''}" onclick="MatcherSetupPage.setType('tv')">${UI.icon('tv', 22)} TV Shows</button>
+      </div>
+      <button class="mt-start-btn" onclick="MatcherSetupPage.start()" ${!this.state.selected ? 'disabled' : ''}>${UI.icon('zap', 20)} Start Matching</button>`;
   },
 
   selectFriend(id, name) {
     this.state.selected = id;
     this.state.selectedName = name;
-    document.querySelectorAll('.friend-select-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.matcher-friend-card').forEach(b => b.classList.remove('active'));
     event.currentTarget.classList.add('active');
-    document.querySelector('.start-matcher-btn')?.removeAttribute('disabled');
+    document.querySelector('.mt-start-btn')?.removeAttribute('disabled');
   },
 
   setType(type) {
     this.state.type = type;
-    document.querySelectorAll('.filter-tab').forEach(b => {
+    document.querySelectorAll('.matcher-type-btn').forEach(b => {
       const label = b.textContent.trim().toLowerCase();
-      b.classList.toggle('active', (type === 'movie' && label === 'movies') || (type === 'tv' && label === 'tv shows'));
+      b.classList.toggle('active', (type === 'movie' && label.includes('movies')) || (type === 'tv' && label.includes('tv')));
     });
   },
 
@@ -165,22 +171,25 @@ const MatcherResultsPage = {
 
       el.innerHTML = `<div class="results-page">
         ${UI.pageHeader('Match Results', true)}
-        <div class="results-summary">
+        <div class="mr-celebration">
           <div class="results-count-circle">
             <span class="match-count">${matches.length}</span>
             <span class="match-count-label">match${matches.length !== 1 ? 'es' : ''}</span>
           </div>
-          <p class="results-tagline">${matches.length > 0 ? 'You both liked these! \uD83C\uDF89' : 'No matches yet \u2014 keep swiping!'}</p>
+          <p class="mr-tagline">${matches.length > 0 ? 'You both liked these! \uD83C\uDF89' : 'No matches yet'}</p>
+          <p class="mr-subtitle">${matches.length > 0 ? 'Great taste runs in the group' : 'Try a new session with different content'}</p>
         </div>
-        ${matchDetails.length ? `<div class="media-grid">${matchDetails.map(m => {
+        ${matchDetails.length ? `<div class="mr-grid">${matchDetails.map(m => {
           const poster = m.poster_path ? API.imageUrl(m.poster_path, 'w342') : '';
-          return `<div class="media-card" onclick="App.navigate('details',{id:${m.id},type:'${m.media_type}'})">
-            ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
-            <div class="card-info"><p class="card-title">${UI.escapeHtml(m.name || m.title || '')}</p><div class="card-meta">${m.vote_average ? `${UI.icon('star', 12)} ${(m.vote_average).toFixed(1)}` : ''}</div></div>
+          return `<div class="mr-card" onclick="App.navigate('details',{id:${m.id},type:'${m.media_type}'})">
+            ${poster ? `<img src="${poster}" alt="" loading="lazy" onload="this.classList.add('loaded')">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
+            <p class="mr-card-title">${UI.escapeHtml(m.name || m.title || '')}</p>
           </div>`;
         }).join('')}</div>` : ''}
-        <button class="btn-secondary" onclick="App.navigate('matcher-setup')" style="margin-top:20px;width:100%">${UI.icon('zap', 16)} New Match Session</button>
-        <button class="btn-outline btn-sm" onclick="App.navigate('home')" style="margin-top:8px;width:100%">Back to Home</button>
+        <div class="mr-actions">
+          <button class="btn-primary" onclick="App.navigate('matcher-setup')" style="width:100%">${UI.icon('zap', 16)} New Match Session</button>
+          <button class="btn-secondary" onclick="App.navigate('home')" style="width:100%">Back to Home</button>
+        </div>
       </div>`;
       if (typeof Animate !== 'undefined') requestAnimationFrame(() => Animate.afterPageRender());
     } catch (e) { el.innerHTML = UI.pageHeader('Results', true) + UI.emptyState('Error', e.message); }

@@ -4,11 +4,19 @@ const SharedListsPage = {
 
   async render() {
     const el = document.getElementById('page-content');
-    el.innerHTML = `<div class="lists-page">
-      ${UI.pageHeader('My Lists', true)}
-      <div class="lists-toolbar">
-        <button class="btn-primary" onclick="SharedListsPage.showCreate()">${UI.icon('plus', 18)} New List</button>
+    el.innerHTML = `<div class="lists-page-v2">
+      <div class="lp-hero">
+        <div class="lp-hero-glow"></div>
+        <div class="lp-hero-row">
+          <button class="back-btn-sm" onclick="App.back()">${UI.icon('arrow-left', 20)}</button>
+          <div class="lp-hero-text">
+            <h1>My Lists</h1>
+            <p>Curate &amp; share your collections</p>
+          </div>
+          <button class="lp-create-btn" onclick="SharedListsPage.showCreate()">${UI.icon('plus', 16)} New</button>
+        </div>
       </div>
+      <div id="lp-stats"></div>
       <div id="lists-content">${UI.loading()}</div>
     </div>`;
     try {
@@ -52,6 +60,15 @@ const SharedListsPage = {
     const uid = auth.currentUser?.uid;
     const owned = this.state.lists.filter(l => l.createdBy === uid);
     const shared = this.state.lists.filter(l => l.createdBy !== uid);
+
+    // Stats strip
+    const totalItems = this.state.lists.reduce((s, l) => s + (l.items?.length || 0), 0);
+    const statsEl = document.getElementById('lp-stats');
+    if (statsEl) statsEl.innerHTML = `<div class="lp-stats-strip">
+      <span class="lp-stat-pill">${UI.icon('layers', 14)} <strong>${this.state.lists.length}</strong> list${this.state.lists.length !== 1 ? 's' : ''}</span>
+      <span class="lp-stat-pill">${UI.icon('film', 14)} <strong>${totalItems}</strong> item${totalItems !== 1 ? 's' : ''}</span>
+      <span class="lp-stat-pill">${UI.icon('share-2', 14)} <strong>${shared.length}</strong> shared</span>
+    </div>`;
 
     let html = '';
     if (shared.length) {

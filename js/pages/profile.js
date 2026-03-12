@@ -56,6 +56,7 @@ const ProfilePage = {
         <button class="profile-menu-item" onclick="App.navigate('wall-of-shame')">${UI.icon('thumbs-down', 20)} <span>Wall of Shame</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('shared-lists')">${UI.icon('list', 20)} <span>Shared Lists</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('matcher-history')">${UI.icon('zap', 20)} <span>Matcher History</span> ${UI.icon('chevron-right', 18)}</button>
+        <button class="profile-menu-item" onclick="ProfilePage.showShareCard()">${UI.icon('share-2', 20)} <span>Share Profile</span> ${UI.icon('chevron-right', 18)}</button>
         <button class="profile-menu-item" onclick="App.navigate('settings')">${UI.icon('settings', 20)} <span>Settings</span> ${UI.icon('chevron-right', 18)}</button>
         ${p.isAdmin ? `<button class="profile-menu-item profile-admin-btn" onclick="window.open('admin.html','_self')">${UI.icon('shield', 20)} <span>Admin Dashboard</span> ${UI.icon('chevron-right', 18)}</button>` : ''}
       </div>
@@ -65,7 +66,7 @@ const ProfilePage = {
           <button class="invite-request-btn" onclick="ProfilePage.showTicketRequestModal()">${UI.icon('plus-circle', 16)} Request Tickets</button>
         </div>
         <p class="invite-desc">Share these codes with friends to invite them. Each recruit gets 5 bonus tickets.</p>
-        <div class="invite-codes-list">${(this.state.inviteCodes || []).length ? (this.state.inviteCodes || []).map(c => `<div class="invite-code-chip" onclick="ProfilePage.copyCode('${UI.escapeHtml(c)}')"><span>${UI.escapeHtml(c)}</span>${UI.icon('copy', 14)}</div>`).join('') : '<p class="invite-empty">No invite codes yet.</p>'}</div>
+        <div class="invite-codes-list">${(this.state.inviteCodes || []).length ? (this.state.inviteCodes || []).map(c => `<div class="invite-code-row"><div class="invite-code-chip" onclick="ProfilePage.copyCode('${UI.escapeHtml(c)}')"><span>${UI.escapeHtml(c)}</span>${UI.icon('copy', 14)}</div><button class="invite-share-btn" onclick="ProfilePage.showInviteShareCard('${UI.escapeHtml(c)}')" title="Share card">${UI.icon('image', 14)}</button></div>`).join('') : '<p class="invite-empty">No invite codes yet.</p>'}</div>
       </div>
       <button class="btn-logout" onclick="ProfilePage.logout()">${UI.icon('log-out', 18)} Sign Out</button>
       <div class="tmdb-attribution">
@@ -161,5 +162,261 @@ const ProfilePage = {
 
   async _doLogout() {
     try { await auth.signOut(); } catch (e) { UI.toast('Sign out failed', 'error'); }
+  },
+
+  /* ── Share Card System ── */
+  _shareCardState: null,
+
+  showShareCard() {
+    const uid = auth.currentUser.uid;
+    const p = this.state.profile || {};
+    const s = this.state.stats || {};
+    const username = p.username || auth.currentUser?.displayName || 'User';
+    const photoURL = p.photoURL || auth.currentUser?.photoURL || '';
+    const profileUrl = `${window.location.origin}${window.location.pathname}#friend-profile?id=${uid}`;
+    this._shareCardState = { type: 'profile', theme: 'indigo', style: 'minimal', showStats: true, showQR: true, username, photoURL, stats: s, qrData: profileUrl };
+    UI.showModal('Share Profile', this._shareCardModalHTML());
+    setTimeout(() => this._renderShareCard(), 150);
+  },
+
+  showInviteShareCard(code) {
+    const p = this.state.profile || {};
+    const username = p.username || auth.currentUser?.displayName || 'User';
+    const photoURL = p.photoURL || auth.currentUser?.photoURL || '';
+    const inviteUrl = `${window.location.origin}${window.location.pathname}#signup?invite=${encodeURIComponent(code)}`;
+    this._shareCardState = { type: 'invite', theme: 'emerald', style: 'minimal', showStats: false, showQR: true, username, photoURL, code, qrData: inviteUrl };
+    UI.showModal('Share Invite', this._shareCardModalHTML());
+    setTimeout(() => this._renderShareCard(), 150);
+  },
+
+  _shareCardModalHTML() {
+    const themes = [
+      { id: 'indigo', color: '#6366f1' }, { id: 'emerald', color: '#10b981' },
+      { id: 'rose', color: '#f43f5e' }, { id: 'amber', color: '#f59e0b' },
+      { id: 'purple', color: '#a855f7' }, { id: 'slate', color: '#475569' },
+      { id: 'cyan', color: '#06b6d4' }, { id: 'pink', color: '#ec4899' }
+    ];
+    const st = this._shareCardState;
+    return `<div class="scb-wrapper">
+      <div class="scb-preview"><canvas id="share-card-canvas"></canvas></div>
+      <div class="scb-section">
+        <span class="scb-section-label">Theme</span>
+        <div class="scb-themes">${themes.map(t => `<button class="scb-theme-btn ${st.theme === t.id ? 'active' : ''}" style="background:${t.color}" onclick="ProfilePage._setShareTheme('${t.id}')" title="${t.id}"></button>`).join('')}</div>
+      </div>
+      <div class="scb-section">
+        <span class="scb-section-label">Style</span>
+        <div class="scb-styles">${['minimal', 'bold', 'neon'].map(s => `<button class="scb-style-btn ${st.style === s ? 'active' : ''}" onclick="ProfilePage._setShareStyle('${s}')">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}</div>
+      </div>
+      <div class="scb-section">
+        <span class="scb-section-label">Options</span>
+        <div class="scb-toggles">
+          ${st.type === 'profile' ? `<label class="scb-toggle"><input type="checkbox" ${st.showStats ? 'checked' : ''} onchange="ProfilePage._toggleShareOpt('showStats', this.checked)"> Show Stats</label>` : ''}
+          <label class="scb-toggle"><input type="checkbox" ${st.showQR ? 'checked' : ''} onchange="ProfilePage._toggleShareOpt('showQR', this.checked)"> Show QR Code</label>
+        </div>
+      </div>
+      <div class="scb-actions">
+        <button class="scb-btn scb-btn-secondary" onclick="ProfilePage._downloadShareCard()">${UI.icon('download', 16)} Save</button>
+        <button class="scb-btn scb-btn-primary" onclick="ProfilePage._shareShareCard()">${UI.icon('share-2', 16)} Share</button>
+      </div>
+    </div>`;
+  },
+
+  _setShareTheme(theme) {
+    this._shareCardState.theme = theme;
+    document.querySelectorAll('.scb-theme-btn').forEach(b => b.classList.toggle('active', b.title === theme));
+    this._renderShareCard();
+  },
+
+  _setShareStyle(style) {
+    this._shareCardState.style = style;
+    document.querySelectorAll('.scb-style-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === style));
+    this._renderShareCard();
+  },
+
+  _toggleShareOpt(key, val) {
+    this._shareCardState[key] = val;
+    this._renderShareCard();
+  },
+
+  async _renderShareCard() {
+    const canvas = document.getElementById('share-card-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = 440, H = 640;
+    canvas.width = W; canvas.height = H;
+    const st = this._shareCardState;
+    const themes = {
+      indigo:  { bg1: '#1e1b4b', bg2: '#312e81', accent: '#818cf8', accent2: '#6366f1' },
+      emerald: { bg1: '#022c22', bg2: '#064e3b', accent: '#34d399', accent2: '#10b981' },
+      rose:    { bg1: '#4c0519', bg2: '#881337', accent: '#fb7185', accent2: '#f43f5e' },
+      amber:   { bg1: '#451a03', bg2: '#78350f', accent: '#fbbf24', accent2: '#f59e0b' },
+      purple:  { bg1: '#2e1065', bg2: '#4c1d95', accent: '#c084fc', accent2: '#a855f7' },
+      slate:   { bg1: '#020617', bg2: '#1e293b', accent: '#94a3b8', accent2: '#64748b' },
+      cyan:    { bg1: '#083344', bg2: '#164e63', accent: '#22d3ee', accent2: '#06b6d4' },
+      pink:    { bg1: '#500724', bg2: '#831843', accent: '#f472b6', accent2: '#ec4899' }
+    };
+    const t = themes[st.theme] || themes.indigo;
+
+    // Background
+    const grad = ctx.createLinearGradient(0, 0, W * 0.3, H);
+    grad.addColorStop(0, t.bg1); grad.addColorStop(1, t.bg2);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    // Style decorations
+    if (st.style === 'bold') {
+      ctx.globalAlpha = 0.08; ctx.fillStyle = t.accent;
+      ctx.beginPath(); ctx.arc(W * 0.85, H * 0.12, 120, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W * 0.15, H * 0.88, 80, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (st.style === 'neon') {
+      ctx.strokeStyle = t.accent + '30'; ctx.lineWidth = 1;
+      ctx.strokeRect(20, 20, W - 40, H - 40);
+      ctx.strokeStyle = t.accent + '60'; ctx.lineWidth = 2;
+      const c = 30;
+      [[20, 20 + c, 20, 20, 20 + c, 20], [W - 20 - c, 20, W - 20, 20, W - 20, 20 + c],
+       [20, H - 20 - c, 20, H - 20, 20 + c, H - 20], [W - 20 - c, H - 20, W - 20, H - 20, W - 20, H - 20 - c]]
+        .forEach(([x1, y1, x2, y2, x3, y3]) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.stroke(); });
+    }
+
+    let y = 80;
+    // Avatar
+    const size = 88;
+    const drawInitial = () => {
+      ctx.beginPath(); ctx.arc(W / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = t.accent2 + '40'; ctx.fill();
+      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = t.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText((st.username || 'U')[0].toUpperCase(), W / 2, y + size / 2);
+    };
+    if (st.photoURL) {
+      try {
+        const img = await this._loadImg(st.photoURL);
+        ctx.beginPath(); ctx.arc(W / 2, y + size / 2, size / 2 + 4, 0, Math.PI * 2);
+        ctx.fillStyle = t.accent2; ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(W / 2, y + size / 2, size / 2, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(img, W / 2 - size / 2, y, size, size); ctx.restore();
+      } catch (_) { drawInitial(); }
+    } else { drawInitial(); }
+    y += size + 20;
+
+    // Username
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = '#f1f5f9'; ctx.fillText(st.username, W / 2, y);
+    y += 36;
+
+    // Invite code
+    if (st.type === 'invite' && st.code) {
+      ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#94a3b8'; ctx.fillText('Invite Code', W / 2, y); y += 24;
+      ctx.font = 'bold 28px monospace'; ctx.fillStyle = t.accent;
+      ctx.fillText(st.code, W / 2, y); y += 42;
+    }
+
+    // Stats
+    if (st.showStats && st.stats) {
+      const watched = st.stats.watched || st.stats.watchedCount || 0;
+      const friends = st.stats.friends || st.stats.friendsCount || 0;
+      const rated = st.stats.ratings || st.stats.ratingsCount || 0;
+      ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = t.accent;
+      ctx.fillText(`${watched} Watched  \u2022  ${friends} Friends  \u2022  ${rated} Rated`, W / 2, y);
+      y += 32;
+    }
+
+    // Divider
+    ctx.strokeStyle = t.accent + '25'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W * 0.2, y); ctx.lineTo(W * 0.8, y); ctx.stroke();
+    y += 24;
+
+    // QR code
+    if (st.showQR && st.qrData && typeof QRCode !== 'undefined') {
+      const qrCanvas = document.createElement('canvas');
+      try {
+        await new Promise((resolve, reject) => {
+          QRCode.toCanvas(qrCanvas, st.qrData, {
+            width: 180, margin: 0, errorCorrectionLevel: 'H',
+            color: { dark: t.accent, light: '#00000000' }
+          }, err => err ? reject(err) : resolve());
+        });
+        const qrSize = 180, qrX = W / 2 - qrSize / 2, qrY = y;
+        // QR bg
+        ctx.fillStyle = 'rgba(255,255,255,.06)';
+        this._scRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 12); ctx.fill();
+        // Draw QR
+        ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+        // Center logo
+        if (st.photoURL) {
+          try {
+            const logoImg = await this._loadImg(st.photoURL);
+            const ls = 40;
+            ctx.fillStyle = t.bg1; ctx.beginPath();
+            ctx.arc(W / 2, qrY + qrSize / 2, ls / 2 + 5, 0, Math.PI * 2); ctx.fill();
+            ctx.save(); ctx.beginPath();
+            ctx.arc(W / 2, qrY + qrSize / 2, ls / 2, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(logoImg, W / 2 - ls / 2, qrY + qrSize / 2 - ls / 2, ls, ls);
+            ctx.restore();
+          } catch (_) {}
+        }
+        y = qrY + qrSize + 20;
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#64748b'; ctx.textAlign = 'center';
+        ctx.fillText(st.type === 'profile' ? 'Scan to add as friend' : 'Scan to join ShowBoat', W / 2, y);
+      } catch (e) { console.warn('QR generation failed', e); }
+    }
+
+    // Branding
+    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = t.accent; ctx.textAlign = 'center';
+    ctx.fillText('ShowBoat', W / 2, H - 36);
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = '#475569'; ctx.fillText('showboat.me', W / 2, H - 18);
+  },
+
+  _scRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+  },
+
+  _loadImg(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image(); img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+    });
+  },
+
+  _downloadShareCard() {
+    const canvas = document.getElementById('share-card-canvas');
+    if (!canvas) return;
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `showboat-${this._shareCardState?.type === 'invite' ? 'invite' : 'profile'}-card.png`;
+      a.click(); URL.revokeObjectURL(url);
+    }, 'image/png');
+  },
+
+  async _shareShareCard() {
+    const canvas = document.getElementById('share-card-canvas');
+    if (!canvas) return;
+    try {
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], 'showboat-card.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file], title: 'ShowBoat',
+          text: this._shareCardState?.type === 'invite'
+            ? `Join ShowBoat with my invite code: ${this._shareCardState.code}`
+            : 'Add me on ShowBoat!'
+        });
+      } else {
+        this._downloadShareCard();
+        UI.toast('Card saved! Share it manually', 'info');
+      }
+    } catch (e) { if (e.name !== 'AbortError') UI.toast('Share failed, try downloading instead', 'error'); }
   }
 };

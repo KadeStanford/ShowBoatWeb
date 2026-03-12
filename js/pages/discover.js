@@ -515,7 +515,7 @@ const DiscoverPage = {
       ${hasPlex ? '<span class="plex-card-badge"><svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></span>' : ''}
       ${isWatched ? '<div class="watched-overlay">Watched</div>' : ''}
       <button class="disc-quick-add" onclick="event.stopPropagation(); DiscoverPage.showQuickAdd(event, ${item.id}, '${mediaType}', '${safeTitle}', '${item.poster_path || ''}')" title="Add to…">${UI.icon('plus', 16)}</button>
-      ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
+      ${poster ? `<img src="${poster}" alt="" loading="lazy" onload="this.classList.add('loaded')">` : `<div class="poster-placeholder">${UI.icon('film', 32)}</div>`}
       ${vote ? `<span class="disc-rating-chip">${UI.icon('star', 10)} ${vote.toFixed(1)}</span>` : ''}
       <div class="card-info">
         <p class="card-title">${UI.escapeHtml(title)}</p>
@@ -527,7 +527,7 @@ const DiscoverPage = {
   renderPersonCard(item) {
     const photo = item.profile_path ? API.imageUrl(item.profile_path, 'w185') : '';
     return `<div class="media-card person-card" onclick="App.navigate('actor-details',{id:${item.id}})">
-      ${photo ? `<img src="${photo}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon('user', 32)}</div>`}
+      ${photo ? `<img src="${photo}" alt="" loading="lazy" onload="this.classList.add('loaded')">` : `<div class="poster-placeholder">${UI.icon('user', 32)}</div>`}
       <div class="card-info"><p class="card-title">${UI.escapeHtml(item.name || '')}</p><p class="card-subtitle">${UI.escapeHtml(item.known_for_department || '')}</p></div>
     </div>`;
   },

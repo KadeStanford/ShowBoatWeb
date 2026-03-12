@@ -71,6 +71,8 @@ const App = {
           }
         } catch (e) { console.error('Account status check failed:', e); }
         this.showNav(true);
+        // Update nav profile button with user avatar
+        this._updateNavAvatar(user.photoURL);
         // Restore Plex connection + library cache from Firestore (runs in background)
         Services.restorePlexOnLogin().catch(() => {});
         // Ensure Plex watch history is backported into activity collection
@@ -253,6 +255,22 @@ const App = {
       }
     }
     document.getElementById('page-content')?.classList.toggle('has-nav', show);
+  },
+
+  _updateNavAvatar(url) {
+    document.querySelectorAll('.sidebar-btn[data-page="profile"], .nav-btn[data-page="profile"]').forEach(btn => {
+      const existing = btn.querySelector('.nav-avatar, .sidebar-avatar');
+      if (existing) { if (url) existing.src = url; return; }
+      if (!url) return;
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.className = btn.classList.contains('sidebar-btn') ? 'sidebar-avatar' : 'nav-avatar';
+        svg.replaceWith(img);
+      }
+    });
   },
 
   serializeParams(params) {
