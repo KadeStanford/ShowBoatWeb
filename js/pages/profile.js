@@ -168,156 +168,156 @@ const ProfilePage = {
   _shareCardState: null,
 
   // ────────── THEME DEFINITIONS ──────────
-  // Free themes (always available) + badge-unlocked themes
+  // Each theme has: colors + pattern (canvas texture) + emoji icon
+  // Patterns: 'none','dots','waves','grid','circuit','film','confetti','stars','hex','diamonds','lines','bubbles','triangles','crosses','zigzag','rain','sparkle','smoke','rings','checkers'
   _shareThemes: (() => {
     const free = [
-      // ── Classic collection (12 free) ──
-      { id: 'indigo',     name: 'Indigo',       bg1: '#1e1b4b', bg2: '#312e81', accent: '#a5b4fc', accent2: '#6366f1', category: 'Free' },
-      { id: 'emerald',    name: 'Emerald',      bg1: '#022c22', bg2: '#064e3b', accent: '#6ee7b7', accent2: '#10b981', category: 'Free' },
-      { id: 'rose',       name: 'Rose',         bg1: '#4c0519', bg2: '#881337', accent: '#fda4af', accent2: '#f43f5e', category: 'Free' },
-      { id: 'amber',      name: 'Amber',        bg1: '#451a03', bg2: '#78350f', accent: '#fde68a', accent2: '#f59e0b', category: 'Free' },
-      { id: 'purple',     name: 'Purple',       bg1: '#2e1065', bg2: '#4c1d95', accent: '#d8b4fe', accent2: '#a855f7', category: 'Free' },
-      { id: 'slate',      name: 'Slate',        bg1: '#020617', bg2: '#1e293b', accent: '#cbd5e1', accent2: '#64748b', category: 'Free' },
-      { id: 'cyan',       name: 'Cyan',         bg1: '#083344', bg2: '#164e63', accent: '#67e8f9', accent2: '#06b6d4', category: 'Free' },
-      { id: 'pink',       name: 'Pink',         bg1: '#500724', bg2: '#831843', accent: '#f9a8d4', accent2: '#ec4899', category: 'Free' },
-      { id: 'sky',        name: 'Sky',          bg1: '#0c4a6e', bg2: '#075985', accent: '#7dd3fc', accent2: '#0ea5e9', category: 'Free' },
-      { id: 'teal',       name: 'Teal',         bg1: '#042f2e', bg2: '#115e59', accent: '#5eead4', accent2: '#14b8a6', category: 'Free' },
-      { id: 'lime',       name: 'Lime',         bg1: '#1a2e05', bg2: '#365314', accent: '#bef264', accent2: '#84cc16', category: 'Free' },
-      { id: 'zinc',       name: 'Zinc',         bg1: '#09090b', bg2: '#27272a', accent: '#d4d4d8', accent2: '#71717a', category: 'Free' },
+      { id: 'indigo',     name: 'Indigo',       bg1: '#1e1b4b', bg2: '#312e81', accent: '#a5b4fc', accent2: '#6366f1', category: 'Free', pattern: 'dots',      emoji: '🔮' },
+      { id: 'emerald',    name: 'Emerald',      bg1: '#022c22', bg2: '#064e3b', accent: '#6ee7b7', accent2: '#10b981', category: 'Free', pattern: 'waves',     emoji: '💎' },
+      { id: 'rose',       name: 'Rose',         bg1: '#4c0519', bg2: '#881337', accent: '#fda4af', accent2: '#f43f5e', category: 'Free', pattern: 'confetti',  emoji: '🌹' },
+      { id: 'amber',      name: 'Amber',        bg1: '#451a03', bg2: '#78350f', accent: '#fde68a', accent2: '#f59e0b', category: 'Free', pattern: 'triangles', emoji: '🍯' },
+      { id: 'purple',     name: 'Purple',       bg1: '#2e1065', bg2: '#4c1d95', accent: '#d8b4fe', accent2: '#a855f7', category: 'Free', pattern: 'stars',     emoji: '👾' },
+      { id: 'slate',      name: 'Slate',        bg1: '#020617', bg2: '#1e293b', accent: '#cbd5e1', accent2: '#64748b', category: 'Free', pattern: 'grid',      emoji: '🌑' },
+      { id: 'cyan',       name: 'Cyan',         bg1: '#083344', bg2: '#164e63', accent: '#67e8f9', accent2: '#06b6d4', category: 'Free', pattern: 'bubbles',   emoji: '🧊' },
+      { id: 'pink',       name: 'Pink',         bg1: '#500724', bg2: '#831843', accent: '#f9a8d4', accent2: '#ec4899', category: 'Free', pattern: 'sparkle',   emoji: '🌸' },
+      { id: 'sky',        name: 'Sky',          bg1: '#0c4a6e', bg2: '#075985', accent: '#7dd3fc', accent2: '#0ea5e9', category: 'Free', pattern: 'rain',      emoji: '☁️' },
+      { id: 'teal',       name: 'Teal',         bg1: '#042f2e', bg2: '#115e59', accent: '#5eead4', accent2: '#14b8a6', category: 'Free', pattern: 'hex',       emoji: '🐢' },
+      { id: 'lime',       name: 'Lime',         bg1: '#1a2e05', bg2: '#365314', accent: '#bef264', accent2: '#84cc16', category: 'Free', pattern: 'lines',     emoji: '🍀' },
+      { id: 'zinc',       name: 'Zinc',         bg1: '#09090b', bg2: '#27272a', accent: '#d4d4d8', accent2: '#71717a', category: 'Free', pattern: 'none',      emoji: '⬛' },
     ];
     const badge = [
       // ── Binge Watcher (episodes) ──
-      { id: 'tv_static',       name: 'TV Static',        bg1: '#0f0f23', bg2: '#1a1a3e', accent: '#c0c0ff', accent2: '#7070ff', category: 'Watcher', badgeId: 'binge_bronze' },
-      { id: 'binge_night',     name: 'Binge Night',      bg1: '#0a0a1e', bg2: '#1c1040', accent: '#b794f6', accent2: '#805ad5', category: 'Watcher', badgeId: 'binge_bronze' },
-      { id: 'remote_control',  name: 'Remote Control',   bg1: '#1a0a2e', bg2: '#2d1b69', accent: '#e9d5ff', accent2: '#a78bfa', category: 'Watcher', badgeId: 'binge_silver' },
-      { id: 'couch_potato',    name: 'Couch Potato',     bg1: '#1b1708', bg2: '#3f3608', accent: '#fef08a', accent2: '#eab308', category: 'Watcher', badgeId: 'binge_silver' },
-      { id: 'marathon_runner', name: 'Marathon Runner',   bg1: '#0d1b2a', bg2: '#1b3a5c', accent: '#93c5fd', accent2: '#3b82f6', category: 'Watcher', badgeId: 'binge_gold' },
-      { id: 'tv_addict_glow',  name: 'TV Addict Glow',   bg1: '#160040', bg2: '#2d006b', accent: '#f0abfc', accent2: '#d946ef', category: 'Watcher', badgeId: 'binge_gold' },
+      { id: 'tv_static',       name: 'TV Static',        bg1: '#0f0f23', bg2: '#1a1a3e', accent: '#c0c0ff', accent2: '#7070ff', category: 'Watcher', badgeId: 'binge_bronze', pattern: 'rain',      emoji: '📺' },
+      { id: 'binge_night',     name: 'Binge Night',      bg1: '#0a0a1e', bg2: '#1c1040', accent: '#b794f6', accent2: '#805ad5', category: 'Watcher', badgeId: 'binge_bronze', pattern: 'stars',     emoji: '🌙' },
+      { id: 'remote_control',  name: 'Remote Control',   bg1: '#1a0a2e', bg2: '#2d1b69', accent: '#e9d5ff', accent2: '#a78bfa', category: 'Watcher', badgeId: 'binge_silver', pattern: 'circuit',   emoji: '🎮' },
+      { id: 'couch_potato',    name: 'Couch Potato',     bg1: '#1b1708', bg2: '#3f3608', accent: '#fef08a', accent2: '#eab308', category: 'Watcher', badgeId: 'binge_silver', pattern: 'dots',      emoji: '🛋️' },
+      { id: 'marathon_runner', name: 'Marathon Runner',   bg1: '#0d1b2a', bg2: '#1b3a5c', accent: '#93c5fd', accent2: '#3b82f6', category: 'Watcher', badgeId: 'binge_gold',   pattern: 'zigzag',    emoji: '🏃' },
+      { id: 'tv_addict_glow',  name: 'TV Addict Glow',   bg1: '#160040', bg2: '#2d006b', accent: '#f0abfc', accent2: '#d946ef', category: 'Watcher', badgeId: 'binge_gold',   pattern: 'sparkle',   emoji: '✨' },
       // ── Movie Buff (movies) ──
-      { id: 'red_carpet',      name: 'Red Carpet',       bg1: '#2d0a0a', bg2: '#5c1010', accent: '#fca5a5', accent2: '#ef4444', category: 'Watcher', badgeId: 'movie_bronze' },
-      { id: 'popcorn',         name: 'Popcorn',          bg1: '#2a1f00', bg2: '#4a3600', accent: '#fde68a', accent2: '#fbbf24', category: 'Watcher', badgeId: 'movie_bronze' },
-      { id: 'silver_screen',   name: 'Silver Screen',    bg1: '#111118', bg2: '#2a2a35', accent: '#e2e8f0', accent2: '#94a3b8', category: 'Watcher', badgeId: 'movie_silver' },
-      { id: 'directors_cut',   name: "Director's Cut",   bg1: '#1a0000', bg2: '#3d0000', accent: '#ff8a8a', accent2: '#dc2626', category: 'Watcher', badgeId: 'movie_silver' },
-      { id: 'oscar_night',     name: 'Oscar Night',      bg1: '#1a1500', bg2: '#332a00', accent: '#ffd700', accent2: '#b8860b', category: 'Watcher', badgeId: 'movie_gold' },
-      { id: 'film_reel',       name: 'Film Reel',        bg1: '#0a0a0a', bg2: '#1f1f1f', accent: '#fafafa', accent2: '#a1a1aa', category: 'Watcher', badgeId: 'movie_gold' },
+      { id: 'red_carpet',      name: 'Red Carpet',       bg1: '#2d0a0a', bg2: '#5c1010', accent: '#fca5a5', accent2: '#ef4444', category: 'Watcher', badgeId: 'movie_bronze', pattern: 'lines',     emoji: '🎬' },
+      { id: 'popcorn',         name: 'Popcorn',          bg1: '#2a1f00', bg2: '#4a3600', accent: '#fde68a', accent2: '#fbbf24', category: 'Watcher', badgeId: 'movie_bronze', pattern: 'confetti',  emoji: '🍿' },
+      { id: 'silver_screen',   name: 'Silver Screen',    bg1: '#111118', bg2: '#2a2a35', accent: '#e2e8f0', accent2: '#94a3b8', category: 'Watcher', badgeId: 'movie_silver', pattern: 'film',      emoji: '🎞️' },
+      { id: 'directors_cut',   name: "Director's Cut",   bg1: '#1a0000', bg2: '#3d0000', accent: '#ff8a8a', accent2: '#dc2626', category: 'Watcher', badgeId: 'movie_silver', pattern: 'crosses',   emoji: '🎥' },
+      { id: 'oscar_night',     name: 'Oscar Night',      bg1: '#1a1500', bg2: '#332a00', accent: '#ffd700', accent2: '#b8860b', category: 'Watcher', badgeId: 'movie_gold',   pattern: 'sparkle',   emoji: '🏆' },
+      { id: 'film_reel',       name: 'Film Reel',        bg1: '#0a0a0a', bg2: '#1f1f1f', accent: '#fafafa', accent2: '#a1a1aa', category: 'Watcher', badgeId: 'movie_gold',   pattern: 'film',      emoji: '🎞️' },
       // ── Completionist (completed) ──
-      { id: 'finish_line',     name: 'Finish Line',      bg1: '#001a0a', bg2: '#003d1a', accent: '#86efac', accent2: '#22c55e', category: 'Watcher', badgeId: 'finish_bronze' },
-      { id: 'trophy_room',     name: 'Trophy Room',      bg1: '#1a1000', bg2: '#3d2400', accent: '#fdba74', accent2: '#f97316', category: 'Watcher', badgeId: 'finish_bronze' },
-      { id: 'champion',        name: 'Champion',         bg1: '#0d1f1e', bg2: '#134e4a', accent: '#99f6e4', accent2: '#2dd4bf', category: 'Watcher', badgeId: 'finish_silver' },
-      { id: 'completionist_aura', name: 'Completionist Aura', bg1: '#1e0533', bg2: '#3b0764', accent: '#e879f9', accent2: '#c026d3', category: 'Watcher', badgeId: 'finish_silver' },
-      { id: 'golden_finale',   name: 'Golden Finale',    bg1: '#1a1400', bg2: '#3b2f00', accent: '#fef08a', accent2: '#eab308', category: 'Watcher', badgeId: 'finish_gold' },
-      { id: 'victory_lap',     name: 'Victory Lap',      bg1: '#0c1e0c', bg2: '#15803d', accent: '#bbf7d0', accent2: '#4ade80', category: 'Watcher', badgeId: 'finish_gold' },
+      { id: 'finish_line',     name: 'Finish Line',      bg1: '#001a0a', bg2: '#003d1a', accent: '#86efac', accent2: '#22c55e', category: 'Watcher', badgeId: 'finish_bronze', pattern: 'checkers', emoji: '🏁' },
+      { id: 'trophy_room',     name: 'Trophy Room',      bg1: '#1a1000', bg2: '#3d2400', accent: '#fdba74', accent2: '#f97316', category: 'Watcher', badgeId: 'finish_bronze', pattern: 'diamonds', emoji: '🏅' },
+      { id: 'champion',        name: 'Champion',         bg1: '#0d1f1e', bg2: '#134e4a', accent: '#99f6e4', accent2: '#2dd4bf', category: 'Watcher', badgeId: 'finish_silver', pattern: 'rings',    emoji: '🥊' },
+      { id: 'completionist_aura', name: 'Completionist Aura', bg1: '#1e0533', bg2: '#3b0764', accent: '#e879f9', accent2: '#c026d3', category: 'Watcher', badgeId: 'finish_silver', pattern: 'smoke', emoji: '💫' },
+      { id: 'golden_finale',   name: 'Golden Finale',    bg1: '#1a1400', bg2: '#3b2f00', accent: '#fef08a', accent2: '#eab308', category: 'Watcher', badgeId: 'finish_gold',   pattern: 'sparkle',  emoji: '🎆' },
+      { id: 'victory_lap',     name: 'Victory Lap',      bg1: '#0c1e0c', bg2: '#15803d', accent: '#bbf7d0', accent2: '#4ade80', category: 'Watcher', badgeId: 'finish_gold',   pattern: 'confetti', emoji: '🎊' },
       // ── Critic (ratings) ──
-      { id: 'ink_blot',        name: 'Ink Blot',         bg1: '#0f0f0f', bg2: '#262626', accent: '#e5e5e5', accent2: '#a3a3a3', category: 'Critic', badgeId: 'critic_bronze' },
-      { id: 'star_rating',     name: 'Star Rating',      bg1: '#1a1500', bg2: '#42360a', accent: '#fde047', accent2: '#ca8a04', category: 'Critic', badgeId: 'critic_bronze' },
-      { id: 'verdict',         name: 'The Verdict',      bg1: '#1a0505', bg2: '#450a0a', accent: '#fecaca', accent2: '#f87171', category: 'Critic', badgeId: 'critic_silver' },
-      { id: 'critics_choice',  name: "Critic's Choice",  bg1: '#120824', bg2: '#2d1558', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Critic', badgeId: 'critic_silver' },
-      { id: 'golden_pen',      name: 'Golden Pen',       bg1: '#1c1a00', bg2: '#433e00', accent: '#fef9c3', accent2: '#facc15', category: 'Critic', badgeId: 'critic_gold' },
-      { id: 'masterclass',     name: 'Masterclass',      bg1: '#0a0a1e', bg2: '#1e1b4b', accent: '#c7d2fe', accent2: '#818cf8', category: 'Critic', badgeId: 'critic_gold' },
+      { id: 'ink_blot',        name: 'Ink Blot',         bg1: '#0f0f0f', bg2: '#262626', accent: '#e5e5e5', accent2: '#a3a3a3', category: 'Critic', badgeId: 'critic_bronze', pattern: 'smoke',     emoji: '🖋️' },
+      { id: 'star_rating',     name: 'Star Rating',      bg1: '#1a1500', bg2: '#42360a', accent: '#fde047', accent2: '#ca8a04', category: 'Critic', badgeId: 'critic_bronze', pattern: 'stars',     emoji: '⭐' },
+      { id: 'verdict',         name: 'The Verdict',      bg1: '#1a0505', bg2: '#450a0a', accent: '#fecaca', accent2: '#f87171', category: 'Critic', badgeId: 'critic_silver', pattern: 'crosses',   emoji: '⚖️' },
+      { id: 'critics_choice',  name: "Critic's Choice",  bg1: '#120824', bg2: '#2d1558', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Critic', badgeId: 'critic_silver', pattern: 'diamonds',  emoji: '💜' },
+      { id: 'golden_pen',      name: 'Golden Pen',       bg1: '#1c1a00', bg2: '#433e00', accent: '#fef9c3', accent2: '#facc15', category: 'Critic', badgeId: 'critic_gold',   pattern: 'lines',     emoji: '🖊️' },
+      { id: 'masterclass',     name: 'Masterclass',      bg1: '#0a0a1e', bg2: '#1e1b4b', accent: '#c7d2fe', accent2: '#818cf8', category: 'Critic', badgeId: 'critic_gold',   pattern: 'grid',      emoji: '🎓' },
       // ── Reviews ──
-      { id: 'notebook',        name: 'Notebook',         bg1: '#1a1410', bg2: '#3d3020', accent: '#fed7aa', accent2: '#fb923c', category: 'Critic', badgeId: 'review_bronze' },
-      { id: 'typewriter',      name: 'Typewriter',       bg1: '#141414', bg2: '#2a2a2a', accent: '#d6d3d1', accent2: '#a8a29e', category: 'Critic', badgeId: 'review_bronze' },
-      { id: 'editorial',       name: 'Editorial',        bg1: '#0f172a', bg2: '#1e3a5f', accent: '#bfdbfe', accent2: '#60a5fa', category: 'Critic', badgeId: 'review_silver' },
-      { id: 'bestseller',      name: 'Bestseller',       bg1: '#1a0808', bg2: '#3b1515', accent: '#fecdd3', accent2: '#fb7185', category: 'Critic', badgeId: 'review_silver' },
-      { id: 'pulitzer',        name: 'Pulitzer',         bg1: '#1a1705', bg2: '#3b3410', accent: '#fef3c7', accent2: '#fbbf24', category: 'Critic', badgeId: 'review_gold' },
-      { id: 'columnist',       name: 'Columnist',        bg1: '#0c0c1e', bg2: '#1a1a40', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Critic', badgeId: 'review_gold' },
+      { id: 'notebook',        name: 'Notebook',         bg1: '#1a1410', bg2: '#3d3020', accent: '#fed7aa', accent2: '#fb923c', category: 'Critic', badgeId: 'review_bronze', pattern: 'lines',     emoji: '📓' },
+      { id: 'typewriter',      name: 'Typewriter',       bg1: '#141414', bg2: '#2a2a2a', accent: '#d6d3d1', accent2: '#a8a29e', category: 'Critic', badgeId: 'review_bronze', pattern: 'grid',      emoji: '⌨️' },
+      { id: 'editorial',       name: 'Editorial',        bg1: '#0f172a', bg2: '#1e3a5f', accent: '#bfdbfe', accent2: '#60a5fa', category: 'Critic', badgeId: 'review_silver', pattern: 'waves',     emoji: '📰' },
+      { id: 'bestseller',      name: 'Bestseller',       bg1: '#1a0808', bg2: '#3b1515', accent: '#fecdd3', accent2: '#fb7185', category: 'Critic', badgeId: 'review_silver', pattern: 'triangles', emoji: '📕' },
+      { id: 'pulitzer',        name: 'Pulitzer',         bg1: '#1a1705', bg2: '#3b3410', accent: '#fef3c7', accent2: '#fbbf24', category: 'Critic', badgeId: 'review_gold',   pattern: 'sparkle',   emoji: '🏆' },
+      { id: 'columnist',       name: 'Columnist',        bg1: '#0c0c1e', bg2: '#1a1a40', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Critic', badgeId: 'review_gold',   pattern: 'dots',      emoji: '✍️' },
       // ── Social (friends) ──
-      { id: 'handshake',       name: 'Handshake',        bg1: '#0a1628', bg2: '#1e3a5f', accent: '#93c5fd', accent2: '#3b82f6', category: 'Social', badgeId: 'social_bronze' },
-      { id: 'campfire',        name: 'Campfire',         bg1: '#1a0f00', bg2: '#3d2400', accent: '#fdba74', accent2: '#f97316', category: 'Social', badgeId: 'social_bronze' },
-      { id: 'butterfly',       name: 'Butterfly',        bg1: '#180830', bg2: '#2e1065', accent: '#e9d5ff', accent2: '#a855f7', category: 'Social', badgeId: 'social_silver' },
-      { id: 'party_lights',    name: 'Party Lights',     bg1: '#1a0028', bg2: '#3b0764', accent: '#f0abfc', accent2: '#d946ef', category: 'Social', badgeId: 'social_silver' },
-      { id: 'golden_network',  name: 'Golden Network',   bg1: '#1a1500', bg2: '#332a00', accent: '#fde68a', accent2: '#eab308', category: 'Social', badgeId: 'social_gold' },
-      { id: 'connector',       name: 'The Connector',    bg1: '#001a1a', bg2: '#003d3d', accent: '#5eead4', accent2: '#14b8a6', category: 'Social', badgeId: 'social_gold' },
+      { id: 'handshake',       name: 'Handshake',        bg1: '#0a1628', bg2: '#1e3a5f', accent: '#93c5fd', accent2: '#3b82f6', category: 'Social', badgeId: 'social_bronze', pattern: 'rings',     emoji: '🤝' },
+      { id: 'campfire',        name: 'Campfire',         bg1: '#1a0f00', bg2: '#3d2400', accent: '#fdba74', accent2: '#f97316', category: 'Social', badgeId: 'social_bronze', pattern: 'smoke',     emoji: '🔥' },
+      { id: 'butterfly',       name: 'Butterfly',        bg1: '#180830', bg2: '#2e1065', accent: '#e9d5ff', accent2: '#a855f7', category: 'Social', badgeId: 'social_silver', pattern: 'confetti',  emoji: '🦋' },
+      { id: 'party_lights',    name: 'Party Lights',     bg1: '#1a0028', bg2: '#3b0764', accent: '#f0abfc', accent2: '#d946ef', category: 'Social', badgeId: 'social_silver', pattern: 'sparkle',   emoji: '🎉' },
+      { id: 'golden_network',  name: 'Golden Network',   bg1: '#1a1500', bg2: '#332a00', accent: '#fde68a', accent2: '#eab308', category: 'Social', badgeId: 'social_gold',   pattern: 'circuit',   emoji: '🌐' },
+      { id: 'connector',       name: 'The Connector',    bg1: '#001a1a', bg2: '#003d3d', accent: '#5eead4', accent2: '#14b8a6', category: 'Social', badgeId: 'social_gold',   pattern: 'hex',       emoji: '🔗' },
       // ── Shame (shames_sent) ──
-      { id: 'tough_love',      name: 'Tough Love',       bg1: '#1e0000', bg2: '#450a0a', accent: '#fca5a5', accent2: '#ef4444', category: 'Social', badgeId: 'shame_bronze' },
-      { id: 'side_eye',        name: 'Side Eye',         bg1: '#1a1005', bg2: '#45300d', accent: '#fde68a', accent2: '#d97706', category: 'Social', badgeId: 'shame_bronze' },
-      { id: 'hall_monitor',    name: 'Hall Monitor',     bg1: '#0a1020', bg2: '#1e2d4a', accent: '#a5b4fc', accent2: '#6366f1', category: 'Social', badgeId: 'shame_silver' },
-      { id: 'shame_flame',     name: 'Shame Flame',      bg1: '#2d0a00', bg2: '#5c1a00', accent: '#fdba74', accent2: '#ea580c', category: 'Social', badgeId: 'shame_silver' },
-      { id: 'inferno',         name: 'Inferno',          bg1: '#1a0000', bg2: '#4a0000', accent: '#ff6b6b', accent2: '#dc2626', category: 'Social', badgeId: 'shame_gold' },
-      { id: 'devil',           name: 'Devil',            bg1: '#1a0010', bg2: '#4a0028', accent: '#ff6b9d', accent2: '#e11d48', category: 'Social', badgeId: 'shame_gold' },
+      { id: 'tough_love',      name: 'Tough Love',       bg1: '#1e0000', bg2: '#450a0a', accent: '#fca5a5', accent2: '#ef4444', category: 'Social', badgeId: 'shame_bronze',  pattern: 'crosses',   emoji: '💪' },
+      { id: 'side_eye',        name: 'Side Eye',         bg1: '#1a1005', bg2: '#45300d', accent: '#fde68a', accent2: '#d97706', category: 'Social', badgeId: 'shame_bronze',  pattern: 'triangles', emoji: '👀' },
+      { id: 'hall_monitor',    name: 'Hall Monitor',     bg1: '#0a1020', bg2: '#1e2d4a', accent: '#a5b4fc', accent2: '#6366f1', category: 'Social', badgeId: 'shame_silver',  pattern: 'grid',      emoji: '📋' },
+      { id: 'shame_flame',     name: 'Shame Flame',      bg1: '#2d0a00', bg2: '#5c1a00', accent: '#fdba74', accent2: '#ea580c', category: 'Social', badgeId: 'shame_silver',  pattern: 'zigzag',    emoji: '🔥' },
+      { id: 'inferno',         name: 'Inferno',          bg1: '#1a0000', bg2: '#4a0000', accent: '#ff6b6b', accent2: '#dc2626', category: 'Social', badgeId: 'shame_gold',    pattern: 'smoke',     emoji: '🌋' },
+      { id: 'devil',           name: 'Devil',            bg1: '#1a0010', bg2: '#4a0028', accent: '#ff6b9d', accent2: '#e11d48', category: 'Social', badgeId: 'shame_gold',    pattern: 'sparkle',   emoji: '😈' },
       // ── Watchlist ──
-      { id: 'bookmark',        name: 'Bookmark',         bg1: '#0a1a28', bg2: '#1a3050', accent: '#7dd3fc', accent2: '#0ea5e9', category: 'Watcher', badgeId: 'wl_bronze' },
-      { id: 'reading_list',    name: 'Reading List',     bg1: '#0f1a0a', bg2: '#1a3010', accent: '#bbf7d0', accent2: '#4ade80', category: 'Watcher', badgeId: 'wl_bronze' },
-      { id: 'library',         name: 'Library',          bg1: '#1a1008', bg2: '#3d2810', accent: '#fed7aa', accent2: '#fb923c', category: 'Watcher', badgeId: 'wl_silver' },
-      { id: 'collection',      name: 'Collection',       bg1: '#0a0a20', bg2: '#1a1a45', accent: '#c7d2fe', accent2: '#818cf8', category: 'Watcher', badgeId: 'wl_silver' },
-      { id: 'archivist',       name: 'The Archivist',    bg1: '#0d0d1a', bg2: '#1e1e35', accent: '#e2e8f0', accent2: '#94a3b8', category: 'Watcher', badgeId: 'wl_gold' },
-      { id: 'infinite_shelf',  name: 'Infinite Shelf',   bg1: '#100a1e', bg2: '#2a1850', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Watcher', badgeId: 'wl_gold' },
+      { id: 'bookmark',        name: 'Bookmark',         bg1: '#0a1a28', bg2: '#1a3050', accent: '#7dd3fc', accent2: '#0ea5e9', category: 'Watcher', badgeId: 'wl_bronze',    pattern: 'dots',      emoji: '🔖' },
+      { id: 'reading_list',    name: 'Reading List',     bg1: '#0f1a0a', bg2: '#1a3010', accent: '#bbf7d0', accent2: '#4ade80', category: 'Watcher', badgeId: 'wl_bronze',    pattern: 'lines',     emoji: '📋' },
+      { id: 'library',         name: 'Library',          bg1: '#1a1008', bg2: '#3d2810', accent: '#fed7aa', accent2: '#fb923c', category: 'Watcher', badgeId: 'wl_silver',    pattern: 'grid',      emoji: '📚' },
+      { id: 'collection',      name: 'Collection',       bg1: '#0a0a20', bg2: '#1a1a45', accent: '#c7d2fe', accent2: '#818cf8', category: 'Watcher', badgeId: 'wl_silver',    pattern: 'hex',       emoji: '💿' },
+      { id: 'archivist',       name: 'The Archivist',    bg1: '#0d0d1a', bg2: '#1e1e35', accent: '#e2e8f0', accent2: '#94a3b8', category: 'Watcher', badgeId: 'wl_gold',      pattern: 'circuit',   emoji: '🗄️' },
+      { id: 'infinite_shelf',  name: 'Infinite Shelf',   bg1: '#100a1e', bg2: '#2a1850', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Watcher', badgeId: 'wl_gold',      pattern: 'waves',     emoji: '♾️' },
       // ── Plex ──
-      { id: 'plex_orange',     name: 'Plex Orange',      bg1: '#1a1000', bg2: '#3d2800', accent: '#ffcc00', accent2: '#e5a800', category: 'Plex', badgeId: 'plex_connected' },
-      { id: 'plex_dark',       name: 'Plex Dark',        bg1: '#0a0a0a', bg2: '#1a1a1a', accent: '#e5a800', accent2: '#cc9600', category: 'Plex', badgeId: 'plex_connected' },
-      { id: 'plex_neon',       name: 'Plex Neon',        bg1: '#0d0d1e', bg2: '#1a1a35', accent: '#ffd700', accent2: '#ffaa00', category: 'Plex', badgeId: 'plex_connected' },
-      { id: 'streaming_glow',  name: 'Streaming Glow',   bg1: '#001a0a', bg2: '#002a15', accent: '#86efac', accent2: '#22c55e', category: 'Plex', badgeId: 'plex_connected' },
+      { id: 'plex_orange',     name: 'Plex Orange',      bg1: '#1a1000', bg2: '#3d2800', accent: '#ffcc00', accent2: '#e5a800', category: 'Plex', badgeId: 'plex_connected',  pattern: 'circuit',   emoji: '🟠' },
+      { id: 'plex_dark',       name: 'Plex Dark',        bg1: '#0a0a0a', bg2: '#1a1a1a', accent: '#e5a800', accent2: '#cc9600', category: 'Plex', badgeId: 'plex_connected',  pattern: 'grid',      emoji: '🖤' },
+      { id: 'plex_neon',       name: 'Plex Neon',        bg1: '#0d0d1e', bg2: '#1a1a35', accent: '#ffd700', accent2: '#ffaa00', category: 'Plex', badgeId: 'plex_connected',  pattern: 'sparkle',   emoji: '💛' },
+      { id: 'streaming_glow',  name: 'Streaming Glow',   bg1: '#001a0a', bg2: '#002a15', accent: '#86efac', accent2: '#22c55e', category: 'Plex', badgeId: 'plex_connected',  pattern: 'waves',     emoji: '📡' },
       // ── Matcher ──
-      { id: 'lightning',       name: 'Lightning',        bg1: '#1a1500', bg2: '#3d3000', accent: '#fde047', accent2: '#ca8a04', category: 'Social', badgeId: 'matcher_bronze' },
-      { id: 'electric',        name: 'Electric',         bg1: '#001a2e', bg2: '#003d5c', accent: '#67e8f9', accent2: '#06b6d4', category: 'Social', badgeId: 'matcher_bronze' },
-      { id: 'cupid',           name: 'Cupid',            bg1: '#2d0a1a', bg2: '#5c1535', accent: '#fda4af', accent2: '#f43f5e', category: 'Social', badgeId: 'matcher_silver' },
-      { id: 'soulmate',        name: 'Soulmate',         bg1: '#1a0028', bg2: '#3b0050', accent: '#f0abfc', accent2: '#d946ef', category: 'Social', badgeId: 'matcher_silver' },
+      { id: 'lightning',       name: 'Lightning',        bg1: '#1a1500', bg2: '#3d3000', accent: '#fde047', accent2: '#ca8a04', category: 'Social', badgeId: 'matcher_bronze', pattern: 'zigzag',    emoji: '⚡' },
+      { id: 'electric',        name: 'Electric',         bg1: '#001a2e', bg2: '#003d5c', accent: '#67e8f9', accent2: '#06b6d4', category: 'Social', badgeId: 'matcher_bronze', pattern: 'circuit',   emoji: '🔌' },
+      { id: 'cupid',           name: 'Cupid',            bg1: '#2d0a1a', bg2: '#5c1535', accent: '#fda4af', accent2: '#f43f5e', category: 'Social', badgeId: 'matcher_silver', pattern: 'confetti',  emoji: '💘' },
+      { id: 'soulmate',        name: 'Soulmate',         bg1: '#1a0028', bg2: '#3b0050', accent: '#f0abfc', accent2: '#d946ef', category: 'Social', badgeId: 'matcher_silver', pattern: 'rings',     emoji: '💞' },
       // ── Episode Ratings ──
-      { id: 'episode_tracker', name: 'Episode Tracker',  bg1: '#0a1a1a', bg2: '#0d3335', accent: '#5eead4', accent2: '#14b8a6', category: 'Critic', badgeId: 'ep_critic_bronze' },
-      { id: 'scene_critic',    name: 'Scene Critic',     bg1: '#1a0a28', bg2: '#2d1550', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Critic', badgeId: 'ep_critic_bronze' },
-      { id: 'episode_guru',    name: 'Episode Guru',     bg1: '#001a0d', bg2: '#003d1f', accent: '#bbf7d0', accent2: '#4ade80', category: 'Critic', badgeId: 'ep_critic_silver' },
-      { id: 'series_analyst',  name: 'Series Analyst',   bg1: '#0a0a28', bg2: '#1a1a50', accent: '#a5b4fc', accent2: '#6366f1', category: 'Critic', badgeId: 'ep_critic_silver' },
-      // ── Special multi-badge themes (need multiple badges) ──
-      { id: 'obsidian',        name: 'Obsidian',         bg1: '#050505', bg2: '#111111', accent: '#666666', accent2: '#444444', category: 'Special', badgeId: 'binge_gold' },
-      { id: 'holographic',     name: 'Holographic',      bg1: '#0a0020', bg2: '#1a0040', accent: '#ff6bff', accent2: '#6b6bff', category: 'Special', badgeId: 'movie_gold' },
-      { id: 'aurora',          name: 'Aurora',           bg1: '#001020', bg2: '#001a30', accent: '#34d399', accent2: '#818cf8', category: 'Special', badgeId: 'finish_gold' },
-      { id: 'supernova',       name: 'Supernova',        bg1: '#1a0800', bg2: '#3d1500', accent: '#ff9f43', accent2: '#ff6348', category: 'Special', badgeId: 'critic_gold' },
-      { id: 'midnight_bloom',  name: 'Midnight Bloom',   bg1: '#0a0015', bg2: '#1a0030', accent: '#c084fc', accent2: '#f472b6', category: 'Special', badgeId: 'review_gold' },
-      { id: 'constellation',   name: 'Constellation',    bg1: '#020617', bg2: '#0f172a', accent: '#e2e8f0', accent2: '#fde68a', category: 'Special', badgeId: 'social_gold' },
-      { id: 'volcanic',        name: 'Volcanic',         bg1: '#1a0000', bg2: '#3d0a00', accent: '#ff4500', accent2: '#ff8c00', category: 'Special', badgeId: 'shame_gold' },
-      { id: 'arctic',          name: 'Arctic',           bg1: '#001828', bg2: '#002840', accent: '#e0f2fe', accent2: '#bae6fd', category: 'Special', badgeId: 'wl_gold' },
-      { id: 'quantum',         name: 'Quantum',          bg1: '#050010', bg2: '#100025', accent: '#a855f7', accent2: '#06b6d4', category: 'Special', badgeId: 'matcher_silver' },
-      { id: 'neon_city',       name: 'Neon City',        bg1: '#0a001a', bg2: '#1a0035', accent: '#f472b6', accent2: '#22d3ee', category: 'Special', badgeId: 'ep_critic_silver' },
-      // ── Tier bonus themes (any badge of that tier) ──
-      { id: 'bronze_patina',   name: 'Bronze Patina',    bg1: '#1a1008', bg2: '#3d2810', accent: '#cd7f32', accent2: '#a0622a', category: 'Tier Bonus', tierReq: 'bronze' },
-      { id: 'bronze_fire',     name: 'Bronze Fire',      bg1: '#1a0800', bg2: '#3d1a08', accent: '#f97316', accent2: '#cd7f32', category: 'Tier Bonus', tierReq: 'bronze' },
-      { id: 'bronze_earth',    name: 'Bronze Earth',     bg1: '#14120a', bg2: '#2d2a18', accent: '#d4a76a', accent2: '#a68a55', category: 'Tier Bonus', tierReq: 'bronze' },
-      { id: 'silver_chrome',   name: 'Silver Chrome',    bg1: '#0d0d10', bg2: '#1e1e25', accent: '#c0c0c0', accent2: '#8a8a90', category: 'Tier Bonus', tierReq: 'silver' },
-      { id: 'silver_ice',      name: 'Silver Ice',       bg1: '#081018', bg2: '#101828', accent: '#e0e7ff', accent2: '#c0c0c0', category: 'Tier Bonus', tierReq: 'silver' },
-      { id: 'silver_silk',     name: 'Silver Silk',      bg1: '#0f0f14', bg2: '#20202a', accent: '#d4d4dc', accent2: '#a1a1ab', category: 'Tier Bonus', tierReq: 'silver' },
-      { id: 'gold_luxe',       name: 'Gold Luxe',        bg1: '#1a1500', bg2: '#332a00', accent: '#ffd700', accent2: '#b8860b', category: 'Tier Bonus', tierReq: 'gold' },
-      { id: 'gold_royal',      name: 'Gold Royal',       bg1: '#1a1000', bg2: '#3b2800', accent: '#fbbf24', accent2: '#d97706', category: 'Tier Bonus', tierReq: 'gold' },
-      { id: 'gold_crown',      name: 'Gold Crown',       bg1: '#1a1200', bg2: '#3d2d00', accent: '#fde047', accent2: '#ca8a04', category: 'Tier Bonus', tierReq: 'gold' },
-      // ── Badge count milestone themes ──
-      { id: 'collector_5',     name: 'Collector',        bg1: '#0a1020', bg2: '#152040', accent: '#93c5fd', accent2: '#3b82f6', category: 'Milestone', badgeCount: 5 },
-      { id: 'hoarder_10',      name: 'Hoarder',          bg1: '#100a20', bg2: '#201540', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Milestone', badgeCount: 10 },
-      { id: 'veteran_15',      name: 'Veteran',          bg1: '#0a2010', bg2: '#154020', accent: '#86efac', accent2: '#22c55e', category: 'Milestone', badgeCount: 15 },
-      { id: 'elite_20',        name: 'Elite',            bg1: '#1a1000', bg2: '#3d2400', accent: '#fbbf24', accent2: '#f97316', category: 'Milestone', badgeCount: 20 },
-      { id: 'legend_25',       name: 'Legend',           bg1: '#1a0a1e', bg2: '#3d1545', accent: '#f0abfc', accent2: '#d946ef', category: 'Milestone', badgeCount: 25 },
-      { id: 'mythic_30',       name: 'Mythic',           bg1: '#0a0015', bg2: '#1a0030', accent: '#e879f9', accent2: '#a855f7', category: 'Milestone', badgeCount: 30 },
-      { id: 'transcendent_35', name: 'Transcendent',     bg1: '#001018', bg2: '#002030', accent: '#67e8f9', accent2: '#22d3ee', category: 'Milestone', badgeCount: 35 },
-      { id: 'supreme_40',      name: 'Supreme',          bg1: '#050505', bg2: '#0f0f0f', accent: '#fafafa', accent2: '#ffd700', category: 'Milestone', badgeCount: 40 },
-      // ── Extra creative badge-linked ──
-      { id: 'retro_tv',        name: 'Retro TV',         bg1: '#1a180a', bg2: '#2d2a10', accent: '#fef3c7', accent2: '#d97706', category: 'Watcher', badgeId: 'binge_bronze' },
-      { id: 'static_noise',    name: 'Static Noise',     bg1: '#111111', bg2: '#1e1e1e', accent: '#d4d4d4', accent2: '#888888', category: 'Watcher', badgeId: 'binge_silver' },
-      { id: 'premiere_night',  name: 'Premiere Night',   bg1: '#0d001a', bg2: '#1a0035', accent: '#e9d5ff', accent2: '#a78bfa', category: 'Watcher', badgeId: 'movie_bronze' },
-      { id: 'matinee',         name: 'Matinee',          bg1: '#1a1508', bg2: '#3d3018', accent: '#fef9c3', accent2: '#eab308', category: 'Watcher', badgeId: 'movie_silver' },
-      { id: 'blockbuster',     name: 'Blockbuster',      bg1: '#1a0005', bg2: '#3d0010', accent: '#ff8a8a', accent2: '#dc2626', category: 'Watcher', badgeId: 'movie_gold' },
-      { id: 'deep_focus',      name: 'Deep Focus',       bg1: '#001020', bg2: '#002040', accent: '#7dd3fc', accent2: '#0284c7', category: 'Critic', badgeId: 'critic_bronze' },
-      { id: 'sharp_tongue',    name: 'Sharp Tongue',     bg1: '#1a000a', bg2: '#3d0018', accent: '#fda4af', accent2: '#e11d48', category: 'Critic', badgeId: 'critic_silver' },
-      { id: 'quill',           name: 'Quill',            bg1: '#0d0d18', bg2: '#1a1a30', accent: '#c7d2fe', accent2: '#818cf8', category: 'Critic', badgeId: 'review_bronze' },
-      { id: 'manuscript',      name: 'Manuscript',       bg1: '#1a1810', bg2: '#302d1a', accent: '#fde68a', accent2: '#ca8a04', category: 'Critic', badgeId: 'review_silver' },
-      { id: 'crowd_surfer',    name: 'Crowd Surfer',     bg1: '#0a001e', bg2: '#1a0040', accent: '#c4b5fd', accent2: '#7c3aed', category: 'Social', badgeId: 'social_bronze' },
-      { id: 'high_five',       name: 'High Five',        bg1: '#001a10', bg2: '#003d20', accent: '#6ee7b7', accent2: '#10b981', category: 'Social', badgeId: 'social_silver' },
-      { id: 'roast_master',    name: 'Roast Master',     bg1: '#1a0500', bg2: '#3d0f00', accent: '#fdba74', accent2: '#ea580c', category: 'Social', badgeId: 'shame_bronze' },
-      { id: 'night_watch',     name: 'Night Watch',      bg1: '#000a1a', bg2: '#001530', accent: '#93c5fd', accent2: '#3b82f6', category: 'Social', badgeId: 'shame_silver' },
-      { id: 'to_be_watched',   name: 'To Be Watched',    bg1: '#0a0018', bg2: '#1a0030', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Watcher', badgeId: 'wl_bronze' },
-      { id: 'curated',         name: 'Curated',          bg1: '#001410', bg2: '#002820', accent: '#a7f3d0', accent2: '#34d399', category: 'Watcher', badgeId: 'wl_silver' },
-      { id: 'spark',           name: 'Spark',            bg1: '#1a1200', bg2: '#3d2800', accent: '#fde047', accent2: '#eab308', category: 'Social', badgeId: 'matcher_bronze' },
-      { id: 'heart_radar',     name: 'Heart Radar',      bg1: '#1e0020', bg2: '#3d0040', accent: '#f9a8d4', accent2: '#ec4899', category: 'Social', badgeId: 'matcher_silver' },
-      { id: 'precision',       name: 'Precision',        bg1: '#001a18', bg2: '#003530', accent: '#5eead4', accent2: '#14b8a6', category: 'Critic', badgeId: 'ep_critic_bronze' },
-      { id: 'scene_stealer',   name: 'Scene Stealer',    bg1: '#1a0010', bg2: '#3b0025', accent: '#f9a8d4', accent2: '#ec4899', category: 'Critic', badgeId: 'ep_critic_silver' },
-      // ── Gradient mix themes (various badge requirements) ──
-      { id: 'sunset_drive',    name: 'Sunset Drive',     bg1: '#1a0a20', bg2: '#3d1820', accent: '#fda4af', accent2: '#fb923c', category: 'Special', badgeId: 'binge_silver' },
-      { id: 'ocean_floor',     name: 'Ocean Floor',      bg1: '#001020', bg2: '#002040', accent: '#67e8f9', accent2: '#3b82f6', category: 'Special', badgeId: 'movie_silver' },
-      { id: 'northern_lights', name: 'Northern Lights',  bg1: '#000a20', bg2: '#001030', accent: '#86efac', accent2: '#818cf8', category: 'Special', badgeId: 'finish_silver' },
-      { id: 'cherry_blossom',  name: 'Cherry Blossom',   bg1: '#1a0510', bg2: '#300a20', accent: '#f9a8d4', accent2: '#f472b6', category: 'Special', badgeId: 'review_bronze' },
-      { id: 'deep_sea',        name: 'Deep Sea',         bg1: '#000810', bg2: '#001020', accent: '#7dd3fc', accent2: '#0e7490', category: 'Special', badgeId: 'social_silver' },
-      { id: 'wildfire',        name: 'Wildfire',         bg1: '#1a0500', bg2: '#3d0f00', accent: '#fca5a5', accent2: '#f97316', category: 'Special', badgeId: 'shame_silver' },
-      { id: 'twilight',        name: 'Twilight',         bg1: '#0a0020', bg2: '#150035', accent: '#c4b5fd', accent2: '#f472b6', category: 'Special', badgeId: 'wl_silver' },
-      { id: 'solar_flare',     name: 'Solar Flare',      bg1: '#1a0a00', bg2: '#3d1a00', accent: '#fde68a', accent2: '#f97316', category: 'Special', badgeId: 'critic_silver' },
-      { id: 'cosmic_dust',     name: 'Cosmic Dust',      bg1: '#050510', bg2: '#0f0f20', accent: '#e2e8f0', accent2: '#a78bfa', category: 'Special', badgeId: 'matcher_bronze' },
-      { id: 'plasma',          name: 'Plasma',           bg1: '#100020', bg2: '#200040', accent: '#e879f9', accent2: '#06b6d4', category: 'Special', badgeId: 'ep_critic_bronze' },
+      { id: 'episode_tracker', name: 'Episode Tracker',  bg1: '#0a1a1a', bg2: '#0d3335', accent: '#5eead4', accent2: '#14b8a6', category: 'Critic', badgeId: 'ep_critic_bronze', pattern: 'dots',   emoji: '📊' },
+      { id: 'scene_critic',    name: 'Scene Critic',     bg1: '#1a0a28', bg2: '#2d1550', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Critic', badgeId: 'ep_critic_bronze', pattern: 'film',   emoji: '🎭' },
+      { id: 'episode_guru',    name: 'Episode Guru',     bg1: '#001a0d', bg2: '#003d1f', accent: '#bbf7d0', accent2: '#4ade80', category: 'Critic', badgeId: 'ep_critic_silver', pattern: 'hex',    emoji: '🧘' },
+      { id: 'series_analyst',  name: 'Series Analyst',   bg1: '#0a0a28', bg2: '#1a1a50', accent: '#a5b4fc', accent2: '#6366f1', category: 'Critic', badgeId: 'ep_critic_silver', pattern: 'grid',   emoji: '📈' },
+      // ── Special ──
+      { id: 'obsidian',        name: 'Obsidian',         bg1: '#050505', bg2: '#111111', accent: '#666666', accent2: '#444444', category: 'Special', badgeId: 'binge_gold',     pattern: 'smoke',     emoji: '🪨' },
+      { id: 'holographic',     name: 'Holographic',      bg1: '#0a0020', bg2: '#1a0040', accent: '#ff6bff', accent2: '#6b6bff', category: 'Special', badgeId: 'movie_gold',     pattern: 'sparkle',   emoji: '🌈' },
+      { id: 'aurora',          name: 'Aurora',           bg1: '#001020', bg2: '#001a30', accent: '#34d399', accent2: '#818cf8', category: 'Special', badgeId: 'finish_gold',    pattern: 'waves',     emoji: '🌌' },
+      { id: 'supernova',       name: 'Supernova',        bg1: '#1a0800', bg2: '#3d1500', accent: '#ff9f43', accent2: '#ff6348', category: 'Special', badgeId: 'critic_gold',    pattern: 'rings',     emoji: '💥' },
+      { id: 'midnight_bloom',  name: 'Midnight Bloom',   bg1: '#0a0015', bg2: '#1a0030', accent: '#c084fc', accent2: '#f472b6', category: 'Special', badgeId: 'review_gold',    pattern: 'confetti',  emoji: '🌺' },
+      { id: 'constellation',   name: 'Constellation',    bg1: '#020617', bg2: '#0f172a', accent: '#e2e8f0', accent2: '#fde68a', category: 'Special', badgeId: 'social_gold',    pattern: 'stars',     emoji: '✨' },
+      { id: 'volcanic',        name: 'Volcanic',         bg1: '#1a0000', bg2: '#3d0a00', accent: '#ff4500', accent2: '#ff8c00', category: 'Special', badgeId: 'shame_gold',     pattern: 'smoke',     emoji: '🌋' },
+      { id: 'arctic',          name: 'Arctic',           bg1: '#001828', bg2: '#002840', accent: '#e0f2fe', accent2: '#bae6fd', category: 'Special', badgeId: 'wl_gold',        pattern: 'hex',       emoji: '❄️' },
+      { id: 'quantum',         name: 'Quantum',          bg1: '#050010', bg2: '#100025', accent: '#a855f7', accent2: '#06b6d4', category: 'Special', badgeId: 'matcher_silver', pattern: 'circuit',   emoji: '⚛️' },
+      { id: 'neon_city',       name: 'Neon City',        bg1: '#0a001a', bg2: '#1a0035', accent: '#f472b6', accent2: '#22d3ee', category: 'Special', badgeId: 'ep_critic_silver', pattern: 'grid',   emoji: '🏙️' },
+      // ── Tier bonus ──
+      { id: 'bronze_patina',   name: 'Bronze Patina',    bg1: '#1a1008', bg2: '#3d2810', accent: '#cd7f32', accent2: '#a0622a', category: 'Tier Bonus', tierReq: 'bronze', pattern: 'smoke',     emoji: '🥉' },
+      { id: 'bronze_fire',     name: 'Bronze Fire',      bg1: '#1a0800', bg2: '#3d1a08', accent: '#f97316', accent2: '#cd7f32', category: 'Tier Bonus', tierReq: 'bronze', pattern: 'zigzag',    emoji: '🔶' },
+      { id: 'bronze_earth',    name: 'Bronze Earth',     bg1: '#14120a', bg2: '#2d2a18', accent: '#d4a76a', accent2: '#a68a55', category: 'Tier Bonus', tierReq: 'bronze', pattern: 'triangles', emoji: '🌍' },
+      { id: 'silver_chrome',   name: 'Silver Chrome',    bg1: '#0d0d10', bg2: '#1e1e25', accent: '#c0c0c0', accent2: '#8a8a90', category: 'Tier Bonus', tierReq: 'silver', pattern: 'lines',     emoji: '🥈' },
+      { id: 'silver_ice',      name: 'Silver Ice',       bg1: '#081018', bg2: '#101828', accent: '#e0e7ff', accent2: '#c0c0c0', category: 'Tier Bonus', tierReq: 'silver', pattern: 'hex',       emoji: '🧊' },
+      { id: 'silver_silk',     name: 'Silver Silk',      bg1: '#0f0f14', bg2: '#20202a', accent: '#d4d4dc', accent2: '#a1a1ab', category: 'Tier Bonus', tierReq: 'silver', pattern: 'waves',     emoji: '🪩' },
+      { id: 'gold_luxe',       name: 'Gold Luxe',        bg1: '#1a1500', bg2: '#332a00', accent: '#ffd700', accent2: '#b8860b', category: 'Tier Bonus', tierReq: 'gold',   pattern: 'sparkle',   emoji: '🥇' },
+      { id: 'gold_royal',      name: 'Gold Royal',       bg1: '#1a1000', bg2: '#3b2800', accent: '#fbbf24', accent2: '#d97706', category: 'Tier Bonus', tierReq: 'gold',   pattern: 'diamonds',  emoji: '👑' },
+      { id: 'gold_crown',      name: 'Gold Crown',       bg1: '#1a1200', bg2: '#3d2d00', accent: '#fde047', accent2: '#ca8a04', category: 'Tier Bonus', tierReq: 'gold',   pattern: 'crosses',   emoji: '🏰' },
+      // ── Milestones ──
+      { id: 'collector_5',     name: 'Collector',        bg1: '#0a1020', bg2: '#152040', accent: '#93c5fd', accent2: '#3b82f6', category: 'Milestone', badgeCount: 5,  pattern: 'dots',      emoji: '🎒' },
+      { id: 'hoarder_10',      name: 'Hoarder',          bg1: '#100a20', bg2: '#201540', accent: '#c4b5fd', accent2: '#8b5cf6', category: 'Milestone', badgeCount: 10, pattern: 'hex',       emoji: '🧲' },
+      { id: 'veteran_15',      name: 'Veteran',          bg1: '#0a2010', bg2: '#154020', accent: '#86efac', accent2: '#22c55e', category: 'Milestone', badgeCount: 15, pattern: 'checkers',  emoji: '🎖️' },
+      { id: 'elite_20',        name: 'Elite',            bg1: '#1a1000', bg2: '#3d2400', accent: '#fbbf24', accent2: '#f97316', category: 'Milestone', badgeCount: 20, pattern: 'diamonds',  emoji: '💎' },
+      { id: 'legend_25',       name: 'Legend',           bg1: '#1a0a1e', bg2: '#3d1545', accent: '#f0abfc', accent2: '#d946ef', category: 'Milestone', badgeCount: 25, pattern: 'stars',     emoji: '🐉' },
+      { id: 'mythic_30',       name: 'Mythic',           bg1: '#0a0015', bg2: '#1a0030', accent: '#e879f9', accent2: '#a855f7', category: 'Milestone', badgeCount: 30, pattern: 'smoke',     emoji: '🔮' },
+      { id: 'transcendent_35', name: 'Transcendent',     bg1: '#001018', bg2: '#002030', accent: '#67e8f9', accent2: '#22d3ee', category: 'Milestone', badgeCount: 35, pattern: 'circuit',   emoji: '🧬' },
+      { id: 'supreme_40',      name: 'Supreme',          bg1: '#050505', bg2: '#0f0f0f', accent: '#fafafa', accent2: '#ffd700', category: 'Milestone', badgeCount: 40, pattern: 'sparkle',   emoji: '🌟' },
+      // ── Extra creative ──
+      { id: 'retro_tv',        name: 'Retro TV',         bg1: '#1a180a', bg2: '#2d2a10', accent: '#fef3c7', accent2: '#d97706', category: 'Watcher', badgeId: 'binge_bronze',  pattern: 'film',      emoji: '📻' },
+      { id: 'static_noise',    name: 'Static Noise',     bg1: '#111111', bg2: '#1e1e1e', accent: '#d4d4d4', accent2: '#888888', category: 'Watcher', badgeId: 'binge_silver',  pattern: 'rain',      emoji: '📡' },
+      { id: 'premiere_night',  name: 'Premiere Night',   bg1: '#0d001a', bg2: '#1a0035', accent: '#e9d5ff', accent2: '#a78bfa', category: 'Watcher', badgeId: 'movie_bronze',  pattern: 'sparkle',   emoji: '🎪' },
+      { id: 'matinee',         name: 'Matinee',          bg1: '#1a1508', bg2: '#3d3018', accent: '#fef9c3', accent2: '#eab308', category: 'Watcher', badgeId: 'movie_silver',  pattern: 'dots',      emoji: '🌞' },
+      { id: 'blockbuster',     name: 'Blockbuster',      bg1: '#1a0005', bg2: '#3d0010', accent: '#ff8a8a', accent2: '#dc2626', category: 'Watcher', badgeId: 'movie_gold',    pattern: 'zigzag',    emoji: '💣' },
+      { id: 'deep_focus',      name: 'Deep Focus',       bg1: '#001020', bg2: '#002040', accent: '#7dd3fc', accent2: '#0284c7', category: 'Critic', badgeId: 'critic_bronze',  pattern: 'bubbles',   emoji: '🔍' },
+      { id: 'sharp_tongue',    name: 'Sharp Tongue',     bg1: '#1a000a', bg2: '#3d0018', accent: '#fda4af', accent2: '#e11d48', category: 'Critic', badgeId: 'critic_silver',  pattern: 'zigzag',    emoji: '🗡️' },
+      { id: 'quill',           name: 'Quill',            bg1: '#0d0d18', bg2: '#1a1a30', accent: '#c7d2fe', accent2: '#818cf8', category: 'Critic', badgeId: 'review_bronze',  pattern: 'lines',     emoji: '🪶' },
+      { id: 'manuscript',      name: 'Manuscript',       bg1: '#1a1810', bg2: '#302d1a', accent: '#fde68a', accent2: '#ca8a04', category: 'Critic', badgeId: 'review_silver',  pattern: 'grid',      emoji: '📜' },
+      { id: 'crowd_surfer',    name: 'Crowd Surfer',     bg1: '#0a001e', bg2: '#1a0040', accent: '#c4b5fd', accent2: '#7c3aed', category: 'Social', badgeId: 'social_bronze',  pattern: 'waves',     emoji: '🏄' },
+      { id: 'high_five',       name: 'High Five',        bg1: '#001a10', bg2: '#003d20', accent: '#6ee7b7', accent2: '#10b981', category: 'Social', badgeId: 'social_silver',  pattern: 'confetti',  emoji: '🖐️' },
+      { id: 'roast_master',    name: 'Roast Master',     bg1: '#1a0500', bg2: '#3d0f00', accent: '#fdba74', accent2: '#ea580c', category: 'Social', badgeId: 'shame_bronze',   pattern: 'triangles', emoji: '🔥' },
+      { id: 'night_watch',     name: 'Night Watch',      bg1: '#000a1a', bg2: '#001530', accent: '#93c5fd', accent2: '#3b82f6', category: 'Social', badgeId: 'shame_silver',   pattern: 'stars',     emoji: '🦉' },
+      { id: 'to_be_watched',   name: 'To Be Watched',    bg1: '#0a0018', bg2: '#1a0030', accent: '#ddd6fe', accent2: '#a78bfa', category: 'Watcher', badgeId: 'wl_bronze',     pattern: 'crosses',   emoji: '👁️' },
+      { id: 'curated',         name: 'Curated',          bg1: '#001410', bg2: '#002820', accent: '#a7f3d0', accent2: '#34d399', category: 'Watcher', badgeId: 'wl_silver',     pattern: 'diamonds',  emoji: '🗃️' },
+      { id: 'spark',           name: 'Spark',            bg1: '#1a1200', bg2: '#3d2800', accent: '#fde047', accent2: '#eab308', category: 'Social', badgeId: 'matcher_bronze',  pattern: 'sparkle',   emoji: '⚡' },
+      { id: 'heart_radar',     name: 'Heart Radar',      bg1: '#1e0020', bg2: '#3d0040', accent: '#f9a8d4', accent2: '#ec4899', category: 'Social', badgeId: 'matcher_silver',  pattern: 'rings',     emoji: '💓' },
+      { id: 'precision',       name: 'Precision',        bg1: '#001a18', bg2: '#003530', accent: '#5eead4', accent2: '#14b8a6', category: 'Critic', badgeId: 'ep_critic_bronze', pattern: 'hex',      emoji: '🎯' },
+      { id: 'scene_stealer',   name: 'Scene Stealer',    bg1: '#1a0010', bg2: '#3b0025', accent: '#f9a8d4', accent2: '#ec4899', category: 'Critic', badgeId: 'ep_critic_silver', pattern: 'confetti', emoji: '🎭' },
+      // ── Gradient mix (Special) ──
+      { id: 'sunset_drive',    name: 'Sunset Drive',     bg1: '#1a0a20', bg2: '#3d1820', accent: '#fda4af', accent2: '#fb923c', category: 'Special', badgeId: 'binge_silver',   pattern: 'waves',     emoji: '🌅' },
+      { id: 'ocean_floor',     name: 'Ocean Floor',      bg1: '#001020', bg2: '#002040', accent: '#67e8f9', accent2: '#3b82f6', category: 'Special', badgeId: 'movie_silver',   pattern: 'bubbles',   emoji: '🐙' },
+      { id: 'northern_lights', name: 'Northern Lights',  bg1: '#000a20', bg2: '#001030', accent: '#86efac', accent2: '#818cf8', category: 'Special', badgeId: 'finish_silver',  pattern: 'smoke',     emoji: '🌌' },
+      { id: 'cherry_blossom',  name: 'Cherry Blossom',   bg1: '#1a0510', bg2: '#300a20', accent: '#f9a8d4', accent2: '#f472b6', category: 'Special', badgeId: 'review_bronze',  pattern: 'confetti',  emoji: '🌸' },
+      { id: 'deep_sea',        name: 'Deep Sea',         bg1: '#000810', bg2: '#001020', accent: '#7dd3fc', accent2: '#0e7490', category: 'Special', badgeId: 'social_silver',  pattern: 'waves',     emoji: '🐋' },
+      { id: 'wildfire',        name: 'Wildfire',         bg1: '#1a0500', bg2: '#3d0f00', accent: '#fca5a5', accent2: '#f97316', category: 'Special', badgeId: 'shame_silver',   pattern: 'zigzag',    emoji: '🔥' },
+      { id: 'twilight',        name: 'Twilight',         bg1: '#0a0020', bg2: '#150035', accent: '#c4b5fd', accent2: '#f472b6', category: 'Special', badgeId: 'wl_silver',      pattern: 'stars',     emoji: '🌆' },
+      { id: 'solar_flare',     name: 'Solar Flare',      bg1: '#1a0a00', bg2: '#3d1a00', accent: '#fde68a', accent2: '#f97316', category: 'Special', badgeId: 'critic_silver',  pattern: 'rings',     emoji: '☀️' },
+      { id: 'cosmic_dust',     name: 'Cosmic Dust',      bg1: '#050510', bg2: '#0f0f20', accent: '#e2e8f0', accent2: '#a78bfa', category: 'Special', badgeId: 'matcher_bronze', pattern: 'dots',      emoji: '🪐' },
+      { id: 'plasma',          name: 'Plasma',           bg1: '#100020', bg2: '#200040', accent: '#e879f9', accent2: '#06b6d4', category: 'Special', badgeId: 'ep_critic_bronze', pattern: 'smoke',   emoji: '🧪' },
     ];
     return [...free, ...badge];
   })(),
@@ -409,7 +409,7 @@ const ProfilePage = {
           const isUnlocked = unlocked.has(t.id);
           const badge = t.badgeId ? badgeMap[t.badgeId] : null;
           const lockTitle = !isUnlocked ? (t.badgeCount ? `Earn ${t.badgeCount} badges to unlock` : t.tierReq ? `Earn any ${t.tierReq} badge to unlock` : badge ? `Earn "${badge.name}" badge to unlock` : 'Locked') : t.name;
-          return `<button class="scb-theme-btn ${st.theme === t.id ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}" style="background:linear-gradient(135deg,${t.bg1},${t.accent2})" onclick="ProfilePage._setShareTheme('${t.id}')" title="${UI.escapeHtml(lockTitle)}" data-theme="${t.id}">${!isUnlocked ? '<span class="scb-lock-icon">' + UI.icon('lock', 11) + '</span>' : ''}</button>`;
+          return `<button class="scb-theme-card ${st.theme === t.id ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}" style="background:linear-gradient(135deg,${t.bg1},${t.bg2})" onclick="ProfilePage._setShareTheme('${t.id}')" title="${UI.escapeHtml(lockTitle)}" data-theme="${t.id}"><span class="scb-theme-emoji">${t.emoji || ''}</span><span class="scb-theme-name">${UI.escapeHtml(t.name)}</span>${!isUnlocked ? '<span class="scb-theme-lock">' + UI.icon('lock', 10) + '</span>' : ''}</button>`;
         }).join('')}</div>
       </div>
       <div class="scb-section">
@@ -460,7 +460,7 @@ const ProfilePage = {
       return;
     }
     this._shareCardState.theme = themeId;
-    document.querySelectorAll('.scb-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === themeId));
+    document.querySelectorAll('.scb-theme-card').forEach(b => b.classList.toggle('active', b.dataset.theme === themeId));
     this._renderShareCard();
   },
 
@@ -496,6 +496,9 @@ const ProfilePage = {
     grad.addColorStop(0, t.bg1); grad.addColorStop(1, t.bg2);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
+    // ── Theme pattern overlay ──
+    this._drawPattern(ctx, W, H, t.pattern || 'none', t.accent);
+
     // ── Style decorations ──
     if (st.style === 'bold') {
       ctx.globalAlpha = 0.08; ctx.fillStyle = t.accent;
@@ -518,16 +521,13 @@ const ProfilePage = {
       this._scRoundRect(ctx, 20, 20, W - 40, H - 40, 20); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1;
       this._scRoundRect(ctx, 20, 20, W - 40, H - 40, 20); ctx.stroke();
-      // Frosted highlight
       const glassGrad = ctx.createLinearGradient(0, 0, W, 0);
       glassGrad.addColorStop(0, 'rgba(255,255,255,.04)'); glassGrad.addColorStop(0.5, 'rgba(255,255,255,.01)'); glassGrad.addColorStop(1, 'rgba(255,255,255,.04)');
       ctx.fillStyle = glassGrad; ctx.fillRect(20, 20, W - 40, H / 3);
     } else if (st.style === 'retro') {
-      // Scanlines
       ctx.globalAlpha = 0.03; ctx.fillStyle = '#fff';
       for (let ry = 0; ry < H; ry += 4) { ctx.fillRect(0, ry, W, 1); }
       ctx.globalAlpha = 1;
-      // CRT vignette
       const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.8);
       vigGrad.addColorStop(0, 'rgba(0,0,0,0)'); vigGrad.addColorStop(1, 'rgba(0,0,0,.35)');
       ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H);
@@ -656,36 +656,25 @@ const ProfilePage = {
 
     // ── QR Code with creative styles ──
     if (st.showQR && st.qrData && typeof QRCode !== 'undefined') {
-      const qrTemp = document.createElement('canvas');
       try {
-        await new Promise((resolve, reject) => {
-          QRCode.toCanvas(qrTemp, st.qrData, {
-            width: 360, margin: 0, errorCorrectionLevel: 'H',
-            color: { dark: '#000000', light: '#00000000' }
-          }, err => err ? reject(err) : resolve());
-        });
+        // Use QRCode.create() for reliable module matrix (no pixel guessing)
+        const qrObj = QRCode.create(st.qrData, { errorCorrectionLevel: 'H' });
+        const moduleCount = qrObj.modules.size;
+        const qrData = qrObj.modules.data;
         const qrSize = 160, qrX = W / 2 - qrSize / 2, qrY = y;
-        // QR background with good contrast
+
+        // QR background
         ctx.fillStyle = 'rgba(255,255,255,.12)';
         this._scRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 14); ctx.fill();
         ctx.strokeStyle = t.accent + '30'; ctx.lineWidth = 1;
         this._scRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 14); ctx.stroke();
 
-        // Read QR modules for creative rendering
-        const tempCtx = qrTemp.getContext('2d');
-        const imgData = tempCtx.getImageData(0, 0, qrTemp.width, qrTemp.height);
-        const moduleCount = Math.round(Math.sqrt(this._countDarkModules(imgData)));
-        const actualModuleCount = moduleCount > 0 ? moduleCount : 33;
-        const cellSize = qrSize / actualModuleCount;
-        const sampleSize = qrTemp.width / actualModuleCount;
+        const cellSize = qrSize / moduleCount;
 
-        // Draw QR modules with selected style
-        for (let row = 0; row < actualModuleCount; row++) {
-          for (let col = 0; col < actualModuleCount; col++) {
-            const sx = Math.floor(col * sampleSize + sampleSize / 2);
-            const sy = Math.floor(row * sampleSize + sampleSize / 2);
-            const idx = (sy * qrTemp.width + sx) * 4;
-            if (idx < imgData.data.length && imgData.data[idx + 3] > 128) {
+        // Draw each QR module
+        for (let row = 0; row < moduleCount; row++) {
+          for (let col = 0; col < moduleCount; col++) {
+            if (qrData[row * moduleCount + col]) {
               const mx = qrX + col * cellSize;
               const my = qrY + row * cellSize;
               ctx.fillStyle = '#ffffff';
@@ -694,7 +683,7 @@ const ProfilePage = {
           }
         }
 
-        // Center logo
+        // Center avatar logo in QR
         if (st.photoURL) {
           try {
             const logoImg = await this._loadImg(st.photoURL);
@@ -722,11 +711,152 @@ const ProfilePage = {
     ctx.fillStyle = '#475569'; ctx.fillText('showboat.me', W / 2, H - 20);
   },
 
-  // Count dark pixels to estimate module count
-  _countDarkModules(imgData) {
-    let count = 0;
-    for (let i = 3; i < imgData.data.length; i += 4) { if (imgData.data[i] > 128) count++; }
-    return count;
+  // ────────── Draw background pattern specific to each theme ──────────
+  _drawPattern(ctx, W, H, pattern, accent) {
+    if (!pattern || pattern === 'none') return;
+    ctx.save();
+    const c = accent + '0a'; // Very subtle
+    const c2 = accent + '06';
+    ctx.fillStyle = c; ctx.strokeStyle = c;
+    switch (pattern) {
+      case 'dots':
+        for (let x = 20; x < W; x += 30) for (let y = 20; y < H; y += 30) {
+          ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
+        } break;
+      case 'waves':
+        ctx.strokeStyle = accent + '0c'; ctx.lineWidth = 1.5;
+        for (let wy = 40; wy < H; wy += 50) {
+          ctx.beginPath();
+          for (let x = 0; x <= W; x += 4) { ctx.lineTo(x, wy + Math.sin(x * 0.02) * 15); }
+          ctx.stroke();
+        } break;
+      case 'grid':
+        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.5;
+        for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+        for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        break;
+      case 'circuit':
+        ctx.strokeStyle = accent + '0c'; ctx.lineWidth = 1;
+        for (let i = 0; i < 20; i++) {
+          const sx = ((i * 97) % W), sy = ((i * 143) % H);
+          const ex = sx + ((i % 3 === 0) ? 60 : 0), ey = sy + ((i % 3 !== 0) ? 60 : 0);
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2); ctx.fillStyle = accent + '10'; ctx.fill();
+        } break;
+      case 'film':
+        ctx.fillStyle = accent + '08';
+        // Film sprocket holes on left and right edges
+        for (let fy = 20; fy < H; fy += 35) {
+          this._scRoundRect(ctx, 6, fy, 14, 20, 3); ctx.fill();
+          this._scRoundRect(ctx, W - 20, fy, 14, 20, 3); ctx.fill();
+        }
+        // Film border lines
+        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(24, 0); ctx.lineTo(24, H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W - 24, 0); ctx.lineTo(W - 24, H); ctx.stroke();
+        break;
+      case 'confetti':
+        for (let i = 0; i < 35; i++) {
+          const cx = (i * 137) % W, cy = (i * 211) % H;
+          const size = 3 + ((i * 7) % 5);
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate((i * 47) % 360 * Math.PI / 180);
+          ctx.fillStyle = (i % 3 === 0) ? accent + '0c' : (i % 3 === 1 ? accent + '08' : accent + '10');
+          ctx.fillRect(-size / 2, -1.5, size, 3); ctx.restore();
+        } break;
+      case 'stars': {
+        for (let i = 0; i < 30; i++) {
+          const sx = (i * 157) % W, sy = (i * 193) % H;
+          const sr = 2 + ((i * 3) % 4);
+          ctx.fillStyle = accent + (i % 3 === 0 ? '12' : '08');
+          this._drawStar(ctx, sx, sy, sr, sr * 0.4, 4); ctx.fill();
+        }
+      } break;
+      case 'hex': {
+        const hs = 30, hh = hs * Math.sqrt(3) / 2;
+        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        for (let row = 0; row < H / hh + 1; row++) for (let col = 0; col < W / (hs * 1.5) + 1; col++) {
+          const hx = col * hs * 1.5, hy = row * hh + (col % 2 ? hh / 2 : 0);
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k - Math.PI / 6; ctx.lineTo(hx + hs / 2 * Math.cos(a), hy + hs / 2 * Math.sin(a)); }
+          ctx.closePath(); ctx.stroke();
+        }
+      } break;
+      case 'diamonds':
+        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 0.7;
+        for (let dx = -20; dx < W + 20; dx += 35) for (let dy = -20; dy < H + 20; dy += 35) {
+          ctx.beginPath(); ctx.moveTo(dx, dy - 12); ctx.lineTo(dx + 12, dy); ctx.lineTo(dx, dy + 12); ctx.lineTo(dx - 12, dy); ctx.closePath(); ctx.stroke();
+        } break;
+      case 'lines':
+        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        for (let d = -H; d < W + H; d += 25) { ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d - H, H); ctx.stroke(); }
+        break;
+      case 'bubbles':
+        for (let i = 0; i < 18; i++) {
+          const bx = (i * 127) % W, by = (i * 199) % H, br = 8 + ((i * 11) % 20);
+          ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
+        } break;
+      case 'triangles':
+        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        for (let tx = 0; tx < W; tx += 50) for (let ty = 0; ty < H; ty += 45) {
+          const offset = Math.floor(ty / 45) % 2 ? 25 : 0;
+          ctx.beginPath(); ctx.moveTo(tx + offset, ty); ctx.lineTo(tx + offset + 20, ty + 35); ctx.lineTo(tx + offset - 20, ty + 35); ctx.closePath(); ctx.stroke();
+        } break;
+      case 'crosses':
+        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        for (let cx = 25; cx < W; cx += 45) for (let cy = 25; cy < H; cy += 45) {
+          ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6); ctx.stroke();
+        } break;
+      case 'zigzag':
+        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        for (let zy = 30; zy < H; zy += 50) {
+          ctx.beginPath();
+          for (let x = 0; x <= W; x += 20) { ctx.lineTo(x, zy + (Math.floor(x / 20) % 2 ? 10 : -10)); }
+          ctx.stroke();
+        } break;
+      case 'rain':
+        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 0.8;
+        for (let i = 0; i < 60; i++) {
+          const rx = (i * 83) % W, ry = (i * 151) % H, rl = 10 + ((i * 7) % 12);
+          ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 2, ry + rl); ctx.stroke();
+        } break;
+      case 'sparkle':
+        for (let i = 0; i < 20; i++) {
+          const sx = (i * 109) % W, sy = (i * 179) % H;
+          const ss = 3 + ((i * 5) % 6);
+          ctx.strokeStyle = accent + '12'; ctx.lineWidth = 1;
+          // 4-pointed sparkle
+          ctx.beginPath(); ctx.moveTo(sx, sy - ss); ctx.lineTo(sx, sy + ss); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx - ss, sy); ctx.lineTo(sx + ss, sy); ctx.stroke();
+          // Diagonal arms (smaller)
+          const ds = ss * 0.6;
+          ctx.beginPath(); ctx.moveTo(sx - ds, sy - ds); ctx.lineTo(sx + ds, sy + ds); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx + ds, sy - ds); ctx.lineTo(sx - ds, sy + ds); ctx.stroke();
+        } break;
+      case 'smoke':
+        ctx.globalAlpha = 0.04;
+        for (let i = 0; i < 8; i++) {
+          const sx = (i * 113) % W, sy = (i * 191) % H, sr = 40 + ((i * 29) % 60);
+          const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+          sg.addColorStop(0, accent); sg.addColorStop(1, accent + '00');
+          ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1; break;
+      case 'rings':
+        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 1;
+        for (let i = 0; i < 12; i++) {
+          const rx = (i * 131) % W, ry = (i * 173) % H, rr = 15 + ((i * 19) % 30);
+          ctx.beginPath(); ctx.arc(rx, ry, rr, 0, Math.PI * 2); ctx.stroke();
+        } break;
+      case 'checkers':
+        ctx.fillStyle = accent + '06';
+        const cs = 30;
+        for (let cx = 0; cx < W; cx += cs) for (let cy = 0; cy < H; cy += cs) {
+          if ((Math.floor(cx / cs) + Math.floor(cy / cs)) % 2 === 0) ctx.fillRect(cx, cy, cs, cs);
+        } break;
+    }
+    ctx.restore();
   },
 
   // Draw a single QR module with the selected creative style

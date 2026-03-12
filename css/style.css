@@ -3426,16 +3426,18 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
 .scb-cat-btn.active { background: rgba(99,102,241,.12); border-color: var(--indigo-500); color: var(--indigo-400); }
 .scb-cat-btn:hover:not(.active) { background: rgba(255,255,255,.08); }
 .scb-lock-count { display: inline-flex; align-items: center; gap: 2px; font-size: .625rem; opacity: .6; }
-.scb-themes { display: flex; gap: 6px; flex-wrap: wrap; max-height: 120px; overflow-y: auto; padding: 2px; }
+.scb-themes { display: flex; gap: 6px; flex-wrap: wrap; max-height: 170px; overflow-y: auto; padding: 2px; }
 .scb-themes::-webkit-scrollbar { width: 3px; }
 .scb-themes::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
-.scb-theme-btn { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; transition: all .2s; position: relative; flex-shrink: 0; }
-.scb-theme-btn.active { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 12px rgba(255,255,255,.25); }
-.scb-theme-btn:hover:not(.active) { transform: scale(1.08); }
-.scb-theme-btn.locked { opacity: .4; filter: grayscale(.5); }
-.scb-theme-btn.locked:hover { opacity: .6; }
-.scb-lock-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); border-radius: 50%; }
-.scb-lock-icon svg { width: 11px; height: 11px; color: rgba(255,255,255,.7); }
+.scb-theme-card { width: 72px; height: 52px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: all .2s; position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; overflow: hidden; }
+.scb-theme-card.active { border-color: #fff; transform: scale(1.06); box-shadow: 0 0 14px rgba(255,255,255,.25); }
+.scb-theme-card:hover:not(.active) { transform: scale(1.04); border-color: rgba(255,255,255,.2); }
+.scb-theme-card.locked { opacity: .35; filter: grayscale(.6); }
+.scb-theme-card.locked:hover { opacity: .55; }
+.scb-theme-emoji { font-size: 16px; line-height: 1; pointer-events: none; }
+.scb-theme-name { font-size: .5rem; font-weight: 600; color: rgba(255,255,255,.85); pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,.7); max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.scb-theme-lock { position: absolute; top: 3px; right: 3px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.5); border-radius: 50%; width: 16px; height: 16px; }
+.scb-theme-lock svg { width: 9px; height: 9px; color: rgba(255,255,255,.7); }
 .scb-styles { display: flex; gap: 5px; flex-wrap: wrap; }
 .scb-style-btn { padding: 5px 12px; border-radius: 8px; background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: .8rem; font-weight: 500; cursor: pointer; transition: all .2s; }
 .scb-style-btn.active { background: rgba(99,102,241,.12); border-color: var(--indigo-500); color: var(--indigo-400); }
