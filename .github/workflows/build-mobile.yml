@@ -207,6 +207,13 @@ jobs:
           mkdir -p ~/private_keys
           echo "${{ secrets.APPLE_API_KEY_BASE64 }}" | base64 --decode > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
 
+      - name: Debug signing info
+        run: |
+          echo "=== Keychain identities ==="
+          security find-identity -v -p codesigning $RUNNER_TEMP/app-signing.keychain-db
+          echo "=== Provisioning profiles ==="
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+
       - name: Archive iOS app
         working-directory: ios/App
         run: |
