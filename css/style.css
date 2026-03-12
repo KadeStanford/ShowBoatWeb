@@ -3412,23 +3412,37 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
 .sidebar-btn .sidebar-avatar { width: 22px; height: 22px; }
 
 /* ============================================================
-   V66 — SHARE CARD BUILDER
+   V68 — SHARE CARD BUILDER (expanded with unlockable themes, creative QR)
    ============================================================ */
-.scb-wrapper { display: flex; flex-direction: column; gap: 20px; max-height: 75vh; overflow-y: auto; }
+.scb-wrapper { display: flex; flex-direction: column; gap: 16px; max-height: 78vh; overflow-y: auto; padding-right: 4px; }
+.scb-wrapper::-webkit-scrollbar { width: 4px; }
+.scb-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
 .scb-preview { display: flex; justify-content: center; }
 .scb-preview canvas { border-radius: 16px; max-width: 100%; height: auto; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
 .scb-section { display: flex; flex-direction: column; gap: 8px; }
 .scb-section-label { font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); }
-.scb-themes { display: flex; gap: 8px; flex-wrap: wrap; }
-.scb-theme-btn { width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; transition: all .2s; }
-.scb-theme-btn.active { border-color: #fff; transform: scale(1.15); box-shadow: 0 0 12px rgba(255,255,255,.2); }
+.scb-cat-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.scb-cat-btn { padding: 4px 10px; border-radius: 6px; background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: .75rem; font-weight: 500; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 4px; }
+.scb-cat-btn.active { background: rgba(99,102,241,.12); border-color: var(--indigo-500); color: var(--indigo-400); }
+.scb-cat-btn:hover:not(.active) { background: rgba(255,255,255,.08); }
+.scb-lock-count { display: inline-flex; align-items: center; gap: 2px; font-size: .625rem; opacity: .6; }
+.scb-themes { display: flex; gap: 6px; flex-wrap: wrap; max-height: 120px; overflow-y: auto; padding: 2px; }
+.scb-themes::-webkit-scrollbar { width: 3px; }
+.scb-themes::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
+.scb-theme-btn { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; transition: all .2s; position: relative; flex-shrink: 0; }
+.scb-theme-btn.active { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 12px rgba(255,255,255,.25); }
 .scb-theme-btn:hover:not(.active) { transform: scale(1.08); }
-.scb-styles { display: flex; gap: 6px; }
-.scb-style-btn { padding: 6px 14px; border-radius: 8px; background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: .8125rem; font-weight: 500; cursor: pointer; transition: all .2s; }
+.scb-theme-btn.locked { opacity: .4; filter: grayscale(.5); }
+.scb-theme-btn.locked:hover { opacity: .6; }
+.scb-lock-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); border-radius: 50%; }
+.scb-lock-icon svg { width: 11px; height: 11px; color: rgba(255,255,255,.7); }
+.scb-styles { display: flex; gap: 5px; flex-wrap: wrap; }
+.scb-style-btn { padding: 5px 12px; border-radius: 8px; background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: .8rem; font-weight: 500; cursor: pointer; transition: all .2s; }
 .scb-style-btn.active { background: rgba(99,102,241,.12); border-color: var(--indigo-500); color: var(--indigo-400); }
-.scb-toggles { display: flex; gap: 16px; }
-.scb-toggle { display: flex; align-items: center; gap: 6px; font-size: .8125rem; color: var(--text-secondary); cursor: pointer; }
-.scb-toggle input[type="checkbox"] { accent-color: var(--indigo-500); width: 16px; height: 16px; }
+.scb-style-btn:hover:not(.active) { background: rgba(255,255,255,.06); }
+.scb-toggles { display: flex; gap: 14px; flex-wrap: wrap; }
+.scb-toggle { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--text-secondary); cursor: pointer; }
+.scb-toggle input[type="checkbox"] { accent-color: var(--indigo-500); width: 15px; height: 15px; }
 .scb-actions { display: flex; gap: 10px; }
 .scb-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 12px; font-size: .875rem; font-weight: 600; cursor: pointer; transition: all .2s; }
 .scb-btn-primary { background: linear-gradient(135deg, var(--indigo-600), var(--indigo-500)); color: white; border: none; box-shadow: 0 4px 16px rgba(99,102,241,.25); }
