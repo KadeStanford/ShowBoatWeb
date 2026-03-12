@@ -599,6 +599,24 @@ const Services = {
       }
     }));
     activities.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    // Enrich with current profile usernames (stored userName may be stale/UID)
+    const uniqueUids = [...new Set(activities.map(a => a.userId).filter(Boolean))];
+    const profileMap = {};
+    await Promise.all(uniqueUids.map(async u => {
+      try {
+        const p = await this.getUserProfile(u);
+        if (p) profileMap[u] = p;
+      } catch (_) {}
+    }));
+    activities.forEach(a => {
+      const p = profileMap[a.userId];
+      if (p) {
+        if (p.username || p.displayName) a.userName = p.username || p.displayName;
+        if (p.photoURL) a.userPhoto = p.photoURL;
+      }
+    });
+
     return { items: activities, cursors: nextCursors };
   },
 

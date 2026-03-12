@@ -26,7 +26,13 @@ const FriendsPage = {
       const profiles = await Promise.all(
         this.state.friends.map(f => Services.getUserProfile(f.friendId || f.uid || f.docId).catch(() => null))
       );
-      this.state.friends.forEach((f, i) => { if (profiles[i]?.photoURL) f.photoURL = profiles[i].photoURL; });
+      this.state.friends.forEach((f, i) => {
+        if (profiles[i]) {
+          if (profiles[i].photoURL) f.photoURL = profiles[i].photoURL;
+          if (profiles[i].username) { f.username = profiles[i].username; f.friendUsername = profiles[i].username; }
+          else if (profiles[i].displayName) { f.username = profiles[i].displayName; f.friendUsername = profiles[i].displayName; }
+        }
+      });
       this.drawFriends();
     } catch (e) { document.getElementById('friends-list').innerHTML = UI.emptyState('Error', e.message); }
   },
@@ -113,7 +119,7 @@ const FriendsPage = {
           return `<div class="friend-item recommended-item" onclick="App.navigate('friend-profile',{id:'${c.uid}',name:'${UI.escapeHtml(c.username)}'})">
             ${avatarHtml}
             <div class="friend-info">
-              <p class="friend-name">${UI.escapeHtml(c.username || c.uid)}</p>
+              <p class="friend-name">${UI.escapeHtml(c.username || 'Unknown User')}</p>
               <p class="friend-reason">${reasons.join(' · ')}</p>
             </div>
             <button class="add-friend-btn" onclick="event.stopPropagation(); FriendsPage.addFriend('${c.uid}','${UI.escapeHtml(c.username || '')}')">${UI.icon('user-plus', 16)} Add</button>
@@ -134,12 +140,13 @@ const FriendsPage = {
     el.innerHTML = `<div class="friend-items">${this.state.friends.map(f => {
       const fid = f.friendId || f.uid || f.docId;
       const fname = f.friendUsername || f.username || '';
+      const safeName = fname && fname.length < 30 ? fname : '';
       const avatarHtml = f.photoURL
         ? `<img src="${UI.escapeHtml(f.photoURL)}" class="friend-avatar friend-avatar-img" alt="">`
-        : `<div class="friend-avatar">${(fname || '?')[0].toUpperCase()}</div>`;
-      return `<div class="friend-item" onclick="App.navigate('friend-profile',{id:'${fid}',name:'${UI.escapeHtml(fname)}'})">
+        : `<div class="friend-avatar">${(safeName || '?')[0].toUpperCase()}</div>`;
+      return `<div class="friend-item" onclick="App.navigate('friend-profile',{id:'${fid}',name:'${UI.escapeHtml(safeName)}'})">
       ${avatarHtml}
-      <div class="friend-info"><p class="friend-name">${UI.escapeHtml(fname || fid)}</p></div>
+      <div class="friend-info"><p class="friend-name">${UI.escapeHtml(safeName || 'Unknown User')}</p></div>
       <button class="friend-remove-btn" onclick="event.stopPropagation(); FriendsPage.removeFriend('${fid}')" title="Remove">${UI.icon('user-minus', 18)}</button>
     </div>`;
     }).join('')}</div>`;
@@ -166,7 +173,7 @@ const FriendsPage = {
         const isFriend = friendIds.has(u.uid);
         return `<div class="friend-item">
           <div class="friend-avatar">${(u.username || '?')[0].toUpperCase()}</div>
-          <div class="friend-info"><p class="friend-name">${UI.escapeHtml(u.username || u.uid)}</p></div>
+          <div class="friend-info"><p class="friend-name">${UI.escapeHtml(u.username || 'Unknown User')}</p></div>
           ${isFriend ? `<span class="already-friend">Friends ✓</span>` : `<button class="add-friend-btn" onclick="FriendsPage.addFriend('${u.uid}','${UI.escapeHtml(u.username || '')}')">${UI.icon('user-plus', 18)} Add</button>`}
         </div>`;
       }).join('')}</div>`;
@@ -943,7 +950,8 @@ const ActivityPage = {
     const isEpisode = a.type === 'rated_episode';
     const isEpWatched = a.type === 'watched_episode';
     const aType = (a.mediaType || a.showType || 'tv') === 'show' ? 'tv' : (a.mediaType || a.showType || 'tv');
-    const displayName = isMine ? 'You' : (a.userName || a.username || 'Someone');
+    const rawName = a.userName || a.username || '';
+    const displayName = isMine ? 'You' : (rawName && rawName.length < 30 ? rawName : 'Someone');
 
     let verb, badgeClass, badgeIcon, badgeLabel;
     if (isEpisode) { verb = `S${a.seasonNumber || '?'}E${a.episodeNumber || '?'}`; badgeClass = 'act-badge-rated'; badgeIcon = 'star'; badgeLabel = 'Rated'; }
