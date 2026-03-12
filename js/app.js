@@ -146,6 +146,9 @@ const App = {
       });
     });
 
+    // Setup mobile header (native apps)
+    this._initMobileHeader();
+
     // Edge swipe back navigation
     this.initEdgeSwipeBack();
   },
@@ -196,6 +199,10 @@ const App = {
     }
     // Update active sidebar button
     document.querySelectorAll('.sidebar-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
+    // Update active mobile dropdown button
+    document.querySelectorAll('.mobile-dropdown-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
 
@@ -307,26 +314,65 @@ const App = {
     }, { passive: true });
   },
 
+  _initMobileHeader() {
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const dropdown = document.getElementById('mobile-dropdown');
+    if (!menuBtn || !dropdown) return;
+
+    menuBtn.addEventListener('click', () => {
+      const open = dropdown.classList.toggle('open');
+      menuBtn.classList.toggle('open', open);
+    });
+
+    document.querySelectorAll('.mobile-dropdown-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        if (page) this.navigate(page);
+        dropdown.classList.remove('open');
+        menuBtn.classList.remove('open');
+      });
+    });
+
+    // Close dropdown when tapping outside
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#mobile-header')) {
+        dropdown.classList.remove('open');
+        menuBtn.classList.remove('open');
+      }
+    });
+  },
+
   showNav(show) {
     const nav = document.getElementById('bottom-nav');
     const sidebar = document.getElementById('sidebar-nav');
+    const mobileHeader = document.getElementById('mobile-header');
     const isDesktop = window.innerWidth > 1023;
-    if (nav) nav.style.display = (show && !isDesktop) ? 'flex' : 'none';
-    if (sidebar) {
-      if (show && isDesktop) {
-        sidebar.classList.remove('hidden');
-        sidebar.style.display = 'flex';
-      } else {
-        sidebar.classList.add('hidden');
-        sidebar.style.display = '';
+    const isNative = Native.isNative;
+
+    // Native apps: show mobile header, hide sidebar & bottom-nav
+    if (isNative) {
+      if (mobileHeader) mobileHeader.style.display = show ? '' : 'none';
+      if (nav) nav.style.display = 'none';
+      if (sidebar) { sidebar.classList.add('hidden'); sidebar.style.display = ''; }
+    } else {
+      if (mobileHeader) mobileHeader.style.display = 'none';
+      if (nav) nav.style.display = (show && !isDesktop) ? 'flex' : 'none';
+      if (sidebar) {
+        if (show && isDesktop) {
+          sidebar.classList.remove('hidden');
+          sidebar.style.display = 'flex';
+        } else {
+          sidebar.classList.add('hidden');
+          sidebar.style.display = '';
+        }
       }
     }
     document.getElementById('page-content')?.classList.toggle('has-nav', show);
   },
 
   _updateNavAvatar(url) {
-    document.querySelectorAll('.sidebar-btn[data-page="profile"], .nav-btn[data-page="profile"]').forEach(btn => {
-      const existing = btn.querySelector('.nav-avatar, .sidebar-avatar');
+    document.querySelectorAll('.sidebar-btn[data-page="profile"], .nav-btn[data-page="profile"], .mobile-dropdown-btn[data-page="profile"]').forEach(btn => {
+      const existing = btn.querySelector('.nav-avatar, .sidebar-avatar, .mobile-dropdown-avatar');
       if (existing) { if (url) existing.src = url; return; }
       if (!url) return;
       const svg = btn.querySelector('svg');
@@ -334,7 +380,7 @@ const App = {
         const img = document.createElement('img');
         img.src = url;
         img.alt = '';
-        img.className = btn.classList.contains('sidebar-btn') ? 'sidebar-avatar' : 'nav-avatar';
+        img.className = btn.classList.contains('sidebar-btn') ? 'sidebar-avatar' : btn.classList.contains('mobile-dropdown-btn') ? 'mobile-dropdown-avatar' : 'nav-avatar';
         svg.replaceWith(img);
       }
     });

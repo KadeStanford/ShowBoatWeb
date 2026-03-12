@@ -3830,3 +3830,89 @@ html.native-app * { touch-action: manipulation; }
   animation: spin .6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* =============================================
+   MOBILE HEADER (Native apps only)
+   ============================================= */
+.mobile-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 210;
+  background: rgba(15,23,42,.96);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.mobile-header-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  height: 52px;
+}
+.mobile-header-logo {
+  height: 26px; width: auto; object-fit: contain;
+}
+.mobile-header-menu-btn {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); color: var(--slate-300);
+  transition: all var(--transition); background: transparent; border: none; cursor: pointer;
+}
+.mobile-header-menu-btn:hover { background: rgba(255,255,255,.06); }
+.mobile-header-menu-btn.open { color: var(--emerald-400); }
+.mobile-header-menu-btn svg {
+  transition: transform .3s ease;
+}
+.mobile-header-menu-btn.open svg {
+  transform: rotate(90deg);
+}
+
+/* Dropdown menu */
+.mobile-dropdown {
+  display: none; flex-direction: column;
+  padding: 8px 12px 12px;
+  background: rgba(15,23,42,.98);
+  border-bottom: 1px solid var(--glass-border);
+  max-height: 70vh; overflow-y: auto;
+}
+.mobile-dropdown.open { display: flex; }
+.mobile-dropdown-btn {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: var(--radius-md);
+  color: var(--slate-400); font-size: .9rem; font-weight: 500;
+  transition: all var(--transition); white-space: nowrap;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; width: 100%;
+}
+.mobile-dropdown-btn:hover { background: rgba(255,255,255,.04); color: var(--slate-200); }
+.mobile-dropdown-btn.active {
+  background: rgba(16,185,129,.08); color: var(--emerald-400);
+  font-weight: 600;
+}
+.mobile-dropdown-btn svg { flex-shrink: 0; width: 20px; height: 20px; }
+.mobile-dropdown-avatar {
+  width: 20px; height: 20px; border-radius: 50%; object-fit: cover;
+}
+.mobile-dropdown-divider {
+  height: 1px; background: rgba(255,255,255,.04); margin: 6px 12px;
+}
+
+/* Native app: use mobile header instead of bottom nav */
+html.native-app .bottom-nav { display: none !important; }
+html.native-app .mobile-header { display: block; }
+html.native-app .page-content { padding-bottom: 0; }
+
+/* When mobile header is visible, offset page content */
+html.native-app #page-content.has-nav {
+  padding-top: 0;
+}
+
+/* Safe area for mobile header on notch devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  html.native-app .mobile-header-inner {
+    padding-top: calc(env(safe-area-inset-top) + 6px);
+    height: calc(52px + env(safe-area-inset-top));
+  }
+  html.native-app #page-content.has-nav {
+    padding-top: calc(52px + env(safe-area-inset-top)) !important;
+  }
+  html.native-app #page-content.has-nav.home-active {
+    padding-top: 0 !important;
+  }
+}

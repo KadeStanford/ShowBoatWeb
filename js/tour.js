@@ -85,7 +85,21 @@ const GuidedTour = {
     if (idx < 0 || idx >= this.steps.length) { this.finish(); return; }
     this._currentStep = idx;
     const step = this.steps[idx];
-    const target = document.querySelector(step.target);
+
+    // On native mobile, open the dropdown so nav targets are visible
+    const isNativeMobile = typeof Native !== 'undefined' && Native.isNative;
+    let target;
+    if (isNativeMobile && step.target.includes('data-page')) {
+      const dropdown = document.getElementById('mobile-dropdown');
+      const menuBtn = document.getElementById('mobile-menu-btn');
+      if (dropdown && !dropdown.classList.contains('open')) {
+        dropdown.classList.add('open');
+        if (menuBtn) menuBtn.classList.add('open');
+      }
+      target = document.querySelector(`.mobile-dropdown-btn${step.target}`);
+    } else {
+      target = document.querySelector(step.target);
+    }
     const spotlight = document.getElementById('tour-spotlight');
     const tooltip = document.getElementById('tour-tooltip');
 
@@ -137,7 +151,8 @@ const GuidedTour = {
 
     // Also handle sidebar targets: if target is on the left side, position to the right of it
     const isSidebar = rect.right < 200;
-    if (isSidebar) {
+    const isMobileDropdown = !!tooltip.closest('body')?.querySelector('.mobile-dropdown.open');
+    if (isSidebar && !isMobileDropdown) {
       tooltip.style.left = (rect.right + gap) + 'px';
       tooltip.style.top = Math.max(16, Math.min(rect.top, vh - tH - 16)) + 'px';
       tooltip.style.transform = '';
@@ -173,5 +188,10 @@ const GuidedTour = {
     this._active = false;
     localStorage.setItem('showboat_tour_complete', '1');
     if (this._overlay) { this._overlay.remove(); this._overlay = null; }
+    // Close mobile dropdown if it was opened by tour
+    const dropdown = document.getElementById('mobile-dropdown');
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    if (dropdown) dropdown.classList.remove('open');
+    if (menuBtn) menuBtn.classList.remove('open');
   }
 };
