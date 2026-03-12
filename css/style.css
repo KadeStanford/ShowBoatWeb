@@ -2357,6 +2357,14 @@ img.ep-friend-av { background: var(--slate-800); }
   .stat-number { font-size: 1.5rem; }
   .stat-label { font-size: .6875rem; }
 
+  /* Friend watched-all episode cards (mobile) */
+  .fw-ep-card { flex-direction: column; }
+  .fw-ep-backdrop-wrap { width: 100%; min-width: unset; }
+  .fw-ep-details { padding: 10px 14px 14px; }
+  .fw-ep-logo { max-height: 22px; max-width: 120px; }
+  .fw-section-tabs { gap: 4px; }
+  .fw-section-tab { padding: 6px 10px; font-size: 12px; }
+
   /* Friends / Activity */
   .friend-items { padding: 0 16px; }
   .search-result-items { padding: 0 16px; }
@@ -3133,6 +3141,30 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
 .fp-ep-badge { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 800; letter-spacing: .5px; background: rgba(0,0,0,.7); color: var(--accent, #34d399); padding: 3px 8px; border-radius: 6px; backdrop-filter: blur(6px); z-index: 1; }
 .fp-ep-info { padding: 6px 2px 0; }
 .fp-ep-show { font-size: 12px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, var(--slate-200)); line-height: 1.3; }
+
+/* Friend watched-all page — section tabs */
+.fw-section-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.fw-section-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.fw-section-tab:hover { background: rgba(255,255,255,.08); color: var(--text-primary); }
+.fw-section-tab.active { background: var(--accent, #34d399); color: #000; border-color: transparent; }
+.fw-tab-count { font-size: 11px; opacity: .7; font-weight: 700; }
+.fw-section-tab.active .fw-tab-count { opacity: .85; }
+
+/* Watched-all episode list */
+.fw-ep-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px; }
+.fw-ep-card { display: flex; gap: 12px; background: var(--surface-1, rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; overflow: hidden; cursor: pointer; transition: transform .2s, box-shadow .2s, background .2s; }
+.fw-ep-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.3); background: rgba(255,255,255,.06); }
+.fw-ep-backdrop-wrap { position: relative; width: 200px; min-width: 200px; aspect-ratio: 16/9; overflow: hidden; flex-shrink: 0; }
+.fw-ep-backdrop { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fw-ep-backdrop-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: var(--surface-2); }
+.fw-ep-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 100%); pointer-events: none; }
+.fw-ep-badge { position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 800; letter-spacing: .5px; background: rgba(0,0,0,.7); color: var(--accent, #34d399); padding: 2px 7px; border-radius: 5px; backdrop-filter: blur(6px); z-index: 1; }
+.fw-ep-details { display: flex; flex-direction: column; justify-content: center; padding: 12px 14px 12px 0; min-width: 0; flex: 1; gap: 4px; }
+.fw-ep-show-row { display: flex; align-items: center; min-height: 28px; }
+.fw-ep-logo { max-height: 28px; max-width: 160px; object-fit: contain; filter: brightness(0) invert(1); opacity: .9; }
+.fw-ep-show-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fw-ep-name { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.fw-ep-sub { font-size: 11px; color: var(--text-muted, var(--slate-500)); margin: 0; }
 
 .fp-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 

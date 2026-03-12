@@ -529,12 +529,14 @@ const FriendProfilePage = {
 
 // Full searchable watched list for a friend
 const FriendWatchedAllPage = {
-  state: { id: '', name: '', items: [], filtered: [], query: '', filter: 'all' },
+  state: { id: '', name: '', items: [], query: '', section: 'episodes', epMeta: {}, logoCache: {} },
   async render(params) {
     this.state.id = params.id;
     this.state.name = params.name || 'Friend';
     this.state.query = '';
-    this.state.filter = 'all';
+    this.state.section = 'episodes';
+    this.state.epMeta = {};
+    this.state.logoCache = {};
     const el = document.getElementById('page-content');
     el.innerHTML = `<div class="fp-all-page">${UI.pageHeader(`${UI.escapeHtml(this.state.name)}'s Watched`, true)}<div id="fw-content">${UI.loading()}</div></div>`;
     try {
@@ -544,79 +546,158 @@ const FriendWatchedAllPage = {
       ]);
       this.state.items = items.sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0));
       this.state.myWatchedIds = new Set(myW.map(x => String(x.tmdbId)));
-      this.state.filtered = [...this.state.items];
       this.draw();
+      this._enrichEpisodes();
     } catch (e) { document.getElementById('fw-content').innerHTML = UI.emptyState('Error', e.message); }
   },
+
+  _splitItems() {
+    const { items, query } = this.state;
+    let all = [...items];
+    if (query) all = all.filter(i => (i.name || i.mediaTitle || '').toLowerCase().includes(query.toLowerCase()));
+    const episodes = all.filter(i => i.seasonNumber != null && i.episodeNumber != null);
+    const movies = all.filter(i => i.mediaType === 'movie');
+    // Shows: dedupe episodes into unique series
+    const showMap = new Map();
+    episodes.forEach(ep => {
+      const id = ep.tmdbId;
+      if (!showMap.has(id)) showMap.set(id, { tmdbId: id, name: ep.name || ep.mediaTitle || '', posterPath: ep.posterPath, backdropPath: ep.backdropPath, mediaType: 'tv', episodes: [] });
+      showMap.get(id).episodes.push(ep);
+    });
+    // Also include any tv items that aren't episodes (show-level marks)
+    all.filter(i => i.mediaType !== 'movie' && !(i.seasonNumber != null && i.episodeNumber != null)).forEach(i => {
+      const id = i.tmdbId;
+      if (!showMap.has(id)) showMap.set(id, { tmdbId: id, name: i.name || i.mediaTitle || '', posterPath: i.posterPath, backdropPath: i.backdropPath, mediaType: 'tv', episodes: [] });
+    });
+    const shows = [...showMap.values()].sort((a, b) => b.episodes.length - a.episodes.length);
+    return { episodes, shows, movies };
+  },
+
+  async _enrichEpisodes() {
+    const { items, epMeta, logoCache } = this.state;
+    const episodes = items.filter(i => i.seasonNumber != null && i.episodeNumber != null);
+    // Group by show+season for batch fetching
+    const seasonKeys = new Map();
+    episodes.forEach(ep => {
+      const key = `${ep.tmdbId}:${ep.seasonNumber}`;
+      if (!seasonKeys.has(key)) seasonKeys.set(key, { showId: ep.tmdbId, season: ep.seasonNumber });
+    });
+    // Fetch unique logos
+    const uniqueShows = [...new Set(episodes.map(e => e.tmdbId))];
+    const logoPromises = uniqueShows.slice(0, 20).map(async id => {
+      try {
+        const logo = await API.fetchLogo(id, 'tv');
+        if (logo) logoCache[id] = logo;
+      } catch (_) {}
+    });
+    // Fetch season data (episode names) - limit concurrent requests
+    const seasonEntries = [...seasonKeys.values()].slice(0, 30);
+    const seasonPromises = seasonEntries.map(async ({ showId, season }) => {
+      try {
+        const eps = await API.getSeasonEpisodes(showId, season);
+        eps.forEach(e => { epMeta[`${showId}:s${season}:e${e.episode_number}`] = { name: e.name, still: e.still_path, runtime: e.runtime }; });
+      } catch (_) {}
+    });
+    await Promise.all([...logoPromises, ...seasonPromises]);
+    this.state.epMeta = epMeta;
+    this.state.logoCache = logoCache;
+    this.draw();
+  },
+
   draw() {
     const el = document.getElementById('fw-content');
     if (!el) return;
-    const { filtered, items, query, filter, id, name, myWatchedIds } = this.state;
+    const { query, section, name, myWatchedIds, epMeta, logoCache } = this.state;
+    const { episodes, shows, movies } = this._splitItems();
+
+    const sectionTabs = [
+      { key: 'episodes', label: `Episodes`, count: episodes.length, icon: 'play' },
+      { key: 'shows', label: `Shows`, count: shows.length, icon: 'tv' },
+      { key: 'movies', label: `Movies`, count: movies.length, icon: 'film' }
+    ];
+
+    let content = '';
+    if (section === 'episodes') {
+      content = episodes.length ? `<div class="fw-ep-list">${episodes.map(ep => {
+        const tmdbId = ep.tmdbId;
+        const epKey = `${tmdbId}:s${ep.seasonNumber}:e${ep.episodeNumber}`;
+        const meta = epMeta[epKey] || {};
+        const epLabel = `S${String(ep.seasonNumber).padStart(2,'0')}E${String(ep.episodeNumber).padStart(2,'0')}`;
+        const backdrop = (ep.backdropPath || meta.still) ? API.imageUrl(meta.still || ep.backdropPath, meta.still ? 'w780' : 'w780') : (ep.posterPath ? API.imageUrl(ep.posterPath, 'w342') : '');
+        const logo = logoCache[tmdbId];
+        const showName = ep.name || ep.mediaTitle || '';
+        const epName = meta.name || '';
+        const runtime = meta.runtime ? `${meta.runtime}m` : '';
+        const bothWatched = myWatchedIds && myWatchedIds.has(String(tmdbId));
+        const timeAgo = ep.watchedAt ? UI.timeAgo(ep.watchedAt) : '';
+        return `<div class="fw-ep-card" onclick="App.navigate('details',{id:${tmdbId},type:'tv'})">
+          <div class="fw-ep-backdrop-wrap">
+            ${backdrop ? `<img src="${backdrop}" class="fw-ep-backdrop" alt="" loading="lazy">` : `<div class="fw-ep-backdrop-ph">${UI.icon('tv', 32)}</div>`}
+            <div class="fw-ep-gradient"></div>
+            <span class="fw-ep-badge">${epLabel}</span>
+            ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+          </div>
+          <div class="fw-ep-details">
+            <div class="fw-ep-show-row">
+              ${logo ? `<img src="${API.imageUrl(logo, 'w185')}" class="fw-ep-logo" alt="">` : `<span class="fw-ep-show-name">${UI.escapeHtml(showName)}</span>`}
+            </div>
+            ${epName ? `<p class="fw-ep-name">${UI.escapeHtml(epName)}</p>` : ''}
+            <div class="fw-ep-sub">${[epLabel, runtime, timeAgo].filter(Boolean).join(' · ')}</div>
+          </div>
+        </div>`;
+      }).join('')}</div>` : `<div class="fp-empty">${UI.icon('play', 28)}<p>No episodes watched</p></div>`;
+    }
+
+    if (section === 'shows') {
+      content = shows.length ? `<div class="fp-card-grid">${shows.map(s => {
+        const poster = s.posterPath ? API.imageUrl(s.posterPath, 'w342') : '';
+        const bothWatched = myWatchedIds && myWatchedIds.has(String(s.tmdbId));
+        const epCount = s.episodes.length;
+        return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${s.tmdbId},type:'tv'})">
+          <div class="fp-grid-poster-wrap">
+            ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('tv', 24)}</div>`}
+            ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+            ${epCount ? `<span class="fp-grid-type">${epCount} ep${epCount !== 1 ? 's' : ''}</span>` : `<span class="fp-grid-type">TV</span>`}
+          </div>
+          <p class="fp-grid-title">${UI.escapeHtml(s.name)}</p>
+        </div>`;
+      }).join('')}</div>` : `<div class="fp-empty">${UI.icon('tv', 28)}<p>No shows watched</p></div>`;
+    }
+
+    if (section === 'movies') {
+      content = movies.length ? `<div class="fp-card-grid">${movies.map(m => {
+        const poster = m.posterPath ? API.imageUrl(m.posterPath, 'w342') : '';
+        const bothWatched = myWatchedIds && myWatchedIds.has(String(m.tmdbId));
+        return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${m.tmdbId},type:'movie'})">
+          <div class="fp-grid-poster-wrap">
+            ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+            ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+            <span class="fp-grid-type">Movie</span>
+          </div>
+          <p class="fp-grid-title">${UI.escapeHtml(m.name || m.mediaTitle || '')}</p>
+        </div>`;
+      }).join('')}</div>` : `<div class="fp-empty">${UI.icon('film', 28)}<p>No movies watched</p></div>`;
+    }
+
     el.innerHTML = `
       <div class="fw-controls">
         <div class="search-bar" style="margin-bottom:8px">
           ${UI.icon('search', 18)}
-          <input type="text" placeholder="Search ${UI.escapeHtml(name)}'s watched list..." value="${UI.escapeHtml(query)}" oninput="FriendWatchedAllPage.search(this.value)" id="fw-search">
+          <input type="text" placeholder="Search ${UI.escapeHtml(name)}'s watched..." value="${UI.escapeHtml(query)}" oninput="FriendWatchedAllPage.search(this.value)" id="fw-search">
         </div>
-        <div class="filter-tabs">
-          ${['all','movie','tv'].map(f => `<button class="filter-tab ${filter===f?'active':''}" onclick="FriendWatchedAllPage.setFilter('${f}')">${f==='all'?'All':f==='movie'?'Movies':'TV'}</button>`).join('')}
-          <button class="filter-tab ${filter==='both'?'active':''}" onclick="FriendWatchedAllPage.setFilter('both')">${UI.icon('check', 12)} Both Watched</button>
+        <div class="fw-section-tabs">
+          ${sectionTabs.map(t => `<button class="fw-section-tab ${section === t.key ? 'active' : ''}" onclick="FriendWatchedAllPage.setSection('${t.key}')">${UI.icon(t.icon, 14)} ${t.label} <span class="fw-tab-count">${t.count}</span></button>`).join('')}
         </div>
       </div>
-      <p class="fw-count">${filtered.length} item${filtered.length !== 1 ? 's' : ''}</p>
-      <div class="fp-card-grid">
-        ${filtered.map(i => {
-          const posterPath = i.posterPath || i.mediaPosterPath || '';
-          const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
-          const tmdbId = i.tmdbId;
-          const bothWatched = myWatchedIds && myWatchedIds.has(String(tmdbId));
-          const isEpisode = i.seasonNumber != null && i.episodeNumber != null;
-
-          if (isEpisode) {
-            const backdrop = (i.backdropPath || posterPath) ? API.imageUrl(i.backdropPath || posterPath, i.backdropPath ? 'w780' : 'w342') : '';
-            const epLabel = `S${String(i.seasonNumber).padStart(2,'0')}E${String(i.episodeNumber).padStart(2,'0')}`;
-            return `<div class="fp-ep-card" onclick="App.navigate('details',{id:${tmdbId},type:'tv'})">
-              <div class="fp-ep-backdrop-wrap">
-                ${backdrop ? `<img src="${backdrop}" class="fp-ep-backdrop" alt="" loading="lazy">` : `<div class="fp-ep-backdrop-ph">${UI.icon('tv', 28)}</div>`}
-                <div class="fp-ep-gradient"></div>
-                <span class="fp-ep-badge">${epLabel}</span>
-                ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
-              </div>
-              <div class="fp-ep-info">
-                <p class="fp-ep-show">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
-              </div>
-            </div>`;
-          }
-
-          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
-          return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
-            <div class="fp-grid-poster-wrap">
-              ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
-              ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
-              <span class="fp-grid-type">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
-            </div>
-            <p class="fp-grid-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
-          </div>`;
-        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1">No results</div>`}
-      </div>
+      ${content}
     `;
   },
   search(q) {
     this.state.query = q;
-    this._applyFilter();
+    this.draw();
   },
-  setFilter(f) {
-    this.state.filter = f;
-    this._applyFilter();
-  },
-  _applyFilter() {
-    const { items, query, filter, myWatchedIds } = this.state;
-    let result = [...items];
-    if (query) result = result.filter(i => (i.name || i.mediaTitle || '').toLowerCase().includes(query.toLowerCase()));
-    if (filter === 'movie') result = result.filter(i => i.mediaType === 'movie');
-    if (filter === 'tv') result = result.filter(i => i.mediaType !== 'movie');
-    if (filter === 'both') result = result.filter(i => myWatchedIds && myWatchedIds.has(String(i.tmdbId)));
-    this.state.filtered = result;
+  setSection(s) {
+    this.state.section = s;
     this.draw();
   }
 };
