@@ -12,3 +12,11 @@ android/.gradle/
 android/build/
 ios/App/build/
 ios/App/Pods/
+
+# Signing secrets
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+ios/App/ExportOptions.plist
+android/keystore.properties
