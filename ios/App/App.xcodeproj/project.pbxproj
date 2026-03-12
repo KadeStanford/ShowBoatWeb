@@ -18,7 +18,7 @@
 		AA000001300000000000001A /* NativeLoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001300000000000001F /* NativeLoginViewController.swift */; };
 		AA000001300000000000001B /* NativeAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000130000000000000AF /* NativeAuthPlugin.swift */; };
 		AA000001300000000000001C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AA00000130000000000000BF /* GoogleService-Info.plist */; };
-		AA000001300000000000001D /* BridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000130000000000000CF /* BridgeViewController.swift */; };
+		AA000001300000000000001D /* BridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000130000000000000EF /* BridgeViewController.swift */; };
 		AA000001300000000000002A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AA000001300000000000002F /* FirebaseAuth */; };
 		AA000001300000000000003A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AA000001300000000000003F /* GoogleSignIn */; };
 		AA000001300000000000004A /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = AA000001300000000000004F /* GoogleSignInSwift */; };
@@ -38,8 +38,8 @@
 		AA000001300000000000001F /* NativeLoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLoginViewController.swift; sourceTree = "<group>"; };
 		AA00000130000000000000AF /* NativeAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthPlugin.swift; sourceTree = "<group>"; };
 		AA00000130000000000000BF /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		AA00000130000000000000CF /* BridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeViewController.swift; sourceTree = "<group>"; };
-		AA00000130000000000000DF /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		AA00000130000000000000EF /* BridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeViewController.swift; sourceTree = "<group>"; };
+		AA00000130000000000000FF /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,9 +81,9 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				AA000001300000000000001F /* NativeLoginViewController.swift */,
 				AA00000130000000000000AF /* NativeAuthPlugin.swift */,
-				AA00000130000000000000CF /* BridgeViewController.swift */,
+				AA00000130000000000000EF /* BridgeViewController.swift */,
 				AA00000130000000000000BF /* GoogleService-Info.plist */,
-				AA00000130000000000000DF /* App.entitlements */,
+				AA00000130000000000000FF /* App.entitlements */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
