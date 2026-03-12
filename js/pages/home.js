@@ -580,7 +580,7 @@ const HomePage = {
     const THRESHOLD = 80;
 
     content.addEventListener('touchstart', e => {
-      if (content.scrollTop <= 0) {
+      if (content.scrollTop < 1) {
         startY = e.touches[0].clientY;
         pulling = true;
       }
@@ -588,8 +588,10 @@ const HomePage = {
 
     content.addEventListener('touchmove', e => {
       if (!pulling) return;
+      // Abort if user has scrolled down at all (iOS elastic overscroll gives negative scrollTop)
+      if (content.scrollTop > 1) { pulling = false; indicator.classList.remove('pulling'); return; }
       const dy = e.touches[0].clientY - startY;
-      if (dy > 10 && content.scrollTop <= 0) {
+      if (dy > 20 && content.scrollTop < 1) {
         indicator.classList.add('pulling');
         indicator.querySelector('span').textContent = dy > THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
       } else {
@@ -601,7 +603,7 @@ const HomePage = {
       if (!pulling) return;
       const dy = e.changedTouches[0].clientY - startY;
       pulling = false;
-      if (dy > THRESHOLD && content.scrollTop <= 0) {
+      if (dy > THRESHOLD && content.scrollTop < 1) {
         indicator.classList.remove('pulling');
         indicator.classList.add('refreshing');
         indicator.querySelector('span').textContent = 'Refreshing...';

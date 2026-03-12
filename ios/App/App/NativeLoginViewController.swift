@@ -87,23 +87,8 @@ class NativeLoginViewController: UIViewController {
         let logoImageView = UIImageView(image: UIImage(named: "LoginLogo"))
         logoImageView.contentMode = .scaleAspectFit
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
-        logoImageView.heightAnchor.constraint(equalToConstant: 80).isActive = true
-        logoImageView.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        logoImageView.heightAnchor.constraint(equalToConstant: 100).isActive = true
         stack.addArrangedSubview(logoImageView)
-
-        let title = UILabel()
-        title.text = "ShowBoat"
-        title.font = .systemFont(ofSize: 34, weight: .bold)
-        title.textColor = .white
-        title.textAlignment = .center
-        stack.addArrangedSubview(title)
-
-        let subtitle = UILabel()
-        subtitle.text = "TV & Movies"
-        subtitle.font = .systemFont(ofSize: 16, weight: .medium)
-        subtitle.textColor = slate400
-        subtitle.textAlignment = .center
-        stack.addArrangedSubview(subtitle)
 
         stack.addArrangedSubview(spacer(32))
 

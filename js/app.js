@@ -265,8 +265,8 @@ const App = {
     indicator.innerHTML = '<div class="swipe-back-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></div>';
     document.body.appendChild(indicator);
 
-    const EDGE_ZONE = 24; // px from left edge to start detecting
-    const THRESHOLD = 80; // px drag distance to trigger back
+    const EDGE_ZONE = 30; // px from left edge to start detecting
+    const THRESHOLD = 100; // px drag distance to trigger back
     let startX = 0, startY = 0, tracking = false, triggered = false;
 
     document.addEventListener('touchstart', e => {
@@ -284,8 +284,10 @@ const App = {
       const dx = e.touches[0].clientX - startX;
       const dy = Math.abs(e.touches[0].clientY - startY);
       // Cancel if vertical scroll dominates
-      if (dy > 50 && dy > dx) { tracking = false; indicator.classList.remove('active'); return; }
+      if (dy > 30 && dy > dx * 0.7) { tracking = false; indicator.classList.remove('active'); return; }
       if (dx > 20) {
+        const progress = Math.min(dx / THRESHOLD, 1);
+        indicator.style.opacity = String(progress);
         indicator.classList.add('active');
         if (dx > THRESHOLD && !triggered) triggered = true;
       } else {
@@ -301,6 +303,7 @@ const App = {
       tracking = false;
       triggered = false;
       indicator.classList.remove('active');
+      indicator.style.opacity = '';
     }, { passive: true });
   },
 

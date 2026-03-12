@@ -62,5 +62,7 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>ShowBoat uses Face ID to sign you in quickly and securely.</string>
 </dict>
 </plist>
