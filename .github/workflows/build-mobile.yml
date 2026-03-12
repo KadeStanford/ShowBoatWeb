@@ -211,6 +211,7 @@ jobs:
         working-directory: ios/App
         run: |
           PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< $(security cms -D -i $RUNNER_TEMP/profile.mobileprovision))
+          echo "Provisioning Profile UUID: $PP_UUID"
           xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
@@ -221,7 +222,8 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            PROVISIONING_PROFILE_SPECIFIER="ShowBoat AppStore Profile"
+            PROVISIONING_PROFILE="$PP_UUID" \
+            -allowProvisioningUpdates
 
       - name: Export IPA
         working-directory: ios/App
