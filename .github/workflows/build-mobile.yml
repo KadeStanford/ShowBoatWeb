@@ -158,6 +158,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Auto-bump iOS build number
+        run: |
+          PBXPROJ="ios/App/App.xcodeproj/project.pbxproj"
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = ${{ github.run_number }}/g" "$PBXPROJ"
+          echo "Set CURRENT_PROJECT_VERSION to ${{ github.run_number }}"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
