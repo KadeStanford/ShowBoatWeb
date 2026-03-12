@@ -477,9 +477,46 @@ const HomePage = {
     clearInterval(this.state.timer);
     if (this.state.featured.length <= 1) return;
     this.state.timer = setInterval(() => this.nextSlide(), 5000);
+    this._initSwipe();
+  },
+
+  _initSwipe() {
+    const carousel = document.querySelector('.hero-carousel');
+    if (!carousel) return;
+    let startX = 0, startY = 0, dragging = false;
+    const swiped = () => { this._swiped = true; setTimeout(() => { this._swiped = false; }, 300); };
+    carousel.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dragging = true;
+    }, { passive: true });
+    carousel.addEventListener('touchend', e => {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
+      swiped();
+      if (dx < 0) this.nextSlide(); else this.prevSlide();
+    }, { passive: true });
+    // Also support pointer events for desktop touch
+    carousel.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse') return;
+      startX = e.clientX; startY = e.clientY; dragging = true;
+    });
+    carousel.addEventListener('pointerup', e => {
+      if (e.pointerType === 'mouse' || !dragging) return;
+      dragging = false;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
+      swiped();
+      if (dx < 0) this.nextSlide(); else this.prevSlide();
+    });
   },
 
   onHeroClick() {
+    if (this._swiped) return;
     const item = this.state.featured[this.state.current];
     if (item) App.navigate('details', { id: item.id, type: item.media_type });
   },

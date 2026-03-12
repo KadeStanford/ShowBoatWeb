@@ -2285,13 +2285,8 @@ img.ep-friend-av { background: var(--slate-800); }
 }
 
 /* Respect reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  *:not(.hero-slide):not(.hero-slide-content), *:not(.hero-slide):not(.hero-slide-content)::before, *:not(.hero-slide):not(.hero-slide-content)::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+/* prefers-reduced-motion: we rely on Web Animations API for entrance
+   animations (unaffected by this rule) so no blanket kill needed. */
 
 /* =============================================
    MOBILE RESPONSIVE — Full content layout

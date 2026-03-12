@@ -179,21 +179,27 @@ const App = {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
 
-    // Render page — instant swap, let JS Animate handle entrance
+    // Render page — use Web Animations API for smooth crossfade
     const el = document.getElementById('page-content');
-    el.style.opacity = '0';
+    // Cancel any in-flight page animation
+    if (this._pageAnim) { this._pageAnim.cancel(); this._pageAnim = null; }
+    el.style.opacity = '1';
     const result = route.render(params);
     if (typeof result === 'string') el.innerHTML = result;
-    requestAnimationFrame(() => { el.style.opacity = ''; });
-
-    // Scroll to top
-    el.scrollTop = 0;
-    window.scrollTo(0, 0);
-
-    // Trigger entrance animations
-    if (typeof Animate !== 'undefined') {
-      requestAnimationFrame(() => Animate.afterPageRender());
-    }
+    const done = (result && typeof result.then === 'function') ? result : Promise.resolve();
+    done.then(() => {
+      // Scroll to top
+      el.scrollTop = 0;
+      window.scrollTo(0, 0);
+      // Animate entrance via Web Animations API (not affected by reduced-motion CSS)
+      this._pageAnim = el.animate(
+        [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }],
+        { duration: 250, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }
+      );
+      if (typeof Animate !== 'undefined') {
+        requestAnimationFrame(() => Animate.afterPageRender());
+      }
+    });
   },
 
   // Root pages that clear navigation pileup — going to these always resets history
