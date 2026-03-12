@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://www.showboat.me", "https://showboat.me", "http://localhost:5000"],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Content-Length"]
+  }
+]

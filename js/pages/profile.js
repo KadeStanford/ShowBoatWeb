@@ -968,27 +968,46 @@ const ProfilePage = {
   _loadImg(url) {
     return new Promise((resolve, reject) => {
       const img = new Image(); img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        // Firebase Storage may block CORS — retry without crossOrigin
+        // (image loads fine but taints the canvas for export)
+        if (url && url.includes('firebasestorage.googleapis.com')) {
+          const img2 = new Image();
+          img2.onload = () => resolve(img2);
+          img2.onerror = reject;
+          img2.src = url;
+        } else {
+          reject(new Error('Image load failed'));
+        }
+      };
+      img.src = url;
     });
   },
 
   _downloadShareCard() {
     const canvas = document.getElementById('share-card-canvas');
     if (!canvas) return;
-    canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `showboat-${this._shareCardState?.type === 'invite' ? 'invite' : 'profile'}-card.png`;
-      a.click(); URL.revokeObjectURL(url);
-    }, 'image/png');
+    try {
+      canvas.toBlob(blob => {
+        if (!blob) { UI.toast('Could not export card', 'error'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `showboat-${this._shareCardState?.type === 'invite' ? 'invite' : 'profile'}-card.png`;
+        a.click(); URL.revokeObjectURL(url);
+      }, 'image/png');
+    } catch (_) {
+      UI.toast('Canvas tainted by cross-origin image — try removing your profile photo or updating CORS settings', 'error');
+    }
   },
 
   async _shareShareCard() {
     const canvas = document.getElementById('share-card-canvas');
     if (!canvas) return;
     try {
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const blob = await new Promise((res, rej) => { try { canvas.toBlob(b => res(b), 'image/png'); } catch (e) { rej(e); } });
+      if (!blob) { UI.toast('Could not export card', 'error'); return; }
       const file = new File([blob], 'showboat-card.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         const st = this._shareCardState;
