@@ -757,9 +757,17 @@ const Services = {
     const episodes = Math.max(watchedEpisodes, plexEpisodes);
     const movies   = Math.max(watchedMovies,   plexMovies);
 
-    // Unique TV shows that have at least one watched episode
+    // Unique TV shows (episode-level + show-level entries + Plex history)
     const showIds = new Set();
-    watchedSnap.docs.forEach(d => { if (epPattern.test(d.id)) showIds.add(d.id.split(':')[1]); });
+    const showLevelPattern = /^tv:(\d+)$/;
+    watchedSnap.docs.forEach(d => {
+      if (epPattern.test(d.id)) showIds.add(d.id.split(':')[1]);
+      else { const m = showLevelPattern.exec(d.id); if (m) showIds.add(m[1]); }
+    });
+    plexSnap.docs.forEach(d => {
+      const data = d.data();
+      if (data.type === 'show' && data.tmdbId) showIds.add(String(data.tmdbId));
+    });
     const completed = showIds.size;
 
     // Plex connection status
