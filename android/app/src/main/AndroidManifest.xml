@@ -33,9 +33,50 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Stats Widget -->
+        <receiver
+            android:name=".StatsWidgetProvider"
+            android:exported="true"
+            android:label="ShowBoat Stats">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stats_info" />
+        </receiver>
+
+        <!-- Up Next Widget -->
+        <receiver
+            android:name=".UpNextWidgetProvider"
+            android:exported="true"
+            android:label="ShowBoat Up Next">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_upnext_info" />
+        </receiver>
+
+        <!-- Recent Ratings Widget -->
+        <receiver
+            android:name=".RecentWidgetProvider"
+            android:exported="true"
+            android:label="ShowBoat Ratings">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_recent_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

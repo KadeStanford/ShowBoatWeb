@@ -4,4 +4,7 @@
     <string name="title_activity_main">ShowBoat</string>
     <string name="package_name">me.showboat.app</string>
     <string name="custom_url_scheme">me.showboat.app</string>
+    <string name="widget_stats_desc">Your ShowBoat stats at a glance — episodes, movies, shows, ratings, watchlist, and friends.</string>
+    <string name="widget_upnext_desc">See what\'s next on your ShowBoat watchlist.</string>
+    <string name="widget_recent_desc">Your latest ShowBoat ratings with star scores.</string>
 </resources>

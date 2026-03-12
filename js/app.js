@@ -43,6 +43,9 @@ const App = {
   signupInProgress: false,
 
   init() {
+    // Initialize native bridge (Capacitor plugins)
+    if (typeof Native !== 'undefined') Native.init();
+
     // Listen for auth state changes
     auth.onAuthStateChanged(async user => {
       this.user = user;
@@ -83,6 +86,8 @@ const App = {
         setTimeout(() => checkAndNotifyNewBadges().catch(() => {}), 3000);
         // Auto-start guided tour for new users
         setTimeout(() => { if (typeof GuidedTour !== 'undefined' && GuidedTour.shouldAutoStart()) GuidedTour.start(); }, 1500);
+        // Sync widget data after login
+        if (typeof Native !== 'undefined') setTimeout(() => Native.syncWidgetData(), 2000);
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);
@@ -140,6 +145,9 @@ const App = {
   navigate(page, params, _isBack) {
     const route = this.routes[page];
     if (!route) { console.warn('Unknown route:', page); return; }
+
+    // Haptic feedback on navigation
+    if (typeof Native !== 'undefined') Native.haptics.impact('Light');
 
     // Auth guard
     if (route.auth && !this.user) { this.navigate('landing'); return; }

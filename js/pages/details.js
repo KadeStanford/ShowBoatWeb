@@ -278,6 +278,7 @@ const DetailsPage = {
     const d = this.state.details;
     const item = { id: Number(this.state.id), name: d.name || d.title, posterPath: d.poster_path, mediaType: this.state.type };
     this.state.inWatchlist = !this.state.inWatchlist;
+    if (typeof Native !== 'undefined') Native.haptics.impact('Medium');
     if (this.state.inWatchlist) { await Services.addToWatchlist(item); UI.toast('Added to watchlist', 'success'); }
     else { await Services.removeFromWatchlist(this.state.id); UI.toast('Removed from watchlist', 'success'); }
     const btn = document.querySelector('.actions-row .action-btn:first-child');
@@ -436,7 +437,10 @@ const DetailsPage = {
     await Services.rateEpisode(this.state.id, ep.season_number, ep.episode_number, this._epRating, comment, {
       showName: d.name || d.title, posterPath: d.poster_path, episodeName: ep.name
     });
+    if (typeof Native !== 'undefined') Native.haptics.notification('Success');
     UI.toast('Episode rating saved!', 'success');
+    // Sync widget data after rating
+    if (typeof Native !== 'undefined') Native.syncWidgetData();
   },
 
   async _loadFriendEpisodeRatings(season, episode) {

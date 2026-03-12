@@ -1005,6 +1005,7 @@ const ProfilePage = {
   async _shareShareCard() {
     const canvas = document.getElementById('share-card-canvas');
     if (!canvas) return;
+    if (typeof Native !== 'undefined') Native.haptics.impact('Light');
     try {
       const blob = await new Promise((res, rej) => { try { canvas.toBlob(b => res(b), 'image/png'); } catch (e) { rej(e); } });
       if (!blob) { UI.toast('Could not export card', 'error'); return; }

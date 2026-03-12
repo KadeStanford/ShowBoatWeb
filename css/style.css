@@ -3674,3 +3674,20 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
   .np-title { font-size: 1.25rem; }
   .np-subtitle-text { font-size: .9375rem; }
 }
+
+/* ============================================================
+   NATIVE APP — Capacitor Adjustments
+   ============================================================ */
+
+/* Keyboard open — push content up away from keyboard */
+body.keyboard-open .bottom-nav { display: none; }
+body.keyboard-open #main-content { padding-bottom: var(--keyboard-height, 0px); }
+
+/* Safe area insets for notch devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .top-bar, .sidebar-nav { padding-top: env(safe-area-inset-top); }
+  .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Capacitor native — disable overscroll bounce */
+html.native-app { overscroll-behavior: none; }

@@ -1,14 +1,15 @@
-const CACHE_NAME = 'showboat-v77';
+const CACHE_NAME = 'showboat-v78';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/style.css?v=26',
+  '/css/style.css?v=27',
   '/js/firebase-config.js',
   '/js/api.js',
   '/js/services.js',
   '/js/badges.js',
   '/js/components.js',
   '/js/animations.js',
+  '/js/native.js',
   '/js/pages/auth.js',
   '/js/pages/home.js',
   '/js/pages/discover.js',
