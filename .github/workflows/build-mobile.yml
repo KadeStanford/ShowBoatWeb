@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Install dependencies
         run: npm ci
@@ -81,11 +81,12 @@ jobs:
         working-directory: ios/App
         run: |
           xcodebuild build \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
+            -clonedSourcePackagesDirPath ../../.spm-cache \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Upload iOS build
@@ -108,7 +109,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Install dependencies
         run: npm ci
@@ -205,11 +206,12 @@ jobs:
         working-directory: ios/App
         run: |
           xcodebuild archive \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath build/ShowBoat.xcarchive \
             -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath ../../.spm-cache \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
 
