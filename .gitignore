@@ -20,3 +20,4 @@ ios/App/Pods/
 *.mobileprovision
 ios/App/ExportOptions.plist
 android/keystore.properties
+apple-signing/
