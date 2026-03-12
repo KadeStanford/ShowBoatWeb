@@ -22,6 +22,22 @@ const HomePage = {
     this.state.trending.shows = trendTV.slice(0, 10);
     this.state.trending.movies = trendMov.slice(0, 10);
     this.state.shames = shames.slice(0, 10);
+    // Resolve any UID-based shamedName fields to actual usernames
+    const uidPattern = /^[A-Za-z0-9]{20,}$/;
+    await Promise.all(this.state.shames.map(async s => {
+      if (s.shamedName && uidPattern.test(s.shamedName)) {
+        try {
+          const p = await Services.getUserProfile(s.shamedName);
+          if (p?.username || p?.displayName) s.shamedName = p.username || p.displayName;
+        } catch (_) {}
+      }
+      if (!s.shamedName && s.shamedUid) {
+        try {
+          const p = await Services.getUserProfile(s.shamedUid);
+          if (p?.username || p?.displayName) s.shamedName = p.username || p.displayName;
+        } catch (_) {}
+      }
+    }));
     // Build featured from trending
     const movies = trendMov.filter(m => m.backdrop_path).slice(0, 3);
     const shows = trendTV.filter(s => s.backdrop_path).slice(0, 3);
