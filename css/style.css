@@ -2791,11 +2791,38 @@ input[type="range"]::-moz-range-track {
 /* ============================================================
    FRIEND PROFILE PAGE
    ============================================================ */
-.fp-hero-banner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 16px 20px; background: linear-gradient(180deg, rgba(99,102,241,.12) 0%, rgba(99,102,241,.03) 60%, transparent 100%); border-bottom: 1px solid var(--border-subtle); }
-.fp-hero-avatar-wrap { margin-bottom: 12px; }
-.fp-avatar-img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--indigo-500); box-shadow: 0 4px 24px rgba(99,102,241,.25); }
-.fp-avatar-initial { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo-500), #a855f7); display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 800; color: #fff; border: 3px solid var(--indigo-500); box-shadow: 0 4px 24px rgba(99,102,241,.25); }
-.fp-name { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0 0 12px; }
+.fp-hero { padding: 20px 16px 16px; background: linear-gradient(180deg, rgba(99,102,241,.10) 0%, transparent 100%); border-bottom: 1px solid var(--border-subtle); }
+.fp-hero-top { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.fp-hero-avatar { flex-shrink: 0; }
+.fp-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--indigo-500); box-shadow: 0 4px 20px rgba(99,102,241,.22); }
+.fp-avatar-initial { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo-500), #a855f7); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 800; color: #fff; border: 2.5px solid var(--indigo-500); box-shadow: 0 4px 20px rgba(99,102,241,.22); }
+.fp-hero-info { flex: 1; min-width: 0; }
+.fp-name { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-stats-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fp-stat { font-size: .8125rem; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 3px; }
+.fp-stat strong { color: var(--text-primary); font-weight: 700; }
+.fp-stat-sep { color: var(--text-muted); font-size: .75rem; }
+.fp-stats-sub { margin-top: 3px; }
+.fp-stats-sub .fp-stat { font-size: .75rem; color: var(--text-muted); }
+.fp-hero-actions { display: flex; gap: 8px; }
+.fp-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-subtle); background: var(--surface-1, var(--bg-secondary)); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.fp-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.fp-action-primary { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.25); color: var(--indigo-400, #818cf8); }
+.fp-action-primary:hover { background: rgba(99,102,241,.18); border-color: rgba(99,102,241,.45); color: var(--indigo-300, #a5b4fc); }
+.fp-report-btn { flex: 0 0 auto; padding: 8px 10px; color: var(--text-muted); }
+.fp-report-btn:hover { color: #ef4444; border-color: rgba(239,68,68,.3); }
+
+/* Friend Profile Badges */
+.fp-badges-section { padding: 12px 16px 4px; }
+.fp-badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.fp-badge-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px 10px; background: var(--bg-secondary, var(--surface-1)); border: 1px solid var(--border-subtle); border-radius: 14px; text-align: center; transition: all 0.2s; cursor: default; position: relative; overflow: hidden; }
+.fp-badge-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--badge-color); opacity: 0.7; }
+.fp-badge-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.25); border-color: var(--badge-color); }
+.fp-badge-icon { font-size: 1.5rem; line-height: 1; }
+.fp-badge-name { font-size: .6875rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.fp-badge-tier { font-size: .625rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+/* Friend Profile — stat pills (legacy compat) */
 .fp-stat-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 16px; }
 .fp-stat-pill { display: flex; flex-direction: column; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 8px 14px; min-width: 52px; }
 .fp-stat-val { font-size: 1.125rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
@@ -2803,12 +2830,6 @@ input[type="range"]::-moz-range-track {
 .fp-body { padding: 0 0 80px; }
 .fp-section { padding: 20px 16px 8px; }
 .fp-section-label { display: flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 0 16px; margin: 0 0 10px; }
-.fp-badges-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.fp-badge-chip { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 8px 14px; cursor: default; transition: box-shadow var(--transition); }
-.fp-badge-chip:hover { box-shadow: 0 2px 12px rgba(0,0,0,.2); }
-.fp-badge-tier-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.fp-badge-emoji { font-size: 1.375rem; }
-.fp-badge-chip-name { font-size: .875rem; font-weight: 600; color: var(--text-primary); }
 .fp-activity-list { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
 .fp-act-row { display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: all var(--transition); }
 .fp-act-row:hover { border-color: rgba(99,102,241,.35); background: rgba(99,102,241,.06); }
@@ -3051,18 +3072,8 @@ input[type="range"]::-moz-range-track {
 .plex-watched-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 
 /* ============================================================
-   FRIEND PROFILE — BADGES, TABS, SECTIONS
+   FRIEND PROFILE — TABS, SECTIONS
    ============================================================ */
-.fp-badges-section { margin: 14px 0; }
-.fp-badges-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-.fp-badges-scroll::-webkit-scrollbar { display: none; }
-.fp-badge-pill { display: flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px 7px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; position: relative; }
-.fp-badge-pill:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-.fp-badge-pill-icon { font-size: 18px; flex-shrink: 0; }
-.fp-badge-pill-info { display: flex; flex-direction: column; }
-.fp-badge-pill-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.fp-badge-pill-tier { font-size: 10px; color: var(--text-secondary); }
-.fp-badge-tier-ring { position: absolute; inset: -1px; border-radius: 999px; border: 2px solid transparent; pointer-events: none; }
 .fp-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .fp-action-btn { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
 .fp-action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(52,211,153,0.06); }

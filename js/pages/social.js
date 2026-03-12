@@ -279,44 +279,49 @@ const FriendProfilePage = {
     const shows = watched.length - movies;
 
     container.innerHTML = `
-      <div class="fp-hero-banner">
-        <div class="fp-hero-avatar-wrap">${avatarHtml}</div>
-        <h2 class="fp-name">${UI.escapeHtml(name)}</h2>
-        <div class="fp-stat-pills">
-          <div class="fp-stat-pill"><span class="fp-stat-val">${watched.length}</span><span class="fp-stat-lbl">Watched</span></div>
-          <div class="fp-stat-pill"><span class="fp-stat-val">${ratings.length}</span><span class="fp-stat-lbl">Rated</span></div>
-          <div class="fp-stat-pill"><span class="fp-stat-val">${watchlist.length}</span><span class="fp-stat-lbl">Watchlist</span></div>
-          <div class="fp-stat-pill"><span class="fp-stat-val">${movies}</span><span class="fp-stat-lbl">Movies</span></div>
-          <div class="fp-stat-pill"><span class="fp-stat-val">${shows}</span><span class="fp-stat-lbl">Shows</span></div>
+      <div class="fp-hero">
+        <div class="fp-hero-top">
+          <div class="fp-hero-avatar">${avatarHtml}</div>
+          <div class="fp-hero-info">
+            <h2 class="fp-name">${UI.escapeHtml(name)}</h2>
+            <div class="fp-stats-row">
+              <span class="fp-stat"><strong>${watched.length}</strong> watched</span>
+              <span class="fp-stat-sep">·</span>
+              <span class="fp-stat"><strong>${ratings.length}</strong> rated</span>
+              <span class="fp-stat-sep">·</span>
+              <span class="fp-stat"><strong>${watchlist.length}</strong> saved</span>
+            </div>
+            <div class="fp-stats-row fp-stats-sub">
+              <span class="fp-stat">${UI.icon('film', 12)} ${movies} movie${movies !== 1 ? 's' : ''}</span>
+              <span class="fp-stat-sep">·</span>
+              <span class="fp-stat">${UI.icon('tv', 12)} ${shows} show${shows !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
         </div>
         <div class="fp-hero-actions">
           <button class="fp-action-btn fp-action-primary" onclick="App.navigate('friend-analytics',{id:'${id}',name:'${UI.escapeHtml(name)}'})">
-            ${UI.icon('bar-chart-2', 16)} Analytics
+            ${UI.icon('bar-chart-2', 15)} Analytics
           </button>
           <button class="fp-action-btn" onclick="App.navigate('shared-actors',{friendId:'${id}',friendName:'${UI.escapeHtml(name)}'})">
-            ${UI.icon('users', 16)} Shared Actors
+            ${UI.icon('users', 15)} Actors
           </button>
           <button class="fp-action-btn" onclick="App.navigate('matcher-setup')">
-            ${UI.icon('zap', 16)} Match
+            ${UI.icon('zap', 15)} Match
           </button>
           <button class="fp-action-btn fp-report-btn" onclick="UI.showReportUserModal('${id}','${UI.escapeHtml(name)}')">
-            ${UI.icon('flag', 16)} Report
+            ${UI.icon('flag', 15)}
           </button>
         </div>
       </div>
 
       ${badges.length ? `
       <div class="fp-badges-section">
-        <div class="fp-section-label">${UI.icon('award', 14)} Badges</div>
-        <div class="fp-badges-scroll">${badges.map(b => {
+        <div class="fp-badges-grid">${badges.map(b => {
           const t = (typeof BADGE_TIERS !== 'undefined' ? BADGE_TIERS[b.tier] : null) || { color: '#d97706', bg: 'rgba(217,119,6,.1)' };
-          return `<div class="fp-badge-pill" style="--badge-color:${t.color};--badge-bg:${t.bg}" title="${UI.escapeHtml(b.name + ' · ' + (b.description || ''))}">
-            <span class="fp-badge-pill-icon">${b.icon}</span>
-            <div class="fp-badge-pill-info">
-              <span class="fp-badge-pill-name">${UI.escapeHtml(b.name)}</span>
-              <span class="fp-badge-pill-tier">${b.tier || 'bronze'}</span>
-            </div>
-            <span class="fp-badge-tier-ring" style="border-color:${t.color}"></span>
+          return `<div class="fp-badge-card" style="--badge-color:${t.color};--badge-bg:${t.bg}" title="${UI.escapeHtml(b.description || '')}">
+            <div class="fp-badge-icon">${b.icon}</div>
+            <span class="fp-badge-name">${UI.escapeHtml(b.name)}</span>
+            <span class="fp-badge-tier" style="color:${t.color}">${(b.tier || 'bronze').charAt(0).toUpperCase() + (b.tier || 'bronze').slice(1)}</span>
           </div>`;
         }).join('')}</div>
       </div>` : ''}
