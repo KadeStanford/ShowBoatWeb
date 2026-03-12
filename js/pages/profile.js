@@ -499,6 +499,36 @@ const ProfilePage = {
     // ── Theme pattern overlay ──
     this._drawPattern(ctx, W, H, t.pattern || 'none', t.accent);
 
+    // ── Category-specific frame decoration ──
+    const _catAccents = { Watcher: '#3b82f6', Critic: '#eab308', Social: '#ec4899', Plex: '#e5a800', Special: '#a855f7', 'Tier Bonus': '#f97316', Milestone: '#22d3ee' };
+    const _catEmoji = { Watcher: '📺', Critic: '⭐', Social: '👋', Plex: '🟠', Special: '✨', 'Tier Bonus': '🏆', Milestone: '🎖️', Free: '🎨' };
+    const catCol = _catAccents[t.category] || t.accent;
+    // Top accent stripe
+    ctx.fillStyle = catCol + '50'; ctx.fillRect(0, 0, W, 3);
+    // Category label
+    ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = catCol + '90'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText((_catEmoji[t.category] || '') + ' ' + (t.category || 'Free').toUpperCase(), W / 2, 10);
+    // Category-specific side decorations
+    if (t.category === 'Watcher') {
+      ctx.fillStyle = t.accent + '18';
+      for (let fy = 30; fy < H - 30; fy += 40) { this._scRoundRect(ctx, 3, fy, 8, 20, 3); ctx.fill(); this._scRoundRect(ctx, W - 11, fy, 8, 20, 3); ctx.fill(); }
+    } else if (t.category === 'Critic') {
+      ctx.fillStyle = t.accent + '22';
+      [30, W - 30].forEach(sx => [40, H - 40].forEach(sy => { this._drawStar(ctx, sx, sy, 8, 3, 5); ctx.fill(); }));
+    } else if (t.category === 'Social') {
+      ctx.strokeStyle = t.accent + '18'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, H * 0.25); ctx.quadraticCurveTo(W * 0.5, H * 0.12, W, H * 0.25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, H * 0.75); ctx.quadraticCurveTo(W * 0.5, H * 0.88, W, H * 0.75); ctx.stroke();
+    } else if (t.category === 'Plex') {
+      ctx.strokeStyle = '#e5a80030'; ctx.lineWidth = 2;
+      ctx.strokeRect(8, 8, W - 16, H - 16);
+    } else if (t.category === 'Special') {
+      ctx.fillStyle = t.accent + '12';
+      ctx.beginPath(); ctx.arc(W * 0.9, H * 0.08, 50, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W * 0.1, H * 0.92, 40, 0, Math.PI * 2); ctx.fill();
+    }
+
     // ── Style decorations ──
     if (st.style === 'bold') {
       ctx.globalAlpha = 0.08; ctx.fillStyle = t.accent;
@@ -576,40 +606,38 @@ const ProfilePage = {
     // ── Stats grid ──
     if (st.showStats && st.stats) {
       const s = st.stats;
-      const episodes = s.episodes || s.watchedCount || 0;
-      const movies = s.movies || 0;
-      const completed = s.completed || 0;
-      const ratings = s.ratings || s.ratingsCount || 0;
-      const reviews = s.reviews || 0;
-      const friends = s.friends || s.friendsCount || 0;
 
       const statItems = [
-        { val: episodes, label: 'Episodes' },
-        { val: movies, label: 'Movies' },
-        { val: completed, label: 'Completed' },
-        { val: ratings, label: 'Rated' },
-        { val: reviews, label: 'Reviews' },
-        { val: friends, label: 'Friends' },
+        { val: s.episodes || s.watchedCount || 0, label: 'Episodes', icon: '📺' },
+        { val: s.completed || 0, label: 'Shows', icon: '📋' },
+        { val: s.movies || 0, label: 'Movies', icon: '🎬' },
+        { val: s.friends || s.friendsCount || 0, label: 'Friends', icon: '👥' },
+        { val: s.ratings || s.ratingsCount || 0, label: 'Ratings', icon: '⭐' },
       ].filter(si => si.val > 0);
 
       if (statItems.length) {
-        // Draw stats in a 3-column grid
         const cols = Math.min(3, statItems.length);
         const colW = 120;
         const startX = W / 2 - (cols * colW) / 2;
         const rows = Math.ceil(statItems.length / 3);
+        // Subtle stat background
+        ctx.fillStyle = 'rgba(255,255,255,.04)';
+        this._scRoundRect(ctx, startX - 10, y - 8, cols * colW + 20, rows * 48 + 8, 10); ctx.fill();
         for (let i = 0; i < statItems.length; i++) {
           const col = i % 3;
           const row = Math.floor(i / 3);
           const cx = startX + col * colW + colW / 2;
-          const cy = y + row * 40;
+          const cy = y + row * 48;
+          ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(statItems[i].icon, cx, cy);
           ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif';
-          ctx.fillStyle = t.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(String(statItems[i].val), cx, cy);
-          ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-          ctx.fillStyle = '#94a3b8'; ctx.fillText(statItems[i].label, cx, cy + 20);
+          ctx.fillStyle = t.accent;
+          ctx.fillText(String(statItems[i].val), cx, cy + 16);
+          ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillStyle = '#94a3b8'; ctx.fillText(statItems[i].label, cx, cy + 36);
         }
-        y += rows * 40 + 12;
+        y += rows * 48 + 12;
       }
     }
 
@@ -657,11 +685,14 @@ const ProfilePage = {
     // ── QR Code with creative styles ──
     if (st.showQR && st.qrData && typeof QRCode !== 'undefined') {
       try {
-        // Use QRCode.create() for reliable module matrix (no pixel guessing)
-        const qrObj = QRCode.create(st.qrData, { errorCorrectionLevel: 'H' });
-        const moduleCount = qrObj.modules.size;
-        const qrData = qrObj.modules.data;
         const qrSize = 160, qrX = W / 2 - qrSize / 2, qrY = y;
+
+        // Render QR to a tiny temp canvas (1px per module) to get module grid reliably
+        const tmpCanvas = document.createElement('canvas');
+        await QRCode.toCanvas(tmpCanvas, st.qrData, { margin: 0, scale: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
+        const mc = tmpCanvas.width; // module count = canvas width when scale=1 margin=0
+        const tmpCtx = tmpCanvas.getContext('2d');
+        const px = tmpCtx.getImageData(0, 0, mc, mc).data;
 
         // QR background
         ctx.fillStyle = 'rgba(255,255,255,.12)';
@@ -669,12 +700,12 @@ const ProfilePage = {
         ctx.strokeStyle = t.accent + '30'; ctx.lineWidth = 1;
         this._scRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 14); ctx.stroke();
 
-        const cellSize = qrSize / moduleCount;
+        const cellSize = qrSize / mc;
 
-        // Draw each QR module
-        for (let row = 0; row < moduleCount; row++) {
-          for (let col = 0; col < moduleCount; col++) {
-            if (qrData[row * moduleCount + col]) {
+        // Draw each QR module with creative style
+        for (let row = 0; row < mc; row++) {
+          for (let col = 0; col < mc; col++) {
+            if (px[(row * mc + col) * 4] < 128) { // dark module (R channel)
               const mx = qrX + col * cellSize;
               const my = qrY + row * cellSize;
               ctx.fillStyle = '#ffffff';
@@ -715,43 +746,43 @@ const ProfilePage = {
   _drawPattern(ctx, W, H, pattern, accent) {
     if (!pattern || pattern === 'none') return;
     ctx.save();
-    const c = accent + '0a'; // Very subtle
-    const c2 = accent + '06';
+    const c = accent + '28';
+    const c2 = accent + '1a';
     ctx.fillStyle = c; ctx.strokeStyle = c;
     switch (pattern) {
       case 'dots':
         for (let x = 20; x < W; x += 30) for (let y = 20; y < H; y += 30) {
-          ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
         } break;
       case 'waves':
-        ctx.strokeStyle = accent + '0c'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = accent + '28'; ctx.lineWidth = 1.8;
         for (let wy = 40; wy < H; wy += 50) {
           ctx.beginPath();
           for (let x = 0; x <= W; x += 4) { ctx.lineTo(x, wy + Math.sin(x * 0.02) * 15); }
           ctx.stroke();
         } break;
       case 'grid':
-        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.5;
+        ctx.strokeStyle = accent + '22'; ctx.lineWidth = 0.7;
         for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
         for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
         break;
       case 'circuit':
-        ctx.strokeStyle = accent + '0c'; ctx.lineWidth = 1;
+        ctx.strokeStyle = accent + '28'; ctx.lineWidth = 1;
         for (let i = 0; i < 20; i++) {
           const sx = ((i * 97) % W), sy = ((i * 143) % H);
           const ex = sx + ((i % 3 === 0) ? 60 : 0), ey = sy + ((i % 3 !== 0) ? 60 : 0);
           ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-          ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2); ctx.fillStyle = accent + '10'; ctx.fill();
+          ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2); ctx.fillStyle = accent + '30'; ctx.fill();
         } break;
       case 'film':
-        ctx.fillStyle = accent + '08';
+        ctx.fillStyle = accent + '22';
         // Film sprocket holes on left and right edges
         for (let fy = 20; fy < H; fy += 35) {
           this._scRoundRect(ctx, 6, fy, 14, 20, 3); ctx.fill();
           this._scRoundRect(ctx, W - 20, fy, 14, 20, 3); ctx.fill();
         }
         // Film border lines
-        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        ctx.strokeStyle = accent + '25'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(24, 0); ctx.lineTo(24, H); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(W - 24, 0); ctx.lineTo(W - 24, H); ctx.stroke();
         break;
@@ -760,20 +791,20 @@ const ProfilePage = {
           const cx = (i * 137) % W, cy = (i * 211) % H;
           const size = 3 + ((i * 7) % 5);
           ctx.save(); ctx.translate(cx, cy); ctx.rotate((i * 47) % 360 * Math.PI / 180);
-          ctx.fillStyle = (i % 3 === 0) ? accent + '0c' : (i % 3 === 1 ? accent + '08' : accent + '10');
+          ctx.fillStyle = (i % 3 === 0) ? accent + '28' : (i % 3 === 1 ? accent + '20' : accent + '30');
           ctx.fillRect(-size / 2, -1.5, size, 3); ctx.restore();
         } break;
       case 'stars': {
         for (let i = 0; i < 30; i++) {
           const sx = (i * 157) % W, sy = (i * 193) % H;
           const sr = 2 + ((i * 3) % 4);
-          ctx.fillStyle = accent + (i % 3 === 0 ? '12' : '08');
+          ctx.fillStyle = accent + (i % 3 === 0 ? '35' : '22');
           this._drawStar(ctx, sx, sy, sr, sr * 0.4, 4); ctx.fill();
         }
       } break;
       case 'hex': {
         const hs = 30, hh = hs * Math.sqrt(3) / 2;
-        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        ctx.strokeStyle = accent + '22'; ctx.lineWidth = 0.8;
         for (let row = 0; row < H / hh + 1; row++) for (let col = 0; col < W / (hs * 1.5) + 1; col++) {
           const hx = col * hs * 1.5, hy = row * hh + (col % 2 ? hh / 2 : 0);
           ctx.beginPath();
@@ -782,41 +813,41 @@ const ProfilePage = {
         }
       } break;
       case 'diamonds':
-        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 0.7;
+        ctx.strokeStyle = accent + '25'; ctx.lineWidth = 0.8;
         for (let dx = -20; dx < W + 20; dx += 35) for (let dy = -20; dy < H + 20; dy += 35) {
           ctx.beginPath(); ctx.moveTo(dx, dy - 12); ctx.lineTo(dx + 12, dy); ctx.lineTo(dx, dy + 12); ctx.lineTo(dx - 12, dy); ctx.closePath(); ctx.stroke();
         } break;
       case 'lines':
-        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        ctx.strokeStyle = accent + '22'; ctx.lineWidth = 0.8;
         for (let d = -H; d < W + H; d += 25) { ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d - H, H); ctx.stroke(); }
         break;
       case 'bubbles':
         for (let i = 0; i < 18; i++) {
           const bx = (i * 127) % W, by = (i * 199) % H, br = 8 + ((i * 11) % 20);
-          ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+          ctx.strokeStyle = accent + '25'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
         } break;
       case 'triangles':
-        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 0.7;
+        ctx.strokeStyle = accent + '22'; ctx.lineWidth = 0.8;
         for (let tx = 0; tx < W; tx += 50) for (let ty = 0; ty < H; ty += 45) {
           const offset = Math.floor(ty / 45) % 2 ? 25 : 0;
           ctx.beginPath(); ctx.moveTo(tx + offset, ty); ctx.lineTo(tx + offset + 20, ty + 35); ctx.lineTo(tx + offset - 20, ty + 35); ctx.closePath(); ctx.stroke();
         } break;
       case 'crosses':
-        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        ctx.strokeStyle = accent + '25'; ctx.lineWidth = 1;
         for (let cx = 25; cx < W; cx += 45) for (let cy = 25; cy < H; cy += 45) {
           ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6); ctx.stroke();
         } break;
       case 'zigzag':
-        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 1;
+        ctx.strokeStyle = accent + '25'; ctx.lineWidth = 1;
         for (let zy = 30; zy < H; zy += 50) {
           ctx.beginPath();
           for (let x = 0; x <= W; x += 20) { ctx.lineTo(x, zy + (Math.floor(x / 20) % 2 ? 10 : -10)); }
           ctx.stroke();
         } break;
       case 'rain':
-        ctx.strokeStyle = accent + '0a'; ctx.lineWidth = 0.8;
+        ctx.strokeStyle = accent + '25'; ctx.lineWidth = 1;
         for (let i = 0; i < 60; i++) {
           const rx = (i * 83) % W, ry = (i * 151) % H, rl = 10 + ((i * 7) % 12);
           ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 2, ry + rl); ctx.stroke();
@@ -825,7 +856,7 @@ const ProfilePage = {
         for (let i = 0; i < 20; i++) {
           const sx = (i * 109) % W, sy = (i * 179) % H;
           const ss = 3 + ((i * 5) % 6);
-          ctx.strokeStyle = accent + '12'; ctx.lineWidth = 1;
+          ctx.strokeStyle = accent + '35'; ctx.lineWidth = 1;
           // 4-pointed sparkle
           ctx.beginPath(); ctx.moveTo(sx, sy - ss); ctx.lineTo(sx, sy + ss); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(sx - ss, sy); ctx.lineTo(sx + ss, sy); ctx.stroke();
@@ -835,7 +866,7 @@ const ProfilePage = {
           ctx.beginPath(); ctx.moveTo(sx + ds, sy - ds); ctx.lineTo(sx - ds, sy + ds); ctx.stroke();
         } break;
       case 'smoke':
-        ctx.globalAlpha = 0.04;
+        ctx.globalAlpha = 0.14;
         for (let i = 0; i < 8; i++) {
           const sx = (i * 113) % W, sy = (i * 191) % H, sr = 40 + ((i * 29) % 60);
           const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
@@ -844,13 +875,13 @@ const ProfilePage = {
         }
         ctx.globalAlpha = 1; break;
       case 'rings':
-        ctx.strokeStyle = accent + '08'; ctx.lineWidth = 1;
+        ctx.strokeStyle = accent + '22'; ctx.lineWidth = 1;
         for (let i = 0; i < 12; i++) {
           const rx = (i * 131) % W, ry = (i * 173) % H, rr = 15 + ((i * 19) % 30);
           ctx.beginPath(); ctx.arc(rx, ry, rr, 0, Math.PI * 2); ctx.stroke();
         } break;
       case 'checkers':
-        ctx.fillStyle = accent + '06';
+        ctx.fillStyle = accent + '1a';
         const cs = 30;
         for (let cx = 0; cx < W; cx += cs) for (let cy = 0; cy < H; cy += cs) {
           if ((Math.floor(cx / cs) + Math.floor(cy / cs)) % 2 === 0) ctx.fillRect(cx, cy, cs, cs);
