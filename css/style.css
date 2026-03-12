@@ -3687,7 +3687,9 @@ body.keyboard-open #main-content { padding-bottom: var(--keyboard-height, 0px); 
 @supports (padding-top: env(safe-area-inset-top)) {
   .top-bar, .sidebar-nav { padding-top: env(safe-area-inset-top); }
   .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+  html.native-app #page-content { padding-top: env(safe-area-inset-top); }
 }
 
-/* Capacitor native — disable overscroll bounce */
+/* Capacitor native — disable overscroll bounce & double-tap zoom */
 html.native-app { overscroll-behavior: none; }
+html.native-app * { touch-action: manipulation; }

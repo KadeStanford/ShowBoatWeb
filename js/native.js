@@ -123,7 +123,9 @@ const Native = {
       if (!Native.isNative) return;
       const { StatusBar } = Capacitor.Plugins;
       await StatusBar.setStyle({ style: 'LIGHT' }); // light icons on dark bg
-      if (Native.platform === 'android') {
+      if (Native.platform === 'ios') {
+        await StatusBar.setOverlaysWebView({ overlay: true });
+      } else {
         await StatusBar.setBackgroundColor({ color: '#0f172a' });
       }
     },
@@ -281,5 +283,77 @@ const Native = {
 
     // Sync widget data periodically (every 15 min when app is active)
     this._widgetInterval = setInterval(() => this.syncWidgetData(), 15 * 60 * 1000);
+
+    // Setup native auth listeners (iOS)
+    if (this.platform === 'ios') this.nativeAuth.setupListeners();
+  },
+
+  // ═══════════════════════ NATIVE AUTH (iOS) ═══════════════════════
+  nativeAuth: {
+    _listening: false,
+
+    setupListeners() {
+      if (this._listening || !Native.isNative) return;
+      this._listening = true;
+      const { NativeAuth } = Capacitor.Plugins;
+
+      NativeAuth.addListener('authCredential', async (data) => {
+        try {
+          if (data.method === 'apple') {
+            const provider = new firebase.auth.OAuthProvider('apple.com');
+            const credential = provider.credential({ idToken: data.idToken, rawNonce: data.nonce });
+            await auth.signInWithCredential(credential);
+            if (data.fullName && auth.currentUser && !auth.currentUser.displayName) {
+              await auth.currentUser.updateProfile({ displayName: data.fullName });
+            }
+          } else if (data.method === 'google') {
+            const credential = firebase.auth.GoogleAuthProvider.credential(data.idToken);
+            await auth.signInWithCredential(credential);
+          } else if (data.method === 'email' || data.method === 'biometric') {
+            await auth.signInWithEmailAndPassword(data.email, data.password);
+            if (data.method === 'email') {
+              NativeAuth.saveBiometric({ email: data.email, password: data.password }).catch(() => {});
+            }
+          }
+          // Dismiss handled by onAuthStateChanged
+        } catch (err) {
+          console.error('[NativeAuth] Error:', err);
+          NativeAuth.showError({ message: err.message || 'Sign in failed' });
+        }
+      });
+
+      NativeAuth.addListener('authNavigate', (data) => {
+        NativeAuth.dismissLogin();
+        if (data.page) App.navigate(data.page);
+      });
+    },
+
+    async showLogin() {
+      if (!Native.isNative || Native.platform !== 'ios') return;
+      const { NativeAuth } = Capacitor.Plugins;
+      await NativeAuth.showLogin();
+    },
+
+    async dismissLogin() {
+      if (!Native.isNative || Native.platform !== 'ios') return;
+      try { await Capacitor.Plugins.NativeAuth.dismissLogin(); } catch (_) {}
+    },
+
+    async linkApple() {
+      const { NativeAuth } = Capacitor.Plugins;
+      const result = await NativeAuth.signInWithApple();
+      const provider = new firebase.auth.OAuthProvider('apple.com');
+      const credential = provider.credential({ idToken: result.idToken, rawNonce: result.nonce });
+      await auth.currentUser.linkWithCredential(credential);
+      return result;
+    },
+
+    async linkGoogle() {
+      const { NativeAuth } = Capacitor.Plugins;
+      const result = await NativeAuth.signInWithGoogle();
+      const credential = firebase.auth.GoogleAuthProvider.credential(result.idToken);
+      await auth.currentUser.linkWithCredential(credential);
+      return result;
+    }
   }
 };

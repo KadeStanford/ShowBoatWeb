@@ -88,6 +88,8 @@ const App = {
         setTimeout(() => { if (typeof GuidedTour !== 'undefined' && GuidedTour.shouldAutoStart()) GuidedTour.start(); }, 1500);
         // Sync widget data after login
         if (typeof Native !== 'undefined') setTimeout(() => Native.syncWidgetData(), 2000);
+        // Dismiss native login screen if it was showing (iOS)
+        if (typeof Native !== 'undefined' && Native.isNative) Native.nativeAuth.dismissLogin();
         // If on auth page or no page, try to restore from URL hash first
         if (!this.currentPage || this.currentPage === 'login' || this.currentPage === 'signup' || this.currentPage === 'landing') {
           const hash = window.location.hash.slice(1);
@@ -109,12 +111,15 @@ const App = {
         }
       } else {
         this.showNav(false);
-        // Show landing page for unauthenticated visitors; if they were already on login/signup keep that
-        const cur = this.currentPage;
-        if (!cur || (cur !== 'login' && cur !== 'signup' && cur !== 'landing')) {
-          this.navigate('landing');
-        } else if (!cur) {
-          this.navigate('landing');
+        if (typeof Native !== 'undefined' && Native.isNative && Native.platform === 'ios') {
+          // iOS native: show native Swift login screen
+          Native.nativeAuth.showLogin();
+        } else {
+          // Web or Android: show landing page
+          const cur = this.currentPage;
+          if (!cur || (cur !== 'login' && cur !== 'signup' && cur !== 'landing')) {
+            this.navigate('landing');
+          }
         }
       }
       // Hide loading screen
