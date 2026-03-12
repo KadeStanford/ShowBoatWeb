@@ -84,11 +84,12 @@ class NativeLoginViewController: UIViewController {
         ])
 
         // Logo
-        let iconLabel = UILabel()
-        iconLabel.text = "📺"
-        iconLabel.font = .systemFont(ofSize: 56)
-        iconLabel.textAlignment = .center
-        stack.addArrangedSubview(iconLabel)
+        let logoImageView = UIImageView(image: UIImage(named: "LoginLogo"))
+        logoImageView.contentMode = .scaleAspectFit
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
+        logoImageView.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        logoImageView.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        stack.addArrangedSubview(logoImageView)
 
         let title = UILabel()
         title.text = "ShowBoat"
