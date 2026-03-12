@@ -3137,6 +3137,24 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
 .fp-ep-info { padding: 6px 2px 0; }
 .fp-ep-show { font-size: 12px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, var(--slate-200)); line-height: 1.3; }
 
+/* Episode carousel cards (friend profile watched tab) */
+.fp-ep-carousel-card { flex-shrink: 0; width: 260px; cursor: pointer; border-radius: 12px; overflow: hidden; background: var(--surface-1, rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.06); transition: transform .2s, box-shadow .2s; }
+.fp-ep-carousel-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.fp-ep-carousel-img { position: relative; aspect-ratio: 16/9; overflow: hidden; background: var(--surface-2); }
+.fp-ep-carousel-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-ep-carousel-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+.fp-ep-carousel-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%); pointer-events: none; }
+.fp-ep-carousel-info { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+.fp-ep-carousel-logo { max-height: 22px; max-width: 130px; object-fit: contain; filter: brightness(0) invert(1); opacity: .9; }
+.fp-ep-carousel-show { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-ep-carousel-name { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.fp-ep-carousel-code { font-size: 10px; color: var(--text-muted, var(--slate-500)); margin: 0; display: none; }
+.fp-carousel-both { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: var(--accent, #34d399); border-radius: 50%; z-index: 2; }
+.fp-carousel-both svg { color: #000; }
+@media (max-width: 600px) {
+  .fp-ep-carousel-card { width: 220px; }
+}
+
 /* Friend watched-all page — section tabs */
 .fw-section-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .fw-section-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }

@@ -276,7 +276,7 @@ const FriendProfilePage = {
     ];
 
     const movies = watched.filter(x => x.mediaType === 'movie').length;
-    const shows = watched.length - movies;
+    const uniqueShows = new Set(watched.filter(x => x.mediaType !== 'movie').map(x => x.tmdbId)).size;
 
     container.innerHTML = `
       <div class="fp-hero">
@@ -294,7 +294,7 @@ const FriendProfilePage = {
             <div class="fp-stats-row fp-stats-sub">
               <span class="fp-stat">${UI.icon('film', 12)} ${movies} movie${movies !== 1 ? 's' : ''}</span>
               <span class="fp-stat-sep">·</span>
-              <span class="fp-stat">${UI.icon('tv', 12)} ${shows} show${shows !== 1 ? 's' : ''}</span>
+              <span class="fp-stat">${UI.icon('tv', 12)} ${uniqueShows} show${uniqueShows !== 1 ? 's' : ''}</span>
             </div>
           </div>
         </div>
@@ -384,13 +384,84 @@ const FriendProfilePage = {
 
     if (tab === 'watched') {
       const sorted = [...watched].sort((a, b) => (b.watchedAt || b.createdAt || 0) - (a.watchedAt || a.createdAt || 0));
-      const preview = sorted.slice(0, 18);
+      const episodes = sorted.filter(i => i.seasonNumber != null && i.episodeNumber != null);
+      const movieItems = sorted.filter(i => i.mediaType === 'movie');
+      // Dedupe shows from episodes
+      const showMap = new Map();
+      episodes.forEach(ep => {
+        if (!showMap.has(ep.tmdbId)) showMap.set(ep.tmdbId, { ...ep, epCount: 0 });
+        showMap.get(ep.tmdbId).epCount++;
+      });
+      sorted.filter(i => i.mediaType !== 'movie' && !(i.seasonNumber != null && i.episodeNumber != null)).forEach(i => {
+        if (!showMap.has(i.tmdbId)) showMap.set(i.tmdbId, { ...i, epCount: 0 });
+      });
+      const showItems = [...showMap.values()];
+
+      const epPreview = episodes.slice(0, 12);
+      const showPreview = showItems.slice(0, 12);
+      const moviePreview = movieItems.slice(0, 12);
+      const eid = UI.escapeHtml(id);
+      const ename = UI.escapeHtml(name);
+
+      // Render episode carousel cards with enrichment
+      const { epMeta = {}, logoCache = {} } = this.state;
+      const renderEpCarouselCard = (ep) => {
+        const tmdbId = ep.tmdbId;
+        const epKey = `${tmdbId}:s${ep.seasonNumber}:e${ep.episodeNumber}`;
+        const meta = epMeta[epKey] || {};
+        const epLabel = `S${String(ep.seasonNumber).padStart(2,'0')}E${String(ep.episodeNumber).padStart(2,'0')}`;
+        const stillImg = meta.still || null;
+        const bg = stillImg ? API.imageUrl(stillImg, 'w780') : (ep.backdropPath ? API.imageUrl(ep.backdropPath, 'w780') : (ep.posterPath ? API.imageUrl(ep.posterPath, 'w342') : ''));
+        const logo = logoCache[tmdbId];
+        const showName = ep.name || ep.mediaTitle || '';
+        const epName = meta.name || '';
+        const bothWatched = myWatchedIds.has(String(tmdbId));
+        return `<div class="fp-ep-carousel-card" onclick="App.navigate('details',{id:${tmdbId},type:'tv'})">
+          <div class="fp-ep-carousel-img">
+            ${bg ? `<img src="${bg}" alt="" loading="lazy">` : `<div class="fp-ep-carousel-ph">${UI.icon('tv', 28)}</div>`}
+            <div class="fp-ep-carousel-gradient"></div>
+            <span class="fp-ep-badge">${epLabel}</span>
+            ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+          </div>
+          <div class="fp-ep-carousel-info">
+            ${logo ? `<img src="${API.imageUrl(logo, 'w185')}" class="fp-ep-carousel-logo" alt="">` : `<span class="fp-ep-carousel-show">${UI.escapeHtml(showName)}</span>`}
+            ${epName ? `<p class="fp-ep-carousel-name">${UI.escapeHtml(epName)}</p>` : ''}
+            <p class="fp-ep-carousel-code">${epLabel}</p>
+          </div>
+        </div>`;
+      };
+
+      const renderPosterCard = (i, type) => {
+        const posterPath = i.posterPath || i.mediaPosterPath || '';
+        const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
+        const bothWatched = myWatchedIds.has(String(i.tmdbId));
+        const badge = type === 'show' && i.epCount ? `${i.epCount} ep${i.epCount !== 1 ? 's' : ''}` : (type === 'movie' ? 'Movie' : 'TV');
+        return `<div class="media-card-sm" onclick="App.navigate('details',{id:${i.tmdbId},type:'${type === 'movie' ? 'movie' : 'tv'}'})">
+          ${poster ? `<img src="${poster}" alt="" loading="lazy">` : `<div class="poster-placeholder">${UI.icon(type === 'movie' ? 'film' : 'tv', 24)}</div>`}
+          ${bothWatched ? `<span class="fp-carousel-both">${UI.icon('check', 10)}</span>` : ''}
+          <p class="card-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
+          <p class="card-subtitle">${badge}</p>
+        </div>`;
+      };
+
       el.innerHTML = `
-        <div class="fp-section-header-row">
-          <span class="fp-section-count">${watched.length} watched</span>
-          ${watched.length > 18 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
-        </div>
-        <div class="fp-card-grid">${preview.map(i => this._renderGridCard(i, myWatchedIds)).join('')}</div>`;
+        ${epPreview.length ? `<div class="section">
+          <div class="section-header"><h3>${UI.icon('play', 16)} Recent Episodes</h3><button class="see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${eid}',name:'${ename}',section:'episodes'})">See All</button></div>
+          <div class="horizontal-scroll">${epPreview.map(renderEpCarouselCard).join('')}</div>
+        </div>` : ''}
+        ${showPreview.length ? `<div class="section">
+          <div class="section-header"><h3>${UI.icon('tv', 16)} Shows</h3><button class="see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${eid}',name:'${ename}',section:'shows'})">See All</button></div>
+          <div class="horizontal-scroll">${showPreview.map(i => renderPosterCard(i, 'show')).join('')}</div>
+        </div>` : ''}
+        ${moviePreview.length ? `<div class="section">
+          <div class="section-header"><h3>${UI.icon('film', 16)} Movies</h3><button class="see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${eid}',name:'${ename}',section:'movies'})">See All</button></div>
+          <div class="horizontal-scroll">${moviePreview.map(i => renderPosterCard(i, 'movie')).join('')}</div>
+        </div>` : ''}
+        ${!epPreview.length && !showPreview.length && !moviePreview.length ? `<div class="fp-empty">${UI.icon('eye', 28)}<p>Nothing watched yet</p></div>` : ''}
+      `;
+
+      // Enrich episodes in background (stills + logos)
+      if (!Object.keys(epMeta).length && episodes.length) this._enrichWatchedEpisodes(episodes);
     }
 
     if (tab === 'ratings') {
@@ -476,6 +547,31 @@ const FriendProfilePage = {
     }
   },
 
+  async _enrichWatchedEpisodes(episodes) {
+    const epMeta = this.state.epMeta || {};
+    const logoCache = this.state.logoCache || {};
+    const seasonKeys = new Map();
+    episodes.forEach(ep => {
+      const key = `${ep.tmdbId}:${ep.seasonNumber}`;
+      if (!seasonKeys.has(key)) seasonKeys.set(key, { showId: ep.tmdbId, season: ep.seasonNumber });
+    });
+    const uniqueShows = [...new Set(episodes.map(e => e.tmdbId))];
+    const logoPromises = uniqueShows.slice(0, 15).map(async id => {
+      try { const logo = await API.fetchLogo(id, 'tv'); if (logo) logoCache[id] = logo; } catch (_) {}
+    });
+    const seasonEntries = [...seasonKeys.values()].slice(0, 25);
+    const seasonPromises = seasonEntries.map(async ({ showId, season }) => {
+      try {
+        const eps = await API.getSeasonEpisodes(showId, season);
+        eps.forEach(e => { epMeta[`${showId}:s${season}:e${e.episode_number}`] = { name: e.name, still: e.still_path, runtime: e.runtime }; });
+      } catch (_) {}
+    });
+    await Promise.all([...logoPromises, ...seasonPromises]);
+    this.state.epMeta = epMeta;
+    this.state.logoCache = logoCache;
+    if (this.state.activeTab === 'watched') this.renderTab('watched');
+  },
+
   _renderGridCard(i, myWatchedIds) {
     const posterPath = i.posterPath || i.mediaPosterPath || i.poster_path || '';
     const fpType = (i.mediaType || i.type || 'tv') === 'movie' ? 'movie' : 'tv';
@@ -534,7 +630,7 @@ const FriendWatchedAllPage = {
     this.state.id = params.id;
     this.state.name = params.name || 'Friend';
     this.state.query = '';
-    this.state.section = 'episodes';
+    this.state.section = params.section || 'episodes';
     this.state.epMeta = {};
     this.state.logoCache = {};
     const el = document.getElementById('page-content');
