@@ -384,36 +384,34 @@ const FriendProfilePage = {
 
     if (tab === 'watched') {
       const sorted = [...watched].sort((a, b) => (b.watchedAt || b.createdAt || 0) - (a.watchedAt || a.createdAt || 0));
-      const preview = sorted.slice(0, 15);
+      const preview = sorted.slice(0, 18);
       el.innerHTML = `
         <div class="fp-section-header-row">
           <span class="fp-section-count">${watched.length} watched</span>
-          ${watched.length > 15 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
+          ${watched.length > 18 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watched-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
         </div>
-        <div class="fp-media-list">${preview.map(i => this._renderListItem(i, myWatchedIds)).join('')}</div>`;
+        <div class="fp-card-grid">${preview.map(i => this._renderGridCard(i, myWatchedIds)).join('')}</div>`;
     }
 
     if (tab === 'ratings') {
       const sorted = [...ratings].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      const preview = sorted.slice(0, 15);
+      const preview = sorted.slice(0, 18);
       el.innerHTML = `
         <div class="fp-section-header-row">
           <span class="fp-section-count">${ratings.length} rated</span>
         </div>
-        <div class="fp-media-list">${preview.map(i => {
+        <div class="fp-card-grid">${preview.map(i => {
           const posterPath = i.posterPath || i.mediaPosterPath || '';
-          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
           const fpType = (i.mediaType || 'tv') === 'show' ? 'tv' : (i.mediaType || 'tv');
           const bothWatched = myWatchedIds.has(String(i.tmdbId || i.id));
-          return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
-            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
-            <div class="fp-list-info">
-              <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
-              <div class="fp-list-meta">
-                ${UI.icon('star', 12)} <strong>${i.rating || '—'}/10</strong>
-                ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
-              </div>
+          return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
+            <div class="fp-grid-poster-wrap">
+              ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+              <div class="fp-grid-rating">${UI.icon('star', 10)} ${i.rating || '—'}</div>
+              ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
             </div>
+            <p class="fp-grid-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
           </div>`;
         }).join('')}</div>`;
     }
@@ -422,9 +420,9 @@ const FriendProfilePage = {
       el.innerHTML = `
         <div class="fp-section-header-row">
           <span class="fp-section-count">${watchlist.length} saved</span>
-          ${watchlist.length > 15 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watchlist-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
+          ${watchlist.length > 18 ? `<button class="fp-see-all-btn" onclick="App.navigate('friend-watchlist-all',{id:'${id}',name:'${UI.escapeHtml(name)}'})">${UI.icon('grid', 14)} See All</button>` : ''}
         </div>
-        <div class="fp-media-list">${watchlist.slice(0, 15).map(i => this._renderListItem(i, myWatchedIds)).join('')}</div>`;
+        <div class="fp-card-grid">${watchlist.slice(0, 18).map(i => this._renderGridCard(i, myWatchedIds)).join('')}</div>`;
     }
 
     if (tab === 'plex') {
@@ -459,22 +457,17 @@ const FriendProfilePage = {
       const items = [...deduped.values()].sort((a, b) => (b.lastViewedAt || 0) - (a.lastViewedAt || 0));
       if (items.length) {
         html += `<div class="fp-section-label" style="margin-top:12px">${UI.icon('film', 14)} Plex Library (${items.length})</div>`;
-        html += `<div class="fp-media-list">${items.slice(0, 30).map(h => {
-          const poster = h.posterPath ? API.imageUrl(h.posterPath, 'w92') : '';
+        html += `<div class="fp-card-grid">${items.slice(0, 30).map(h => {
+          const poster = h.posterPath ? API.imageUrl(h.posterPath, 'w342') : '';
           const fpType = h.type === 'movie' ? 'movie' : 'tv';
           const tmdbId = h.tmdbId;
-          const date = h.lastViewedAt ? new Date(h.lastViewedAt * 1000) : null;
-          const dateStr = date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          return `<div class="fp-list-item" ${tmdbId ? `onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})"` : ''}>
-            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
-            <div class="fp-list-info">
-              <p class="fp-list-title">${UI.escapeHtml(h.tmdbTitle || h.title || '')}</p>
-              <div class="fp-list-meta">
-                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
-                <span class="fp-plex-badge">${UI.icon('monitor', 10)} Plex</span>
-                ${dateStr ? `<span style="color:var(--slate-400);font-size:.75rem">${dateStr}</span>` : ''}
-              </div>
+          return `<div class="fp-grid-card" ${tmdbId ? `onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})"` : ''}>
+            <div class="fp-grid-poster-wrap">
+              ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+              <div class="fp-grid-plex"><svg width="10" height="10" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></div>
+              <span class="fp-grid-type">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
             </div>
+            <p class="fp-grid-title">${UI.escapeHtml(h.tmdbTitle || h.title || '')}</p>
           </div>`;
         }).join('')}</div>`;
       }
@@ -483,23 +476,21 @@ const FriendProfilePage = {
     }
   },
 
-  _renderListItem(i, myWatchedIds) {
+  _renderGridCard(i, myWatchedIds) {
     const posterPath = i.posterPath || i.mediaPosterPath || i.poster_path || '';
-    const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+    const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
     const fpType = (i.mediaType || i.type || 'tv') === 'movie' ? 'movie' : 'tv';
     const tmdbId = i.tmdbId || i.id;
     const bothWatched = myWatchedIds.has(String(tmdbId));
     const onPlex = this.state.plexLibraryIds.has(Number(tmdbId));
-    return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
-      ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
-      <div class="fp-list-info">
-        <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || i.title || '')}</p>
-        <div class="fp-list-meta">
-          <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
-          ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
-          ${onPlex ? `<span class="fp-plex-badge">${UI.icon('monitor', 10)} Plex</span>` : ''}
-        </div>
+    return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
+      <div class="fp-grid-poster-wrap">
+        ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+        ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+        ${onPlex ? `<div class="fp-grid-plex"><svg width="10" height="10" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></div>` : ''}
+        <span class="fp-grid-type">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
       </div>
+      <p class="fp-grid-title">${UI.escapeHtml(i.name || i.mediaTitle || i.title || '')}</p>
     </div>`;
   },
 
@@ -554,25 +545,22 @@ const FriendWatchedAllPage = {
         </div>
       </div>
       <p class="fw-count">${filtered.length} item${filtered.length !== 1 ? 's' : ''}</p>
-      <div class="fp-media-list">
+      <div class="fp-card-grid">
         ${filtered.map(i => {
           const posterPath = i.posterPath || i.mediaPosterPath || '';
-          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
           const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
           const tmdbId = i.tmdbId;
           const bothWatched = myWatchedIds && myWatchedIds.has(String(tmdbId));
-          return `<div class="fp-list-item ${bothWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
-            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
-            <div class="fp-list-info">
-              <p class="fp-list-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
-              <div class="fp-list-meta">
-                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
-                ${bothWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} Both watched</span>` : ''}
-                ${i.watchedAt ? `<span class="fp-list-date">${UI.timeAgo(i.watchedAt)}</span>` : ''}
-              </div>
+          return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
+            <div class="fp-grid-poster-wrap">
+              ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+              ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+              <span class="fp-grid-type">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
             </div>
+            <p class="fp-grid-title">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
           </div>`;
-        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted)">No results</div>`}
+        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1">No results</div>`}
       </div>
     `;
   },
@@ -633,24 +621,22 @@ const FriendWatchlistAllPage = {
         </div>
       </div>
       <p class="fw-count">${filtered.length} item${filtered.length !== 1 ? 's' : ''}</p>
-      <div class="fp-media-list">
+      <div class="fp-card-grid">
         ${filtered.map(i => {
           const posterPath = i.posterPath || '';
-          const poster = posterPath ? API.imageUrl(posterPath, 'w92') : '';
+          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
           const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
           const alreadyWatched = myWatchedIds && myWatchedIds.has(String(i.tmdbId || i.id));
-          return `<div class="fp-list-item ${alreadyWatched ? 'fp-both-watched' : ''}" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
-            ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph">${UI.icon('film', 16)}</div>`}
-            <div class="fp-list-info">
-              <p class="fp-list-title">${UI.escapeHtml(i.name || '')}</p>
-              <div class="fp-list-meta">
-                <span class="fp-type-tag">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
-                ${alreadyWatched ? `<span class="fp-both-badge">${UI.icon('check', 10)} You watched this</span>` : ''}
-              </div>
+          return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${fpType}'})">
+            <div class="fp-grid-poster-wrap">
+              ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+              ${alreadyWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+              <span class="fp-grid-type">${fpType === 'movie' ? 'Movie' : 'TV'}</span>
             </div>
-            <button class="fp-add-wl-btn" onclick="event.stopPropagation();FriendWatchlistAllPage.addToMyWatchlist(${i.tmdbId||i.id},'${fpType}','${UI.escapeHtml(i.name||'').replace(/'/g,"\\'")}','${posterPath}')" title="Add to my watchlist">${UI.icon('plus', 16)}</button>
+            <p class="fp-grid-title">${UI.escapeHtml(i.name || '')}</p>
+            <button class="fp-grid-add-btn" onclick="event.stopPropagation();FriendWatchlistAllPage.addToMyWatchlist(${i.tmdbId||i.id},'${fpType}','${UI.escapeHtml(i.name||'').replace(/'/g,"\\'")}','${posterPath}')" title="Add to my watchlist">${UI.icon('plus', 14)}</button>
           </div>`;
-        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted)">No results</div>`}
+        }).join('') || `<div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1">No results</div>`}
       </div>`;
   },
   search(q) { this.state.query = q; this._apply(); },
@@ -706,15 +692,16 @@ const FriendAnalyticsPage = {
         ${topRated.length ? `
         <div class="fa-section">
           <h3 class="fa-section-title">${UI.icon('star', 16)} Top Rated by ${UI.escapeHtml(friendName)}</h3>
-          <div class="fp-media-list">${topRated.map(i => {
-            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w92') : '';
+          <div class="fp-card-grid">${topRated.map(i => {
+            const poster = i.posterPath ? API.imageUrl(i.posterPath, 'w342') : '';
             const t = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
-            return `<div class="fp-list-item" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${t}'})">
-              ${poster ? `<img src="${poster}" class="fp-list-poster" alt="">` : `<div class="fp-list-poster-ph"></div>`}
-              <div class="fp-list-info">
-                <p class="fp-list-title">${UI.escapeHtml(i.name || '')}</p>
-                <p class="fp-list-meta">${UI.icon('star', 12)} <strong>${i.rating}/10</strong></p>
+            return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${i.tmdbId||i.id},type:'${t}'})">
+              <div class="fp-grid-poster-wrap">
+                ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
+                <span class="fp-grid-type">${t === 'movie' ? 'Movie' : 'TV'}</span>
+                <span class="fp-grid-rating">${UI.icon('star', 10)} ${i.rating}</span>
               </div>
+              <p class="fp-grid-title">${UI.escapeHtml(i.name || '')}</p>
             </div>`;
           }).join('')}</div>
         </div>` : ''}
