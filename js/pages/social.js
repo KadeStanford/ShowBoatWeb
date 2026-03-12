@@ -478,11 +478,30 @@ const FriendProfilePage = {
 
   _renderGridCard(i, myWatchedIds) {
     const posterPath = i.posterPath || i.mediaPosterPath || i.poster_path || '';
-    const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
     const fpType = (i.mediaType || i.type || 'tv') === 'movie' ? 'movie' : 'tv';
     const tmdbId = i.tmdbId || i.id;
     const bothWatched = myWatchedIds.has(String(tmdbId));
     const onPlex = this.state.plexLibraryIds.has(Number(tmdbId));
+    const isEpisode = i.seasonNumber != null && i.episodeNumber != null;
+
+    if (isEpisode) {
+      const backdrop = (i.backdropPath || posterPath) ? API.imageUrl(i.backdropPath || posterPath, i.backdropPath ? 'w780' : 'w342') : '';
+      const epLabel = `S${String(i.seasonNumber).padStart(2,'0')}E${String(i.episodeNumber).padStart(2,'0')}`;
+      return `<div class="fp-ep-card" onclick="App.navigate('details',{id:${tmdbId},type:'tv'})">
+        <div class="fp-ep-backdrop-wrap">
+          ${backdrop ? `<img src="${backdrop}" class="fp-ep-backdrop" alt="" loading="lazy">` : `<div class="fp-ep-backdrop-ph">${UI.icon('tv', 28)}</div>`}
+          <div class="fp-ep-gradient"></div>
+          <span class="fp-ep-badge">${epLabel}</span>
+          ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+          ${onPlex ? `<div class="fp-grid-plex"><svg width="10" height="10" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#E5A00D"/><path fill="#1F1F1F" d="M9 7h4.5a3.5 3.5 0 0 1 0 7H11v3H9V7zm2 2v3h2.5a1.5 1.5 0 0 0 0-3H11z"/></svg></div>` : ''}
+        </div>
+        <div class="fp-ep-info">
+          <p class="fp-ep-show">${UI.escapeHtml(i.name || i.mediaTitle || i.title || '')}</p>
+        </div>
+      </div>`;
+    }
+
+    const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
     return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
       <div class="fp-grid-poster-wrap">
         ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
@@ -548,10 +567,28 @@ const FriendWatchedAllPage = {
       <div class="fp-card-grid">
         ${filtered.map(i => {
           const posterPath = i.posterPath || i.mediaPosterPath || '';
-          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
           const fpType = (i.mediaType || 'tv') === 'movie' ? 'movie' : 'tv';
           const tmdbId = i.tmdbId;
           const bothWatched = myWatchedIds && myWatchedIds.has(String(tmdbId));
+          const isEpisode = i.seasonNumber != null && i.episodeNumber != null;
+
+          if (isEpisode) {
+            const backdrop = (i.backdropPath || posterPath) ? API.imageUrl(i.backdropPath || posterPath, i.backdropPath ? 'w780' : 'w342') : '';
+            const epLabel = `S${String(i.seasonNumber).padStart(2,'0')}E${String(i.episodeNumber).padStart(2,'0')}`;
+            return `<div class="fp-ep-card" onclick="App.navigate('details',{id:${tmdbId},type:'tv'})">
+              <div class="fp-ep-backdrop-wrap">
+                ${backdrop ? `<img src="${backdrop}" class="fp-ep-backdrop" alt="" loading="lazy">` : `<div class="fp-ep-backdrop-ph">${UI.icon('tv', 28)}</div>`}
+                <div class="fp-ep-gradient"></div>
+                <span class="fp-ep-badge">${epLabel}</span>
+                ${bothWatched ? `<div class="fp-grid-both">${UI.icon('check', 10)}</div>` : ''}
+              </div>
+              <div class="fp-ep-info">
+                <p class="fp-ep-show">${UI.escapeHtml(i.name || i.mediaTitle || '')}</p>
+              </div>
+            </div>`;
+          }
+
+          const poster = posterPath ? API.imageUrl(posterPath, 'w342') : '';
           return `<div class="fp-grid-card" onclick="App.navigate('details',{id:${tmdbId},type:'${fpType}'})">
             <div class="fp-grid-poster-wrap">
               ${poster ? `<img src="${poster}" class="fp-grid-poster" alt="" loading="lazy">` : `<div class="fp-grid-poster-ph">${UI.icon('film', 24)}</div>`}
