@@ -272,6 +272,7 @@ const PlexConnectPage = {
         // Save credentials to Firestore so they restore on next login
         try { await Services.savePlexCredentials(server.name, token); } catch (_) {}
         UI.toast(`Synced ${allItems.length} items from "${server.name}"`, 'success');
+        localStorage.setItem('plex_last_sync_ts', String(Math.floor(Date.now() / 1000)));
       } else {
         UI.toast(`Connected to "${server.name}" but no watched items found.`, 'info');
       }
@@ -503,6 +504,174 @@ const PlexConnectPage = {
       }
     }
     return null;
+  },
+
+  /* ── Incremental Auto-Sync ── */
+  _autoSyncTimer: null,
+  _autoSyncBusy: false,
+  AUTO_SYNC_INTERVAL: 10 * 60 * 1000, // 10 minutes
+
+  startAutoSync() {
+    this.stopAutoSync();
+    if (!Services.plex.isConnected) return;
+    // Run first incremental sync after a short delay, then repeat
+    this._autoSyncTimer = setInterval(() => this.incrementalSync(), this.AUTO_SYNC_INTERVAL);
+    // Also run once after 30s on startup
+    setTimeout(() => this.incrementalSync(), 30000);
+  },
+
+  stopAutoSync() {
+    if (this._autoSyncTimer) { clearInterval(this._autoSyncTimer); this._autoSyncTimer = null; }
+  },
+
+  async incrementalSync() {
+    if (this._autoSyncBusy || !Services.plex.isConnected) return;
+    this._autoSyncBusy = true;
+    try {
+      const token = Services.plex.token;
+      if (!token) return;
+
+      const lastSyncTs = parseInt(localStorage.getItem('plex_last_sync_ts') || '0');
+
+      const resources = await PlexAPI.getResources(token);
+      const server = resources?.find(r => r.provides?.includes('server'));
+      if (!server) return;
+
+      const sectionsData = await PlexAPI.serverFetch(token, server, '/library/sections');
+      if (!sectionsData) return;
+
+      const sections = sectionsData?.MediaContainer?.Directory || [];
+      const newItems = [];
+
+      for (const section of sections.filter(s => s.type === 'show' || s.type === 'movie')) {
+        if (section.type === 'show') {
+          const metadata = await this._fetchNewSince(token, server,
+            `/library/sections/${section.key}/all?type=4&viewCount%3E=1&sort=lastViewedAt:desc`, lastSyncTs);
+          metadata.forEach(m => {
+            newItems.push({
+              title: m.grandparentTitle || m.title || '',
+              episodeTitle: m.title || '',
+              season: m.parentIndex, episode: m.index,
+              year: m.year || m.parentYear || '', type: 'show',
+              thumb: m.grandparentThumb || m.thumb || '',
+              lastViewedAt: m.lastViewedAt,
+              plexKey: m.key || '', machineId: server.clientIdentifier || ''
+            });
+          });
+        } else {
+          const metadata = await this._fetchNewSince(token, server,
+            `/library/sections/${section.key}/all?unwatched=0&sort=lastViewedAt:desc`, lastSyncTs);
+          metadata.forEach(m => {
+            newItems.push({
+              title: m.title || '', year: m.year || '', type: 'movie',
+              thumb: m.thumb || '', lastViewedAt: m.lastViewedAt,
+              plexKey: m.key || '', machineId: server.clientIdentifier || ''
+            });
+          });
+        }
+      }
+
+      if (!newItems.length) {
+        // Nothing new — just update the timestamp
+        localStorage.setItem('plex_last_sync_ts', String(Math.floor(Date.now() / 1000)));
+        return;
+      }
+
+      // Get existing library for dedup
+      const existingLib = Services.plex.getLibrary();
+      const existingKeys = new Set(existingLib.map(i =>
+        i.type === 'show' ? `show:${i.title}:s${i.season}e${i.episode}` : `movie:${i.title}`
+      ));
+
+      // Filter to truly new items
+      const trulyNew = newItems.filter(i => {
+        const key = i.type === 'show' ? `show:${i.title}:s${i.season}e${i.episode}` : `movie:${i.title}`;
+        return !existingKeys.has(key);
+      });
+
+      if (!trulyNew.length) {
+        localStorage.setItem('plex_last_sync_ts', String(Math.floor(Date.now() / 1000)));
+        return;
+      }
+
+      // TMDB match only new unique titles
+      const uniqueKeys = new Map();
+      trulyNew.forEach(item => {
+        const key = `${item.type}:${item.title}`;
+        if (!uniqueKeys.has(key)) uniqueKeys.set(key, item);
+      });
+
+      // Check which titles already have TMDB matches in existing library
+      const existingMatches = {};
+      existingLib.forEach(i => {
+        if (i.tmdbId) existingMatches[`${i.type}:${i.title}`] = { tmdbId: i.tmdbId, posterPath: i.posterPath, tmdbTitle: i.tmdbTitle };
+      });
+
+      this._syncItems = [...existingLib, ...trulyNew];
+      const tmdbCache = {};
+
+      // Only TMDB-search titles we don't already have a match for
+      const toMatch = [...uniqueKeys.values()].filter(i => !existingMatches[`${i.type}:${i.title}`]);
+      const batchSize = 5;
+      for (let i = 0; i < toMatch.length; i += batchSize) {
+        const batch = toMatch.slice(i, i + batchSize);
+        const results = await Promise.all(batch.map(item => this._matchTmdb(item)));
+        results.filter(Boolean).forEach(r => { tmdbCache[r.key] = r; });
+      }
+
+      // Enrich new items with TMDB data (from new matches + existing matches)
+      trulyNew.forEach(item => {
+        const key = `${item.type}:${item.title}`;
+        const match = tmdbCache[key] || existingMatches[key];
+        if (match) {
+          item.tmdbId = match.tmdbId;
+          item.posterPath = match.posterPath;
+          item.tmdbTitle = match.tmdbTitle;
+        }
+      });
+
+      // Merge into existing library
+      const merged = [...existingLib, ...trulyNew];
+      Services.plex.setLibrary(merged);
+
+      // Save only new items to Firestore
+      try { await Services.savePlexHistory(trulyNew); } catch (_) {}
+      // Backport only new items to activity
+      try { await Services.backportPlexActivity(trulyNew); } catch (_) {}
+      // Mark new episodes as watched
+      try { await Services.markWatchedFromPlexHistory(); } catch (_) {}
+
+      localStorage.setItem('plex_last_sync_ts', String(Math.floor(Date.now() / 1000)));
+      console.log(`[PlexAutoSync] Synced ${trulyNew.length} new items`);
+    } catch (e) {
+      console.warn('[PlexAutoSync] Incremental sync failed:', e);
+    } finally {
+      this._autoSyncBusy = false;
+    }
+  },
+
+  // Fetch pages sorted by lastViewedAt desc, stopping when hitting items older than sinceTs
+  async _fetchNewSince(token, server, basePath, sinceTs) {
+    if (!sinceTs) return this._fetchAllPaged(token, server, basePath);
+    const pageSize = 200;
+    let start = 0;
+    const items = [];
+    while (true) {
+      const sep = basePath.includes('?') ? '&' : '?';
+      const url = `${basePath}${sep}X-Plex-Container-Start=${start}&X-Plex-Container-Size=${pageSize}`;
+      const data = await PlexAPI.serverFetch(token, server, url);
+      const page = data?.MediaContainer?.Metadata || [];
+      let hitOld = false;
+      for (const m of page) {
+        if (m.lastViewedAt && m.lastViewedAt <= sinceTs) { hitOld = true; break; }
+        items.push(m);
+      }
+      if (hitOld || page.length < pageSize) break;
+      const totalSize = data?.MediaContainer?.totalSize || 0;
+      start += pageSize;
+      if (start >= totalSize) break;
+    }
+    return items;
   }
 };
 

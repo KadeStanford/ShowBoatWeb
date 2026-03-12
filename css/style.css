@@ -3637,3 +3637,17 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
   100% { background: transparent; }
 }
 .ep-highlight { animation: epHighlight 2s ease-out forwards; border-radius: 12px; }
+
+/* ============================================================
+   V67 — NOW PLAYING DESKTOP LAYOUT FIX
+   ============================================================ */
+@media (min-width: 768px) {
+  .plex-now-playing-page { max-width: 720px; margin: 0 auto; }
+  .np-card { padding: 20px; }
+  .np-card-top { gap: 20px; }
+  .np-still { max-height: 240px; border-radius: 12px; }
+  .np-cast-chip { padding: 10px 14px 10px 10px; }
+  .np-overview { font-size: .9375rem; }
+  .np-title { font-size: 1.25rem; }
+  .np-subtitle-text { font-size: .9375rem; }
+}

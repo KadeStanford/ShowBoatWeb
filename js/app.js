@@ -77,6 +77,8 @@ const App = {
         Services.restorePlexOnLogin().catch(() => {});
         // Ensure Plex watch history is backported into activity collection
         Services.ensurePlexActivityBackfill().catch(() => {});
+        // Start Plex auto-sync for newly watched content
+        if (typeof PlexConnectPage !== 'undefined') PlexConnectPage.startAutoSync();
         // Check for newly earned badges and show unlock notifications
         setTimeout(() => checkAndNotifyNewBadges().catch(() => {}), 3000);
         // Auto-start guided tour for new users
