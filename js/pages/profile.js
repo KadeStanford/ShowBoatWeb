@@ -803,12 +803,11 @@ const ProfilePage = {
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       const file = new File([blob], 'showboat-card.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file], title: 'ShowBoat',
-          text: this._shareCardState?.type === 'invite'
-            ? `Join ShowBoat with my invite code: ${this._shareCardState.code}`
-            : 'Add me on ShowBoat!'
-        });
+        const st = this._shareCardState;
+        const shareText = st?.type === 'invite'
+          ? `Join me on ShowBoat with my invite code: ${st.code}\nhttps://showboat.me`
+          : `Check out my profile on ShowBoat!\nhttps://showboat.me`;
+        await navigator.share({ files: [file], title: 'ShowBoat', text: shareText, url: 'https://showboat.me' });
       } else {
         this._downloadShareCard();
         UI.toast('Card saved! Share it manually', 'info');
