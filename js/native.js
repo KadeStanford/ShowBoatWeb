@@ -259,6 +259,17 @@ const Native = {
 
     // Register push notifications
     this.push.register();
+    this.push.onRegistration(async token => {
+      console.log('[Push] Token:', token.value);
+      try {
+        const uid = auth.currentUser?.uid;
+        if (uid && token.value) {
+          await db.collection('users').doc(uid).update({
+            fcmTokens: firebase.firestore.FieldValue.arrayUnion(token.value)
+          });
+        }
+      } catch (e) { console.warn('Failed to save FCM token:', e); }
+    });
     this.push.onNotification(notification => {
       console.log('[Push] Received:', notification);
       if (typeof Components !== 'undefined') {

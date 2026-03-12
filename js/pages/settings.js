@@ -65,6 +65,8 @@ const SettingsPage = {
         </div>
       </div>
 
+      ${this.renderNotificationPrefs()}
+
       <div class="settings-section">
         <div class="settings-section-title">${UI.icon('compass', 16)} Experience</div>
 
@@ -129,5 +131,55 @@ const SettingsPage = {
     } else {
       UI.toast('Tour not available', 'error');
     }
+  },
+
+  renderNotificationPrefs() {
+    const p = this.state.profile || {};
+    const prefs = p.notificationPrefs || {};
+    const enabled = prefs.enabled !== false;
+    const categories = [
+      { key: 'friends',        label: 'Friend Requests',   icon: 'user-plus' },
+      { key: 'recommendations', label: 'Recommendations',  icon: 'star' },
+      { key: 'shames',         label: 'Wall of Shame',     icon: 'alert-triangle' },
+      { key: 'reactions',      label: 'Reactions',          icon: 'heart' },
+      { key: 'matcher',        label: 'Matcher',            icon: 'shuffle' },
+      { key: 'sharedLists',    label: 'Shared Lists',       icon: 'list' },
+      { key: 'activity',       label: 'Friend Activity',    icon: 'activity' },
+    ];
+    return `<div class="settings-section">
+      <div class="settings-section-title">${UI.icon('bell', 16)} Notifications</div>
+      <div class="settings-card">
+        <div class="settings-notif-row">
+          <div>
+            <label class="settings-label">Push Notifications</label>
+            <p class="settings-desc">Receive push notifications on this device.</p>
+          </div>
+          <label class="settings-switch">
+            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="SettingsPage.toggleNotifPref('enabled', this.checked)">
+            <span class="settings-switch-slider"></span>
+          </label>
+        </div>
+      </div>
+      ${enabled ? categories.map(c => `<div class="settings-card">
+        <div class="settings-notif-row">
+          <div><label class="settings-label">${UI.icon(c.icon, 14)} ${c.label}</label></div>
+          <label class="settings-switch">
+            <input type="checkbox" ${prefs[c.key] !== false ? 'checked' : ''} onchange="SettingsPage.toggleNotifPref('${c.key}', this.checked)">
+            <span class="settings-switch-slider"></span>
+          </label>
+        </div>
+      </div>`).join('') : ''}
+    </div>`;
+  },
+
+  async toggleNotifPref(key, value) {
+    try {
+      const p = this.state.profile || {};
+      if (!p.notificationPrefs) p.notificationPrefs = {};
+      p.notificationPrefs[key] = value;
+      await Services.updateProfile({ notificationPrefs: p.notificationPrefs });
+      // Re-render if toggling master switch to show/hide categories
+      if (key === 'enabled') this.draw(document.getElementById('page-content'));
+    } catch (e) { UI.toast('Failed to update: ' + e.message, 'error'); }
   }
 };

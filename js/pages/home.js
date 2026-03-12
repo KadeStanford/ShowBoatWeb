@@ -4,11 +4,13 @@ const HomePage = {
 
   async render() {
     const el = document.getElementById('page-content');
+    el.classList.add('home-active');
     el.innerHTML = UI.loading();
     try {
       await this.loadData();
       this.draw(el);
       this.startCarousel();
+      this.initPullToRefresh();
       if (auth.currentUser) this.loadKeepWatching();
     } catch (e) { el.innerHTML = UI.emptyState('Error loading home', e.message); }
   },
@@ -300,6 +302,7 @@ const HomePage = {
     const s = this.state;
     el.innerHTML = `
       <div class="home-page">
+        <div class="pull-refresh-indicator" id="pull-refresh"><div class="pull-refresh-spinner"></div><span>Pull to refresh</span></div>
         ${this.renderHero()}
         <div class="section" id="plex-now-playing-home" style="display:none"></div>
         ${this.renderMenuGrid()}
@@ -565,5 +568,49 @@ const HomePage = {
     this.state._plexServer = null;
     // Clear now-playing in Firestore so friends don't see stale sessions
     if (this.state.plexSessions.length) Services.clearPlexNowPlaying().catch(() => {});
+    document.getElementById('page-content')?.classList.remove('home-active');
+  },
+
+  initPullToRefresh() {
+    const content = document.getElementById('page-content');
+    if (!content) return;
+    let startY = 0, pulling = false;
+    const indicator = document.getElementById('pull-refresh');
+    if (!indicator) return;
+    const THRESHOLD = 80;
+
+    content.addEventListener('touchstart', e => {
+      if (content.scrollTop <= 0) {
+        startY = e.touches[0].clientY;
+        pulling = true;
+      }
+    }, { passive: true });
+
+    content.addEventListener('touchmove', e => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 10 && content.scrollTop <= 0) {
+        indicator.classList.add('pulling');
+        indicator.querySelector('span').textContent = dy > THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
+      } else {
+        indicator.classList.remove('pulling');
+      }
+    }, { passive: true });
+
+    content.addEventListener('touchend', e => {
+      if (!pulling) return;
+      const dy = e.changedTouches[0].clientY - startY;
+      pulling = false;
+      if (dy > THRESHOLD && content.scrollTop <= 0) {
+        indicator.classList.remove('pulling');
+        indicator.classList.add('refreshing');
+        indicator.querySelector('span').textContent = 'Refreshing...';
+        this.render().finally(() => {
+          // indicator is replaced by render, no cleanup needed
+        });
+      } else {
+        indicator.classList.remove('pulling');
+      }
+    }, { passive: true });
   }
 };
