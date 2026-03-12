@@ -8,8 +8,8 @@
   "theme_color": "#020617",
   "orientation": "portrait",
   "icons": [
-    { "src": "img/logo-icon.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "img/logo-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "img/logo-wordmark.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/logo-wordmark.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ],
   "categories": ["entertainment"],

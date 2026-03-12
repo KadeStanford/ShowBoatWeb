@@ -11,7 +11,7 @@ const AuthPages = {
     return `<div class="landing-page">
       <!-- Nav -->
       <nav class="landing-nav">
-        <div class="landing-nav-brand"><img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-wordmark"></div>
+        <div class="landing-nav-brand"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark"></div>
         <div class="landing-nav-links">
           <button class="landing-nav-login" onclick="App.navigate('login')">Sign In</button>
           <button class="btn-primary landing-nav-cta" onclick="document.getElementById('waitlist-section').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
@@ -142,7 +142,7 @@ const AuthPages = {
     return `<div class="auth-split-page">
       <!-- Left panel: promo -->
       <div class="auth-split-left">
-        <div class="auth-split-brand"><img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-wordmark"></div>
+        <div class="auth-split-brand"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark"></div>
         <h2 class="auth-split-headline">Your shows.<br>Your ratings.<br>Your crew.</h2>
         <p class="auth-split-sub">The social tracker for people who take their TV seriously.</p>
         <div class="auth-features-list">${this._featureHighlights}</div>
@@ -152,7 +152,7 @@ const AuthPages = {
       <div class="auth-split-right">
         <div class="auth-form-card">
           <div class="auth-form-header">
-            <div class="auth-logo-sm"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-icon"></div>
+            <div class="auth-logo-sm"><img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-icon"></div>
             <h1 class="auth-title">Welcome back</h1>
             <p class="auth-subtitle">Sign in to your ShowBoat account</p>
           </div>
@@ -187,7 +187,7 @@ const AuthPages = {
   renderSignup() {
     return `<div class="auth-split-page">
       <div class="auth-split-left">
-        <div class="auth-split-brand"><img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-wordmark"></div>
+        <div class="auth-split-brand"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark"></div>
         <h2 class="auth-split-headline">Join the crew.<br>Start tracking.</h2>
         <p class="auth-split-sub">ShowBoat is invite-only right now. Have a code? You're in.</p>
         <div class="auth-features-list">${this._featureHighlights}</div>
@@ -196,7 +196,7 @@ const AuthPages = {
       <div class="auth-split-right">
         <div class="auth-form-card">
           <div class="auth-form-header">
-            <div class="auth-logo-sm"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-icon"></div>
+            <div class="auth-logo-sm"><img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-icon"></div>
             <h1 class="auth-title">Create Account</h1>
             <p class="auth-subtitle">You'll need an invite code to join</p>
           </div>
