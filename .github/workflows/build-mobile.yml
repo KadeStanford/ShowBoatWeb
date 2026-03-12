@@ -231,9 +231,8 @@ jobs:
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath ../../.spm-cache \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            "CODE_SIGN_IDENTITY=Apple Distribution" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            PROVISIONING_PROFILE="$PP_UUID" \
             -allowProvisioningUpdates
 
       - name: Export IPA
