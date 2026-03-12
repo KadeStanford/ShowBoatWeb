@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ShowBoat</string>
+    <string name="title_activity_main">ShowBoat</string>
+    <string name="package_name">me.showboat.app</string>
+    <string name="custom_url_scheme">me.showboat.app</string>
+</resources>

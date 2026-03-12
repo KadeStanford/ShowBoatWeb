@@ -1,6 +1,14 @@
 node_modules/
+www/
 .DS_Store
 Thumbs.db
 *.log
 .env
 .env.local
+
+# Capacitor native build artifacts
+android/app/build/
+android/.gradle/
+android/build/
+ios/App/build/
+ios/App/Pods/

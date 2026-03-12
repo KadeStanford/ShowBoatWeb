@@ -1,0 +1,20 @@
+{
+  "name": "showboatweb",
+  "version": "1.0.0",
+  "description": "A web port of the ShowBoat React Native app — your personal media tracker.",
+  "main": "sw.js",
+  "scripts": {
+    "build": "node scripts/copy-web.js",
+    "cap:sync": "npm run build && npx cap sync",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0"
+  }
+}
