@@ -205,11 +205,12 @@ jobs:
       - name: Set up App Store Connect API key
         run: |
           mkdir -p ~/private_keys
-          echo "${{ secrets.APPLE_API_KEY_BASE64 }}" > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
+          echo "${{ secrets.APPLE_API_KEY_BASE64 }}" | base64 --decode > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
 
       - name: Archive iOS app
         working-directory: ios/App
         run: |
+          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< $(security cms -D -i $RUNNER_TEMP/profile.mobileprovision))
           xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
@@ -217,8 +218,10 @@ jobs:
             -archivePath build/ShowBoat.xcarchive \
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath ../../.spm-cache \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            PROVISIONING_PROFILE_SPECIFIER="ShowBoat AppStore Profile"
 
       - name: Export IPA
         working-directory: ios/App
