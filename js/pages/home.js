@@ -582,24 +582,30 @@ const HomePage = {
   initPullToRefresh() {
     const content = document.getElementById('page-content');
     if (!content) return;
-    let startY = 0, pulling = false;
     const indicator = document.getElementById('pull-refresh');
     if (!indicator) return;
+    let startY = 0, startScrollTop = 0, pulling = false;
     const THRESHOLD = 80;
 
     this._ptrStart = e => {
-      if (content.scrollTop < 1) {
+      // Only engage if already scrolled to the very top when finger lands
+      startScrollTop = content.scrollTop;
+      if (startScrollTop < 1 && App.currentPage === 'home') {
         startY = e.touches[0].clientY;
         pulling = true;
+      } else {
+        pulling = false;
       }
     };
 
     this._ptrMove = e => {
       if (!pulling) return;
-      // Abort if user has scrolled down at all (iOS elastic overscroll gives negative scrollTop)
-      if (content.scrollTop > 1) { pulling = false; indicator.classList.remove('pulling'); return; }
+      // Cancel if page scrolled away from top at any point
+      if (content.scrollTop > 2) { pulling = false; indicator.classList.remove('pulling'); return; }
+      // Cancel if we're no longer on the home page
+      if (App.currentPage !== 'home') { pulling = false; indicator.classList.remove('pulling'); return; }
       const dy = e.touches[0].clientY - startY;
-      if (dy > 20 && content.scrollTop < 1) {
+      if (dy > 20 && content.scrollTop < 2) {
         indicator.classList.add('pulling');
         indicator.querySelector('span').textContent = dy > THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
       } else {
@@ -609,15 +615,15 @@ const HomePage = {
 
     this._ptrEnd = e => {
       if (!pulling) return;
-      const dy = e.changedTouches[0].clientY - startY;
       pulling = false;
-      if (dy > THRESHOLD && content.scrollTop < 1) {
+      // Must still be on home page and at top of scroll
+      if (App.currentPage !== 'home' || content.scrollTop > 2) { indicator.classList.remove('pulling'); return; }
+      const dy = e.changedTouches[0].clientY - startY;
+      if (dy > THRESHOLD) {
         indicator.classList.remove('pulling');
         indicator.classList.add('refreshing');
         indicator.querySelector('span').textContent = 'Refreshing...';
-        this.render().finally(() => {
-          // indicator is replaced by render, no cleanup needed
-        });
+        this.render().finally(() => {});
       } else {
         indicator.classList.remove('pulling');
       }

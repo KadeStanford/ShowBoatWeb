@@ -3818,6 +3818,7 @@ html.native-app * { touch-action: manipulation; }
   display: flex; align-items: center; justify-content: center; gap: 8px;
   height: 0; overflow: hidden; transition: height .2s ease;
   color: var(--text-muted); font-size: 13px; font-weight: 500;
+  margin-top: 12px;
 }
 .pull-refresh-indicator.pulling { height: 48px; }
 .pull-refresh-indicator.refreshing { height: 48px; }
