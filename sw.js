@@ -1,8 +1,8 @@
-const CACHE_NAME = 'showboat-v75';
+const CACHE_NAME = 'showboat-v76';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/style.css?v=25',
+  '/css/style.css?v=26',
   '/js/firebase-config.js',
   '/js/api.js',
   '/js/services.js',
