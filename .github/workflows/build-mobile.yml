@@ -203,9 +203,13 @@ jobs:
           sed -i '' "s/TEAM_ID_HERE/${{ secrets.APPLE_TEAM_ID }}/" ios/ExportOptions.plist
 
       - name: Set up App Store Connect API key
+        env:
+          API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
         run: |
           mkdir -p ~/private_keys
-          echo "${{ secrets.APPLE_API_KEY_BASE64 }}" | base64 --decode > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
+          printf '%s\n' "$API_KEY_P8" > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
+          echo "API Key file size:"
+          wc -c ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
 
       - name: Debug signing info
         run: |
