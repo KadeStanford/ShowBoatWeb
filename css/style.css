@@ -3067,6 +3067,28 @@ input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radiu
 .settings-switch-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--text-secondary); border-radius: 50%; transition: 0.2s; }
 .settings-switch input:checked + .settings-switch-slider { background: rgba(52,211,153,.2); border-color: rgba(52,211,153,.5); }
 .settings-switch input:checked + .settings-switch-slider::before { transform: translateX(20px); background: var(--accent); }
+.settings-section-desc { font-size: 12px; color: var(--text-secondary); margin: -4px 16px 8px; }
+.settings-link-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.settings-linked-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(52,211,153,.12); color: var(--accent); border: 1px solid rgba(52,211,153,.25); }
+.settings-unlinked-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(148,163,184,.08); color: var(--text-muted); border: 1px solid var(--border); }
+.settings-link-btn { background: rgba(52,211,153,.1) !important; border-color: rgba(52,211,153,.3) !important; color: var(--accent) !important; }
+.settings-unlink-btn { background: rgba(239,68,68,.08) !important; border-color: rgba(239,68,68,.2) !important; color: #ef4444 !important; }
+
+/* Edge swipe back indicator */
+.swipe-back-indicator {
+  position: fixed; top: 0; bottom: 0; left: 0; width: 32px; z-index: 9999;
+  display: flex; align-items: center; pointer-events: none;
+}
+.swipe-back-arrow {
+  width: 32px; height: 64px; display: flex; align-items: center; justify-content: center;
+  background: rgba(52,211,153,.15); backdrop-filter: blur(12px);
+  border-radius: 0 16px 16px 0; color: var(--accent);
+  opacity: 0; transform: translateX(-32px);
+  transition: opacity .15s, transform .15s;
+}
+.swipe-back-indicator.active .swipe-back-arrow {
+  opacity: 1; transform: translateX(0);
+}
 
 .invite-section { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin: 16px 0; }
 .invite-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); }

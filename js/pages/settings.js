@@ -45,6 +45,8 @@ const SettingsPage = {
         </div>
       </div>
 
+      ${this.renderLinkedAccounts()}
+
       <div class="settings-section">
         <div class="settings-section-title">${UI.icon('eye', 16)} Privacy</div>
 
@@ -181,5 +183,113 @@ const SettingsPage = {
       // Re-render if toggling master switch to show/hide categories
       if (key === 'enabled') this.draw(document.getElementById('page-content'));
     } catch (e) { UI.toast('Failed to update: ' + e.message, 'error'); }
+  },
+
+  renderLinkedAccounts() {
+    const user = auth.currentUser;
+    if (!user) return '';
+    const providers = (user.providerData || []).map(p => p.providerId);
+    const hasGoogle = providers.includes('google.com');
+    const hasApple = providers.includes('apple.com');
+    const hasPassword = providers.includes('password');
+    // Only show linking options (unlinking requires at least 2 providers)
+    const canUnlink = providers.length > 1;
+
+    return `<div class="settings-section">
+      <div class="settings-section-title">${UI.icon('link', 16)} Linked Accounts</div>
+      <p class="settings-section-desc">Link additional sign-in methods to your account.</p>
+
+      <div class="settings-card">
+        <div class="settings-notif-row">
+          <div class="settings-link-info">
+            <label class="settings-label">${UI.icon('mail', 14)} Google</label>
+            ${hasGoogle ? '<span class="settings-linked-badge">Linked</span>' : '<span class="settings-unlinked-badge">Not linked</span>'}
+          </div>
+          ${hasGoogle
+            ? (canUnlink ? `<button class="settings-action-btn settings-unlink-btn" onclick="SettingsPage.unlinkProvider('google.com')">Unlink</button>` : '')
+            : `<button class="settings-action-btn settings-link-btn" onclick="SettingsPage.linkGoogle()">Link</button>`
+          }
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-notif-row">
+          <div class="settings-link-info">
+            <label class="settings-label">${UI.icon('smartphone', 14)} Apple</label>
+            ${hasApple ? '<span class="settings-linked-badge">Linked</span>' : '<span class="settings-unlinked-badge">Not linked</span>'}
+          </div>
+          ${hasApple
+            ? (canUnlink ? `<button class="settings-action-btn settings-unlink-btn" onclick="SettingsPage.unlinkProvider('apple.com')">Unlink</button>` : '')
+            : `<button class="settings-action-btn settings-link-btn" onclick="SettingsPage.linkApple()">Link</button>`
+          }
+        </div>
+      </div>
+
+      ${hasPassword ? '' : `<div class="settings-card">
+        <div class="settings-notif-row">
+          <div class="settings-link-info">
+            <label class="settings-label">${UI.icon('key', 14)} Email & Password</label>
+            <span class="settings-unlinked-badge">Not linked</span>
+          </div>
+          <button class="settings-action-btn settings-link-btn" onclick="SettingsPage.linkPassword()">Link</button>
+        </div>
+      </div>`}
+    </div>`;
+  },
+
+  async linkGoogle() {
+    try {
+      if (typeof Native !== 'undefined' && Native.isNative && Native.platform === 'ios') {
+        await Native.nativeAuth.linkGoogle();
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.currentUser.linkWithPopup(provider);
+      }
+      UI.toast('Google account linked!', 'success');
+      this.draw(document.getElementById('page-content'));
+    } catch (e) {
+      if (e.code === 'auth/credential-already-in-use') {
+        UI.toast('This Google account is already linked to another user', 'error');
+      } else { UI.toast('Failed to link: ' + e.message, 'error'); }
+    }
+  },
+
+  async linkApple() {
+    try {
+      if (typeof Native !== 'undefined' && Native.isNative && Native.platform === 'ios') {
+        await Native.nativeAuth.linkApple();
+      } else {
+        const provider = new firebase.auth.OAuthProvider('apple.com');
+        await auth.currentUser.linkWithPopup(provider);
+      }
+      UI.toast('Apple account linked!', 'success');
+      this.draw(document.getElementById('page-content'));
+    } catch (e) {
+      if (e.code === 'auth/credential-already-in-use') {
+        UI.toast('This Apple account is already linked to another user', 'error');
+      } else { UI.toast('Failed to link: ' + e.message, 'error'); }
+    }
+  },
+
+  async linkPassword() {
+    const email = auth.currentUser?.email;
+    if (!email) { UI.toast('No email on account', 'error'); return; }
+    const password = prompt('Set a password for email sign-in:');
+    if (!password || password.length < 6) { UI.toast('Password must be at least 6 characters', 'error'); return; }
+    try {
+      const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+      await auth.currentUser.linkWithCredential(credential);
+      UI.toast('Email & password linked!', 'success');
+      this.draw(document.getElementById('page-content'));
+    } catch (e) { UI.toast('Failed to link: ' + e.message, 'error'); }
+  },
+
+  async unlinkProvider(providerId) {
+    try {
+      await auth.currentUser.unlink(providerId);
+      const name = providerId === 'google.com' ? 'Google' : providerId === 'apple.com' ? 'Apple' : 'Provider';
+      UI.toast(`${name} unlinked`, 'success');
+      this.draw(document.getElementById('page-content'));
+    } catch (e) { UI.toast('Failed to unlink: ' + e.message, 'error'); }
   }
 };

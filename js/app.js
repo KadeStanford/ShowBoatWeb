@@ -145,6 +145,9 @@ const App = {
         if (page) this.navigate(page);
       });
     });
+
+    // Edge swipe back navigation
+    this.initEdgeSwipeBack();
   },
 
   navigate(page, params, _isBack) {
@@ -253,6 +256,52 @@ const App = {
       for (const [k, v] of sp) params[k] = this.deserializeParam(v);
     }
     if (this.routes[page]) this.navigate(page, Object.keys(params).length ? params : undefined);
+  },
+
+  initEdgeSwipeBack() {
+    // Create indicator element
+    const indicator = document.createElement('div');
+    indicator.className = 'swipe-back-indicator';
+    indicator.innerHTML = '<div class="swipe-back-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></div>';
+    document.body.appendChild(indicator);
+
+    const EDGE_ZONE = 24; // px from left edge to start detecting
+    const THRESHOLD = 80; // px drag distance to trigger back
+    let startX = 0, startY = 0, tracking = false, triggered = false;
+
+    document.addEventListener('touchstart', e => {
+      const x = e.touches[0].clientX;
+      if (x <= EDGE_ZONE && this.history.length > 0) {
+        startX = x;
+        startY = e.touches[0].clientY;
+        tracking = true;
+        triggered = false;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', e => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      // Cancel if vertical scroll dominates
+      if (dy > 50 && dy > dx) { tracking = false; indicator.classList.remove('active'); return; }
+      if (dx > 20) {
+        indicator.classList.add('active');
+        if (dx > THRESHOLD && !triggered) triggered = true;
+      } else {
+        indicator.classList.remove('active');
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+      if (tracking && triggered) {
+        if (typeof Native !== 'undefined') Native.haptics.impact('Light');
+        this.back();
+      }
+      tracking = false;
+      triggered = false;
+      indicator.classList.remove('active');
+    }, { passive: true });
   },
 
   showNav(show) {
