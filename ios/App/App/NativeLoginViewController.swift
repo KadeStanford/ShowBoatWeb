@@ -83,11 +83,11 @@ class NativeLoginViewController: UIViewController {
             stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -32)
         ])
 
-        // Logo
+        // Logo (wide text wordmark)
         let logoImageView = UIImageView(image: UIImage(named: "LoginLogo"))
         logoImageView.contentMode = .scaleAspectFit
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
-        logoImageView.heightAnchor.constraint(equalToConstant: 100).isActive = true
+        logoImageView.heightAnchor.constraint(equalToConstant: 48).isActive = true
         stack.addArrangedSubview(logoImageView)
 
         stack.addArrangedSubview(spacer(32))

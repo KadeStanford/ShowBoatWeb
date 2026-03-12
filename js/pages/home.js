@@ -569,6 +569,14 @@ const HomePage = {
     // Clear now-playing in Firestore so friends don't see stale sessions
     if (this.state.plexSessions.length) Services.clearPlexNowPlaying().catch(() => {});
     document.getElementById('page-content')?.classList.remove('home-active');
+    // Remove pull-to-refresh listeners so they don't fire on other pages
+    const content = document.getElementById('page-content');
+    if (content && this._ptrStart) {
+      content.removeEventListener('touchstart', this._ptrStart);
+      content.removeEventListener('touchmove', this._ptrMove);
+      content.removeEventListener('touchend', this._ptrEnd);
+      this._ptrStart = this._ptrMove = this._ptrEnd = null;
+    }
   },
 
   initPullToRefresh() {
@@ -579,14 +587,14 @@ const HomePage = {
     if (!indicator) return;
     const THRESHOLD = 80;
 
-    content.addEventListener('touchstart', e => {
+    this._ptrStart = e => {
       if (content.scrollTop < 1) {
         startY = e.touches[0].clientY;
         pulling = true;
       }
-    }, { passive: true });
+    };
 
-    content.addEventListener('touchmove', e => {
+    this._ptrMove = e => {
       if (!pulling) return;
       // Abort if user has scrolled down at all (iOS elastic overscroll gives negative scrollTop)
       if (content.scrollTop > 1) { pulling = false; indicator.classList.remove('pulling'); return; }
@@ -597,9 +605,9 @@ const HomePage = {
       } else {
         indicator.classList.remove('pulling');
       }
-    }, { passive: true });
+    };
 
-    content.addEventListener('touchend', e => {
+    this._ptrEnd = e => {
       if (!pulling) return;
       const dy = e.changedTouches[0].clientY - startY;
       pulling = false;
@@ -613,6 +621,10 @@ const HomePage = {
       } else {
         indicator.classList.remove('pulling');
       }
-    }, { passive: true });
+    };
+
+    content.addEventListener('touchstart', this._ptrStart, { passive: true });
+    content.addEventListener('touchmove', this._ptrMove, { passive: true });
+    content.addEventListener('touchend', this._ptrEnd, { passive: true });
   }
 };

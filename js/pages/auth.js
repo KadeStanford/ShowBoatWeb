@@ -11,7 +11,10 @@ const AuthPages = {
     return `<div class="landing-page">
       <!-- Nav -->
       <nav class="landing-nav">
-        <div class="landing-nav-brand"><img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark"></div>
+        <div class="landing-nav-brand">
+          <img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-icon" style="height:32px;border-radius:8px">
+          <img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark">
+        </div>
         <div class="landing-nav-links">
           <button class="landing-nav-login" onclick="App.navigate('login')">Sign In</button>
           <button class="btn-primary landing-nav-cta" onclick="document.getElementById('waitlist-section').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
@@ -20,105 +23,132 @@ const AuthPages = {
 
       <!-- Hero -->
       <section class="landing-hero">
-        <div class="landing-hero-glow"></div>
+        <div class="landing-hero-orb landing-hero-orb--1"></div>
+        <div class="landing-hero-orb landing-hero-orb--2"></div>
         <div class="landing-hero-content">
-          <div class="landing-badge">${UI.icon('zap', 14)} Now invite-only &middot; Join the waitlist</div>
-          <h1 class="landing-h1">Rate every episode.<br>Sync your Plex.<br><span class="landing-h1-accent">Watch as a crew.</span></h1>
-          <p class="landing-tagline">ShowBoat is the social tracker built for people who actually care about what they watch. Episode-level ratings, Plex sync, a live friend activity feed, and a Group Matcher to end the "what should we watch" debate forever.</p>
+          <div class="landing-badge">${UI.icon('zap', 14)} Invite-only &middot; Spots are limited</div>
+          <h1 class="landing-h1">Track what you watch.<br>Together.</h1>
+          <p class="landing-tagline">Episode-level ratings, Plex sync, a live friend feed, and a Group Matcher that ends the "what should we watch" debate. ShowBoat is the tracker for people who actually care.</p>
           <div class="landing-cta-row">
             <button class="btn-primary landing-cta-main" onclick="document.getElementById('waitlist-section').scrollIntoView({behavior:'smooth'})">${UI.icon('mail', 18)} Join the Waitlist</button>
-            <button class="landing-cta-secondary" onclick="App.navigate('login')">Have an invite code? Sign up →</button>
+            <button class="landing-cta-secondary" onclick="App.navigate('login')">Have an invite? Sign in &rarr;</button>
           </div>
         </div>
-        <div class="landing-hero-mockup">
-          <div class="landing-phone">
-            <div class="landing-phone-inner">
-              <div class="landing-mock-activity">
-                <div class="landing-mock-row mine"><div class="landing-mock-bubble mine-b"><div class="landing-mock-poster"></div><div><p class="landing-mock-action">rated S4E6 9/10</p><p class="landing-mock-title">Succession</p></div></div></div>
-                <div class="landing-mock-row theirs"><div class="landing-mock-av">J</div><div class="landing-mock-bubble theirs-b"><div class="landing-mock-poster"></div><div><p class="landing-mock-action">watched</p><p class="landing-mock-title">The Bear</p></div></div></div>
-                <div class="landing-mock-row mine"><div class="landing-mock-bubble mine-b"><div class="landing-mock-poster"></div><div><p class="landing-mock-action">added to watchlist</p><p class="landing-mock-title">Severance</p></div></div></div>
-                <div class="landing-mock-row theirs"><div class="landing-mock-av">K</div><div class="landing-mock-bubble theirs-b"><div class="landing-mock-poster"></div><div><p class="landing-mock-action">rated S2E1 8/10</p><p class="landing-mock-title">Euphoria</p></div></div></div>
+        <div class="landing-hero-visual">
+          <div class="landing-hero-phone">
+            <div class="landing-phone-screen">
+              <div class="landing-phone-bar">
+                <span class="landing-phone-bar-dot"></span>
+                <span class="landing-phone-bar-title">Activity</span>
+                <span></span>
+              </div>
+              <div class="landing-mock-feed">
+                <div class="landing-feed-item">
+                  <div class="landing-feed-av" style="background:var(--emerald-600)">S</div>
+                  <div class="landing-feed-body"><span class="landing-feed-name">Sarah</span> rated <strong>Succession</strong> S4E6 <span class="landing-feed-score">9/10</span></div>
+                </div>
+                <div class="landing-feed-item">
+                  <div class="landing-feed-av" style="background:var(--indigo-500)">J</div>
+                  <div class="landing-feed-body"><span class="landing-feed-name">Jake</span> started watching <strong>The Bear</strong></div>
+                </div>
+                <div class="landing-feed-item">
+                  <div class="landing-feed-av" style="background:#e879f9">K</div>
+                  <div class="landing-feed-body"><span class="landing-feed-name">Kim</span> added <strong>Severance</strong> to watchlist</div>
+                </div>
+                <div class="landing-feed-item">
+                  <div class="landing-feed-av" style="background:var(--emerald-600)">S</div>
+                  <div class="landing-feed-body"><span class="landing-feed-name">Sarah</span> rated <strong>Euphoria</strong> S2E1 <span class="landing-feed-score">8/10</span></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Feature Highlights -->
+      <!-- Stats ribbon -->
+      <section class="landing-stats">
+        <div class="landing-stat"><span class="landing-stat-num">10/10</span><span class="landing-stat-label">Episode Ratings</span></div>
+        <div class="landing-stat"><span class="landing-stat-num">${UI.icon('refresh-cw', 20)}</span><span class="landing-stat-label">Plex Auto-Sync</span></div>
+        <div class="landing-stat"><span class="landing-stat-num">${UI.icon('users', 20)}</span><span class="landing-stat-label">Social Feed</span></div>
+        <div class="landing-stat"><span class="landing-stat-num">${UI.icon('shuffle', 20)}</span><span class="landing-stat-label">Group Matcher</span></div>
+      </section>
+
+      <!-- Features -->
       <section class="landing-features">
-        <h2 class="landing-section-title">Built for the way you actually watch</h2>
+        <div class="landing-section-header">
+          <h2 class="landing-section-title">Everything you need to track smarter</h2>
+          <p class="landing-section-sub">Built for the way you actually watch — not the way apps think you do.</p>
+        </div>
         <div class="landing-features-grid">
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('star', 28)}</div>
+            <div class="landing-feature-icon">${UI.icon('star', 24)}</div>
             <h3>Episode-Level Ratings</h3>
-            <p>Rate individual episodes out of 10, not just whole seasons. Build your own all-time episode ranking across every show you've seen.</p>
+            <p>Rate individual episodes out of 10. Build your personal all-time ranking across every show you've ever watched.</p>
           </div>
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('activity', 28)}</div>
+            <div class="landing-feature-icon">${UI.icon('activity', 24)}</div>
             <h3>Plex Sync</h3>
-            <p>Connect your Plex server and your entire watch history is imported automatically. No manual logging — your history just appears.</p>
+            <p>Connect your Plex server and your entire watch history imports automatically. Zero manual logging.</p>
           </div>
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('users', 28)}</div>
-            <h3>Social Activity Feed</h3>
-            <p>A live iMessage-style feed showing exactly what your friends are watching and rating right now. Stay in the loop effortlessly.</p>
+            <div class="landing-feature-icon">${UI.icon('users', 24)}</div>
+            <h3>Live Activity Feed</h3>
+            <p>An iMessage-style feed of what friends are watching and rating in real-time. Stay in the loop effortlessly.</p>
           </div>
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('shuffle', 28)}</div>
+            <div class="landing-feature-icon">${UI.icon('shuffle', 24)}</div>
             <h3>Group Matcher</h3>
-            <p>Tinder for movie night. You and a friend both swipe on titles and the Matcher surfaces what you both want to watch together.</p>
+            <p>Tinder for movie night. Swipe on titles with friends and surface what you both want to watch together.</p>
           </div>
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('bar-chart-2', 28)}</div>
+            <div class="landing-feature-icon">${UI.icon('bar-chart-2', 24)}</div>
             <h3>Deep Analytics</h3>
-            <p>See your top genres, most-watched directors, average episode score by show, and monthly viewing trends in rich visual charts.</p>
+            <p>Top genres, most-watched directors, average scores by show, and monthly viewing trends in rich charts.</p>
           </div>
           <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('award', 28)}</div>
+            <div class="landing-feature-icon">${UI.icon('award', 24)}</div>
             <h3>Badges & Milestones</h3>
-            <p>Earn badges as you hit watching milestones — completionist runs, rating streaks, genre mastery, and more. Show them off on your profile.</p>
-          </div>
-          <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('alert-triangle', 28)}</div>
-            <h3>Wall of Shame</h3>
-            <p>Publicly call out friends who still haven't watched the classics you keep recommending. A little peer pressure never hurt anyone.</p>
-          </div>
-          <div class="landing-feature-card">
-            <div class="landing-feature-icon">${UI.icon('list', 28)}</div>
-            <h3>Shared Watchlists</h3>
-            <p>Build collaborative watchlists with friends — curated date-night lineups, genre challenges, or "you have to see this" collections.</p>
+            <p>Earn badges for watching milestones — completionist runs, rating streaks, genre mastery. Show them off.</p>
           </div>
         </div>
       </section>
 
-      <!-- Social Proof / Tagline -->
+      <!-- Testimonial -->
       <section class="landing-proof-section">
         <div class="landing-proof-inner">
-          <p class="landing-proof-quote">"Finally, a tracker that treats episodes like first-class citizens."</p>
-          <p class="landing-proof-attr">— ShowBoat beta user</p>
+          <div class="landing-proof-mark">&ldquo;</div>
+          <p class="landing-proof-quote">Finally, a tracker that treats episodes like first-class citizens.</p>
+          <p class="landing-proof-attr">&mdash; ShowBoat beta tester</p>
         </div>
       </section>
 
       <!-- Waitlist -->
       <section class="landing-cta-section" id="waitlist-section">
-        <h2>Get early access</h2>
-        <p>ShowBoat is invite-only right now. Join the waitlist and we'll send you a code when a spot opens up.</p>
-        <div class="waitlist-form" id="waitlist-form-wrap">
-          <input type="text" id="waitlist-name" class="waitlist-input" placeholder="Your name (optional)">
-          <input type="email" id="waitlist-email" class="waitlist-input" placeholder="Your email address" required>
-          <button class="btn-primary landing-cta-main" onclick="AuthPages.joinWaitlist()">${UI.icon('mail', 18)} Request Invite</button>
+        <div class="landing-cta-inner">
+          <h2>Get early access</h2>
+          <p>ShowBoat is invite-only. Drop your email and we'll send a code when a spot opens.</p>
+          <div class="waitlist-form" id="waitlist-form-wrap">
+            <input type="text" id="waitlist-name" class="waitlist-input" placeholder="Your name (optional)">
+            <input type="email" id="waitlist-email" class="waitlist-input" placeholder="Email address" required>
+            <button class="btn-primary landing-cta-main" onclick="AuthPages.joinWaitlist()">${UI.icon('mail', 18)} Request Invite</button>
+          </div>
+          <div id="waitlist-success" style="display:none;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:16px 20px;margin-top:12px;color:#34d399;font-weight:500">
+            ${UI.icon('check-circle', 18)} You're on the list! We'll reach out soon.
+          </div>
+          <p class="landing-cta-signin">Already have an invite code? <a href="#" onclick="App.navigate('signup'); return false;">Create your account &rarr;</a></p>
         </div>
-        <div id="waitlist-success" style="display:none;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:16px 20px;margin-top:12px;color:#34d399;font-weight:500">
-          ${UI.icon('check-circle', 18)} You're on the list! We'll reach out when a spot opens.
-        </div>
-        <p style="margin-top:20px;color:var(--text-secondary);font-size:13px">Already have an invite code? <a href="#" onclick="App.navigate('signup'); return false;">Create your account →</a></p>
       </section>
 
       <!-- Footer -->
       <footer class="landing-footer">
-        <div class="tmdb-attribution" style="justify-content:center;margin:0">
-          <img src="img/tmdb-logo.svg" alt="TMDB" class="tmdb-attr-logo">
-          <p>This product uses TMDB and the TMDB APIs but is not endorsed or approved by TMDB.</p>
+        <div class="landing-footer-inner">
+          <div class="landing-footer-brand">
+            <img src="img/logo-wordmark.png" alt="ShowBoat" style="height:24px;border-radius:6px;opacity:.6">
+          </div>
+          <div class="tmdb-attribution" style="justify-content:center;margin:0">
+            <img src="img/tmdb-logo.svg" alt="TMDB" class="tmdb-attr-logo">
+            <p>This product uses TMDB and the TMDB APIs but is not endorsed or approved by TMDB.</p>
+          </div>
         </div>
       </footer>
     </div>`;
