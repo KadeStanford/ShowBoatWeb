@@ -97,13 +97,26 @@ const HomePage = {
       return;
     }
     sec.style.display = '';
+    const needsScroll = sessions.length > 1;
     sec.innerHTML = `
       <div class="section-header">
         <h3>${UI.icon('monitor', 16)} Now Playing on Plex</h3>
         <button class="see-all-btn" onclick="App.navigate('plex-now-playing')">View All</button>
       </div>
-      <div class="plex-home-sessions">${sessions.map(s => this._renderPlexHomeCard(s)).join('')}</div>
+      <div class="plex-carousel-wrap">
+        ${needsScroll ? `<button class="plex-carousel-btn plex-carousel-prev" onclick="HomePage._scrollPlex(-1)">${UI.icon('chevron-left', 18)}</button>` : ''}
+        <div class="plex-home-sessions" id="plex-home-track">${sessions.map(s => this._renderPlexHomeCard(s)).join('')}</div>
+        ${needsScroll ? `<button class="plex-carousel-btn plex-carousel-next" onclick="HomePage._scrollPlex(1)">${UI.icon('chevron-right', 18)}</button>` : ''}
+      </div>
     `;
+  },
+
+  _scrollPlex(dir) {
+    const track = document.getElementById('plex-home-track');
+    if (!track) return;
+    const card = track.querySelector('.plex-home-card');
+    const scrollAmt = card ? card.offsetWidth + 14 : 340;
+    track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
   },
 
   _renderPlexHomeCard(s) {
@@ -114,7 +127,7 @@ const HomePage = {
     const thumb = s.grandparentThumb || s.thumb || '';
     const baseUrl = this.state._plexServerBase || Services.plex.serverUrl || '';
     const thumbUrl = (thumb && baseUrl)
-      ? `${baseUrl}/photo/:/transcode?width=96&height=144&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
+      ? `${baseUrl}/photo/:/transcode?width=200&height=300&url=${encodeURIComponent(thumb)}&X-Plex-Token=${Services.plex.token}`
       : '';
     const viewOffset = s.viewOffset || 0;
     const duration = s.duration || 1;
@@ -126,19 +139,23 @@ const HomePage = {
     const state = s.Player?.state || 'playing';
     const rk = s.ratingKey;
     return `<div class="plex-home-card" onclick="App.navigate('plex-now-playing')">
-      ${thumbUrl
-        ? `<div class="plex-home-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
-        : `<div class="plex-home-thumb plex-home-thumb-ph">${UI.icon('film', 22)}</div>`}
+      <div class="plex-home-poster-wrap">
+        ${thumbUrl
+          ? `<div class="plex-home-thumb" style="background-image:url('${UI.escapeHtml(thumbUrl)}')"></div>`
+          : `<div class="plex-home-thumb plex-home-thumb-ph">${UI.icon('film', 28)}</div>`}
+        ${state === 'paused' ? `<div class="plex-home-paused-overlay">${UI.icon('pause', 20)}</div>` : ''}
+        <span class="plex-home-state ${state}">${state === 'paused' ? UI.icon('pause', 9) + ' Paused' : UI.icon('play', 9) + ' Playing'}</span>
+      </div>
       <div class="plex-home-info">
-        <span class="plex-home-state ${state}">${state === 'paused' ? UI.icon('pause', 10) : UI.icon('play', 10)}</span>
         <p class="plex-home-title">${UI.escapeHtml(title)}</p>
-        ${episodeLabel ? `<p class="plex-home-sub">${UI.escapeHtml(episodeLabel)}</p>` : ''}
-        ${episodeTitle ? `<p class="plex-home-ep-title">${UI.escapeHtml(episodeTitle)}</p>` : ''}
-        ${user ? `<p class="plex-home-user">${UI.escapeHtml(user)}</p>` : ''}
-        <div class="plex-home-bar"><div class="plex-home-fill" id="phf-${rk}" style="width:${progress.toFixed(1)}%"></div></div>
-        <div class="plex-home-times">
-          <span id="phe-${rk}">${elapsed}</span>
-          <span id="phr-${rk}">-${remaining}</span>
+        ${episodeLabel ? `<p class="plex-home-sub">${UI.escapeHtml(episodeLabel)}${episodeTitle ? ' \u00b7 ' + UI.escapeHtml(episodeTitle) : ''}</p>` : ''}
+        ${user ? `<p class="plex-home-user">${UI.icon('user', 10)} ${UI.escapeHtml(user)}</p>` : ''}
+        <div class="plex-home-progress">
+          <div class="plex-home-bar"><div class="plex-home-fill" id="phf-${rk}" style="width:${progress.toFixed(1)}%"></div></div>
+          <div class="plex-home-times">
+            <span id="phe-${rk}">${elapsed}</span>
+            <span id="phr-${rk}">-${remaining}</span>
+          </div>
         </div>
       </div>
     </div>`;

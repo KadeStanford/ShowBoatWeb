@@ -101,6 +101,8 @@ const Services = {
     const docId = mediaType === 'movie' ? `movie:${tmdbId}` :
       (season != null && episode != null) ? `tv:${tmdbId}:s${season}:e${episode}` : `tv:${tmdbId}`;
     await ref.doc(docId).delete();
+    // If shame was pending absolution, revert to active
+    await this._unresolveShames(tmdbId);
   },
 
   async markAllEpisodesUnwatched(tmdbId) {
@@ -119,6 +121,7 @@ const Services = {
       }
     });
     if (count > 0) await batch.commit();
+    await this._unresolveShames(tmdbId);
   },
 
   // Batch-mark all episodes in a series as watched (uses episode_count per season, no extra API calls)
@@ -376,6 +379,32 @@ const Services = {
         }).catch(() => {});
       }
     });
+    await batch.commit();
+  },
+
+  async _unresolveShames(tmdbId) {
+    const uid = this._uid(); if (!uid) return;
+    const snap = await db.collection('users').doc(uid).collection('shames')
+      .where('mediaId', '==', Number(tmdbId)).where('status', '==', 'pendingAbsolution').get();
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.docs.forEach(d => {
+      batch.update(d.ref, { status: 'active', watchedAt: firebase.firestore.FieldValue.delete() });
+      batch.update(db.collection('shames').doc(d.id), { status: 'active', watchedAt: firebase.firestore.FieldValue.delete() });
+    });
+    await batch.commit();
+  },
+
+  async rescindShame(shameId) {
+    const uid = this._uid(); if (!uid) return;
+    const globalRef = db.collection('shames').doc(shameId);
+    const doc = await globalRef.get();
+    if (!doc.exists) throw new Error('Shame not found');
+    const shame = doc.data();
+    if (shame.shamerUid !== uid) throw new Error('Only the person who gave the shame can rescind it');
+    const batch = db.batch();
+    batch.delete(globalRef);
+    batch.delete(db.collection('users').doc(shame.shamedUid).collection('shames').doc(shameId));
     await batch.commit();
   },
 

@@ -1098,7 +1098,7 @@ const WallOfShamePage = {
         </div>
       </div>
       <div class="shame-item-actions">
-        <div class="shame-icon">${UI.icon('flame', 20)}</div>
+        <button class="shame-rescind-btn" onclick="event.stopPropagation(); WallOfShamePage.rescind('${s.id}')" title="Rescind shame">${UI.icon('rotate-ccw', 14)} Rescind</button>
       </div>
     </div>`;
   },
@@ -1162,6 +1162,16 @@ const WallOfShamePage = {
       }
       this.draw();
       UI.toast('Shame continues! 🔥', 'success');
+    } catch (e) { UI.toast(e.message || 'Error', 'error'); }
+  },
+
+  async rescind(shameId) {
+    try {
+      await Services.rescindShame(shameId);
+      this.state.sent = this.state.sent.filter(s => s.id !== shameId);
+      this.state.pendingAbsolutions = this.state.pendingAbsolutions.filter(s => s.id !== shameId);
+      this.draw();
+      UI.toast('Shame rescinded', 'success');
     } catch (e) { UI.toast(e.message || 'Error', 'error'); }
   },
 

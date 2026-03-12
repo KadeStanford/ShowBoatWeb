@@ -1585,6 +1585,13 @@ ul, ol { list-style: none; }
 .shame-absolve-btn:hover { filter: brightness(1.15); }
 .shame-deny-btn { background: var(--rose-700); color: white; }
 .shame-deny-btn:hover { filter: brightness(1.15); }
+.shame-rescind-btn {
+  display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+  border-radius: var(--radius-md); border: 1px solid rgba(148,163,184,.25); cursor: pointer;
+  font-weight: 600; font-size: .75rem; transition: all var(--transition); white-space: nowrap;
+  background: transparent; color: var(--slate-400);
+}
+.shame-rescind-btn:hover { background: rgba(239,68,68,.1); color: var(--rose-400); border-color: rgba(239,68,68,.3); }
 .shame-verdict-prompt { color: var(--amber-400) !important; font-weight: 600; margin-top: 4px !important; }
 .shame-pending-note { color: var(--amber-400) !important; font-size: .75rem !important; margin-top: 2px !important; }
 
@@ -2489,26 +2496,41 @@ input[type="range"] {
   -webkit-appearance: none; appearance: none;
   height: 6px; border-radius: 3px; outline: none; cursor: pointer;
   background: var(--slate-700); transition: background .15s;
+  margin: 0; padding: 0;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; background: var(--slate-700);
 }
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
   border-radius: 50%; background: var(--indigo-500); cursor: pointer;
-  border: 2px solid rgba(255,255,255,.2);
+  border: 2px solid rgba(255,255,255,.25);
   box-shadow: 0 1px 6px rgba(0,0,0,.4);
   transition: transform .15s, box-shadow .15s;
+  margin-top: -7px;
 }
 input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.15); box-shadow: 0 2px 10px rgba(0,0,0,.5), 0 0 0 4px rgba(99,102,241,.15);
 }
 input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
 input[type="range"]::-moz-range-thumb {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--indigo-500);
-  border: 2px solid rgba(255,255,255,.2); cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%; background: var(--indigo-500);
+  border: 2px solid rgba(255,255,255,.25); cursor: pointer;
   box-shadow: 0 1px 6px rgba(0,0,0,.4);
 }
 input[type="range"]::-moz-range-track {
-  height: 6px; border-radius: 3px; background: var(--slate-700);
+  height: 6px; border-radius: 3px; background: var(--slate-700); border: none;
 }
+input[type="range"]::-ms-track {
+  height: 6px; border-radius: 3px; background: var(--slate-700); border: none; color: transparent;
+}
+input[type="range"]::-ms-thumb {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--indigo-500);
+  border: 2px solid rgba(255,255,255,.25); cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0,0,0,.4); margin-top: 0;
+}
+input[type="range"]::-ms-fill-lower { background: var(--indigo-500); border-radius: 3px; }
+input[type="range"]::-ms-fill-upper { background: var(--slate-700); border-radius: 3px; }
 
 /* Grid size slider row */
 .disc-grid-slider-row {
@@ -3272,22 +3294,51 @@ input[type="range"]::-moz-range-track {
 /* ============================================================
    HOME — PLEX NOW PLAYING SECTION
    ============================================================ */
-.plex-home-sessions { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.plex-carousel-wrap { position: relative; }
+.plex-carousel-btn {
+  display: none; position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(0,0,0,.65); color: #e5a00d; backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0,0,0,.4);
+  transition: all var(--transition);
+}
+.plex-carousel-btn:hover { background: rgba(229,160,13,.2); transform: translateY(-50%) scale(1.1); }
+.plex-carousel-prev { left: 4px; }
+.plex-carousel-next { right: 4px; }
+@media (min-width: 640px) { .plex-carousel-btn { display: flex; align-items: center; justify-content: center; } }
+.plex-home-sessions {
+  display: flex; gap: 14px; overflow-x: auto; padding: 4px 16px 12px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory; scroll-behavior: smooth;
+}
 .plex-home-sessions::-webkit-scrollbar { display: none; }
-.plex-home-card { display: flex; gap: 10px; align-items: flex-start; background: var(--bg-secondary); border: 1px solid rgba(229,160,13,.25); border-radius: 14px; padding: 10px; cursor: pointer; transition: all var(--transition); flex-shrink: 0; width: 240px; }
-.plex-home-card:hover { border-color: rgba(229,160,13,.6); background: rgba(229,160,13,.07); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(229,160,13,.15); }
-.plex-home-thumb { width: 64px; height: 96px; border-radius: 8px; background-size: cover; background-position: center; background-color: var(--bg-card); flex-shrink: 0; border: 1px solid var(--border-subtle); }
-.plex-home-thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
-.plex-home-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.plex-home-state { display: inline-flex; align-items: center; gap: 3px; font-size: .625rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; border-radius: 4px; padding: 2px 5px; width: fit-content; }
-.plex-home-state.playing { background: rgba(16,185,129,.15); color: #10b981; }
-.plex-home-state.paused  { background: rgba(245,158,11,.15); color: #f59e0b; }
-.plex-home-title { font-size: .8125rem; font-weight: 700; color: var(--text-primary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plex-home-sub { font-size: .75rem; color: var(--text-secondary); margin: 0; }
-.plex-home-user { font-size: .6875rem; color: var(--text-muted); margin: 0; }
-.plex-home-bar { width: 100%; height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 4px; }
-.plex-home-fill { height: 100%; background: #e5a00d; border-radius: 2px; transition: width .4s ease; }
-.plex-home-ep-title { font-size: .6875rem; color: var(--text-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plex-home-card {
+  display: flex; gap: 14px; align-items: stretch;
+  background: linear-gradient(135deg, rgba(229,160,13,.06), rgba(229,160,13,.02));
+  border: 1px solid rgba(229,160,13,.2); border-radius: 16px;
+  padding: 12px; cursor: pointer; transition: all var(--transition);
+  flex-shrink: 0; min-width: 320px; max-width: 380px;
+  scroll-snap-align: start;
+}
+.plex-home-card:hover { border-color: rgba(229,160,13,.5); background: rgba(229,160,13,.08); transform: translateY(-2px); box-shadow: 0 6px 24px rgba(229,160,13,.12); }
+.plex-home-poster-wrap { position: relative; flex-shrink: 0; width: 80px; height: 120px; border-radius: 10px; overflow: hidden; }
+.plex-home-thumb { width: 100%; height: 100%; background-size: cover; background-position: center; background-color: var(--bg-card); }
+.plex-home-thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--text-muted); width: 100%; height: 100%; background: var(--bg-card); }
+.plex-home-paused-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.8); }
+.plex-home-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.plex-home-state {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .625rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  border-radius: 4px; padding: 2px 7px; width: fit-content; position: absolute; bottom: 4px; left: 4px;
+}
+.plex-home-state.playing { background: rgba(16,185,129,.85); color: #fff; }
+.plex-home-state.paused  { background: rgba(245,158,11,.85); color: #fff; }
+.plex-home-title { font-size: .875rem; font-weight: 700; color: var(--text-primary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plex-home-sub { font-size: .75rem; color: var(--text-secondary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plex-home-user { font-size: .6875rem; color: var(--slate-400); margin: 2px 0 0; display: flex; align-items: center; gap: 4px; }
+.plex-home-progress { margin-top: auto; }
+.plex-home-bar { width: 100%; height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+.plex-home-fill { height: 100%; background: linear-gradient(90deg, #e5a00d, #f59e0b); border-radius: 2px; transition: width .4s ease; }
 .plex-home-times { display: flex; justify-content: space-between; font-size: .625rem; color: var(--text-muted); margin-top: 3px; }
 
 /* ============================================================
