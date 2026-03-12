@@ -1,8 +1,8 @@
-const CACHE_NAME = 'showboat-v72';
+const CACHE_NAME = 'showboat-v73';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/style.css?v=10',
+  '/css/style.css?v=25',
   '/js/firebase-config.js',
   '/js/api.js',
   '/js/services.js',
@@ -42,6 +42,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  // Skip Firebase Storage and other external storage — let browser handle CORS directly
+  if (url.hostname.includes('firebasestorage.googleapis.com') || url.hostname.includes('storage.googleapis.com')) return;
   // Network-first for API calls and JS files, cache-first for other static assets
   if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     e.respondWith(fetch(e.request).then(res => {

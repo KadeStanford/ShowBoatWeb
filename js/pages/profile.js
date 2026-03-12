@@ -686,13 +686,40 @@ const ProfilePage = {
     if (st.showQR && st.qrData && typeof QRCode !== 'undefined') {
       try {
         const qrSize = 160, qrX = W / 2 - qrSize / 2, qrY = y;
+        let mc = 0, isDark = null;
 
-        // Render QR to a tiny temp canvas (1px per module) to get module grid reliably
-        const tmpCanvas = document.createElement('canvas');
-        await QRCode.toCanvas(tmpCanvas, st.qrData, { margin: 0, scale: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
-        const mc = tmpCanvas.width; // module count = canvas width when scale=1 margin=0
-        const tmpCtx = tmpCanvas.getContext('2d');
-        const px = tmpCtx.getImageData(0, 0, mc, mc).data;
+        // Method 1: QRCode.create() — direct module data, no canvas needed
+        try {
+          const qrObj = QRCode.create(st.qrData, { errorCorrectionLevel: 'M' });
+          mc = qrObj.modules.size;
+          const data = qrObj.modules.data;
+          isDark = (row, col) => data[row * mc + col];
+        } catch (_) {}
+
+        // Method 2: fallback — render to temp canvas and read pixel data
+        if (!isDark) {
+          try {
+            const tmpCanvas = document.createElement('canvas');
+            await QRCode.toCanvas(tmpCanvas, st.qrData, { margin: 0, scale: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
+            mc = tmpCanvas.width;
+            const px = tmpCanvas.getContext('2d').getImageData(0, 0, mc, mc).data;
+            isDark = (row, col) => px[(row * mc + col) * 4] < 128;
+          } catch (_) {}
+        }
+
+        // Method 3: last resort — render QR as a plain image via toDataURL
+        if (!isDark) {
+          const dataUrl = await QRCode.toDataURL(st.qrData, { width: qrSize, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#ffffffff', light: '#00000000' } });
+          const qrImg = await this._loadImg(dataUrl);
+          ctx.fillStyle = 'rgba(255,255,255,.12)';
+          this._scRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 14); ctx.fill();
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          y = qrY + qrSize + 16;
+          ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(st.type === 'profile' ? 'Scan to add as friend' : 'Scan to join ShowBoat', W / 2, y);
+          throw new Error('skip'); // skip to branding
+        }
 
         // QR background
         ctx.fillStyle = 'rgba(255,255,255,.12)';
@@ -705,7 +732,7 @@ const ProfilePage = {
         // Draw each QR module with creative style
         for (let row = 0; row < mc; row++) {
           for (let col = 0; col < mc; col++) {
-            if (px[(row * mc + col) * 4] < 128) { // dark module (R channel)
+            if (isDark(row, col)) {
               const mx = qrX + col * cellSize;
               const my = qrY + row * cellSize;
               ctx.fillStyle = '#ffffff';
@@ -731,7 +758,7 @@ const ProfilePage = {
         ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         ctx.fillText(st.type === 'profile' ? 'Scan to add as friend' : 'Scan to join ShowBoat', W / 2, y);
-      } catch (e) { console.warn('QR generation failed', e); }
+      } catch (e) { if (e.message !== 'skip') console.warn('QR generation failed', e); }
     }
 
     // ── Branding ──
