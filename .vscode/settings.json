@@ -1,0 +1,8 @@
+{
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.gradle/**",
+    "**/android/build/**"
+  ],
+  "java.errors.incompleteClasspath.severity": "ignore"
+}

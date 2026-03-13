@@ -10,7 +10,6 @@ const HomePage = {
       await this.loadData();
       this.draw(el);
       this.startCarousel();
-      this.initPullToRefresh();
       if (auth.currentUser) this.loadKeepWatching();
     } catch (e) { el.innerHTML = UI.emptyState('Error loading home', e.message); }
   },
@@ -302,7 +301,6 @@ const HomePage = {
     const s = this.state;
     el.innerHTML = `
       <div class="home-page">
-        <div class="pull-refresh-indicator" id="pull-refresh"><div class="pull-refresh-spinner"></div><span>Pull to refresh</span></div>
         ${this.renderHero()}
         <div class="section" id="plex-now-playing-home" style="display:none"></div>
         ${this.renderMenuGrid()}
@@ -351,15 +349,8 @@ const HomePage = {
         </div>
       </div>`;
     }).join('');
-    const dots = s.featured.map((_, i) => `<span class="carousel-dot ${i === s.current ? 'active' : ''}" onclick="event.stopPropagation(); HomePage.goToSlide(${i})"></span>`).join('');
     return `<div class="hero-carousel" onclick="HomePage.onHeroClick()">
-      <button class="hero-profile-btn" onclick="event.stopPropagation(); App.navigate('profile')">${UI.icon('user', 22)}</button>
       ${slides}
-      <div class="carousel-controls">
-        <button class="carousel-arrow" onclick="event.stopPropagation(); HomePage.prevSlide()">${UI.icon('chevron-left', 24)}</button>
-        <button class="carousel-arrow" onclick="event.stopPropagation(); HomePage.nextSlide()">${UI.icon('chevron-right', 24)}</button>
-      </div>
-      <div class="carousel-dots">${dots}</div>
     </div>`;
   },
 
@@ -569,68 +560,5 @@ const HomePage = {
     // Clear now-playing in Firestore so friends don't see stale sessions
     if (this.state.plexSessions.length) Services.clearPlexNowPlaying().catch(() => {});
     document.getElementById('page-content')?.classList.remove('home-active');
-    // Remove pull-to-refresh listeners so they don't fire on other pages
-    const content = document.getElementById('page-content');
-    if (content && this._ptrStart) {
-      content.removeEventListener('touchstart', this._ptrStart);
-      content.removeEventListener('touchmove', this._ptrMove);
-      content.removeEventListener('touchend', this._ptrEnd);
-      this._ptrStart = this._ptrMove = this._ptrEnd = null;
-    }
-  },
-
-  initPullToRefresh() {
-    const content = document.getElementById('page-content');
-    if (!content) return;
-    const indicator = document.getElementById('pull-refresh');
-    if (!indicator) return;
-    let startY = 0, startScrollTop = 0, pulling = false;
-    const THRESHOLD = 80;
-
-    this._ptrStart = e => {
-      // Only engage if already scrolled to the very top when finger lands
-      startScrollTop = content.scrollTop;
-      if (startScrollTop < 1 && App.currentPage === 'home') {
-        startY = e.touches[0].clientY;
-        pulling = true;
-      } else {
-        pulling = false;
-      }
-    };
-
-    this._ptrMove = e => {
-      if (!pulling) return;
-      // Cancel if page scrolled away from top at any point
-      if (content.scrollTop > 2) { pulling = false; indicator.classList.remove('pulling'); return; }
-      // Cancel if we're no longer on the home page
-      if (App.currentPage !== 'home') { pulling = false; indicator.classList.remove('pulling'); return; }
-      const dy = e.touches[0].clientY - startY;
-      if (dy > 20 && content.scrollTop < 2) {
-        indicator.classList.add('pulling');
-        indicator.querySelector('span').textContent = dy > THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
-      } else {
-        indicator.classList.remove('pulling');
-      }
-    };
-
-    this._ptrEnd = e => {
-      if (!pulling) return;
-      pulling = false;
-      // Must still be on home page and at top of scroll
-      if (App.currentPage !== 'home' || content.scrollTop > 2) { indicator.classList.remove('pulling'); return; }
-      const dy = e.changedTouches[0].clientY - startY;
-      if (dy > THRESHOLD) {
-        indicator.classList.remove('pulling');
-        indicator.classList.add('refreshing');
-        indicator.querySelector('span').textContent = 'Refreshing...';
-        this.render().finally(() => {});
-      } else {
-        indicator.classList.remove('pulling');
-      }
-    };
-
-    content.addEventListener('touchstart', this._ptrStart, { passive: true });
-    content.addEventListener('touchmove', this._ptrMove, { passive: true });
-    content.addEventListener('touchend', this._ptrEnd, { passive: true });
   }
 };
