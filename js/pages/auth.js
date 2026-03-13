@@ -12,7 +12,6 @@ const AuthPages = {
       <!-- Nav -->
       <nav class="landing-nav">
         <div class="landing-nav-brand">
-          <img src="img/logo-wordmark.png" alt="ShowBoat" class="brand-icon" style="height:32px;border-radius:8px">
           <img src="img/logo-icon.png" alt="ShowBoat" class="brand-wordmark">
         </div>
         <div class="landing-nav-links">

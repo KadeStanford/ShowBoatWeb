@@ -81,7 +81,7 @@ ul, ol { list-style: none; }
 /* Brand logo images */
 .brand-wordmark { height: 32px; width: auto; object-fit: contain; display: block; }
 .brand-icon { width: 36px; height: 36px; object-fit: contain; display: block; }
-.sidebar-wordmark { height: 28px; }
+.sidebar-wordmark { height: 34px; }
 .auth-split-brand .brand-wordmark { height: 36px; }
 .landing-nav-brand .brand-wordmark { height: 28px; }
 .spinner { width: 32px; height: 32px; border: 3px solid var(--slate-800); border-top-color: var(--emerald-500); border-radius: 50%; animation: spin .8s linear infinite; }
@@ -138,9 +138,10 @@ ul, ol { list-style: none; }
 
 /* --- Page Content (with sidebar) --- */
 .page-content {
-  flex: 1; min-height: 100vh; margin-left: var(--sidebar-width);
+  flex: 1; min-height: 100vh; margin-left: 0;
   overflow-y: auto; overflow-x: hidden;
 }
+.page-content.has-nav { margin-left: var(--sidebar-width); }
 
 /* --- Bottom Nav (Mobile) --- */
 .bottom-nav {
@@ -310,9 +311,9 @@ ul, ol { list-style: none; }
   background: rgba(2,6,23,.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 }
 .landing-nav-brand {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center;
 }
-.landing-nav-brand .brand-wordmark { height: 24px; }
+.landing-nav-brand .brand-wordmark { height: 28px; }
 .landing-nav-links { display: flex; gap: 10px; align-items: center; }
 .landing-nav-login {
   background: none; border: 1px solid var(--glass-border); color: var(--slate-300);
