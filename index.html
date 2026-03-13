@@ -41,6 +41,15 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="img/icon.svg">
   <link rel="apple-touch-icon" href="img/logo-wordmark.png">
+
+  <!-- Preconnect to critical third-party origins to eliminate DNS+TLS round-trips -->
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="preconnect" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+  <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+  <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
   <link rel="stylesheet" href="css/style.css?v=30">
 </head>
 <body>
@@ -48,7 +57,7 @@
   <div id="app">
     <div id="loading-screen" class="loading-screen">
       <div class="loading-logo">
-        <img src="img/logo-wordmark.png" alt="ShowBoat" width="56" height="56">
+        <img src="img/logo-wordmark.png" alt="ShowBoat" width="56" height="56" fetchpriority="high">
       </div>
       <h1 class="loading-title">ShowBoat</h1>
       <div class="spinner"></div>
@@ -193,38 +202,35 @@
     </nav>
   </div>
 
-  <!-- Firebase SDK (compat for simplicity) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js" defer></script>
 
-  <!-- QR Code Library -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-
-  <!-- App Scripts -->
-  <script src="js/firebase-config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/services.js"></script>
-  <script src="js/badges.js"></script>
-  <script src="js/components.js"></script>
-  <script src="js/animations.js"></script>
-  <script src="js/native.js"></script>
-  <script src="js/pages/auth.js"></script>
-  <script src="js/pages/home.js"></script>
-  <script src="js/pages/discover.js"></script>
-  <script src="js/pages/details.js"></script>
-  <script src="js/pages/watchlist.js"></script>
-  <script src="js/pages/profile.js"></script>
-  <script src="js/pages/social.js"></script>
-  <script src="js/pages/matcher.js"></script>
-  <script src="js/pages/analytics.js"></script>
-  <script src="js/pages/plex.js"></script>
-  <script src="js/pages/lists.js"></script>
-  <script src="js/pages/media.js"></script>
-  <script src="js/pages/history.js"></script>
-  <script src="js/pages/settings.js"></script>
-  <script src="js/tour.js"></script>
-  <script src="js/app.js"></script>
+  <!-- App Scripts (QR code is lazy-loaded on demand in profile.js) -->
+  <script src="js/firebase-config.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/services.js" defer></script>
+  <script src="js/badges.js" defer></script>
+  <script src="js/components.js" defer></script>
+  <script src="js/animations.js" defer></script>
+  <script src="js/native.js" defer></script>
+  <script src="js/pages/auth.js" defer></script>
+  <script src="js/pages/home.js" defer></script>
+  <script src="js/pages/discover.js" defer></script>
+  <script src="js/pages/details.js" defer></script>
+  <script src="js/pages/watchlist.js" defer></script>
+  <script src="js/pages/profile.js" defer></script>
+  <script src="js/pages/social.js" defer></script>
+  <script src="js/pages/matcher.js" defer></script>
+  <script src="js/pages/analytics.js" defer></script>
+  <script src="js/pages/plex.js" defer></script>
+  <script src="js/pages/lists.js" defer></script>
+  <script src="js/pages/media.js" defer></script>
+  <script src="js/pages/history.js" defer></script>
+  <script src="js/pages/settings.js" defer></script>
+  <script src="js/tour.js" defer></script>
+  <script src="js/app.js" defer></script>
 </body>
 </html>

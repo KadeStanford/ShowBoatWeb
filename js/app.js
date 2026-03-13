@@ -82,12 +82,15 @@ const App = {
         Services.ensurePlexActivityBackfill().catch(() => {});
         // Start Plex auto-sync for newly watched content
         if (typeof PlexConnectPage !== 'undefined') PlexConnectPage.startAutoSync();
+        // Use requestIdleCallback for non-critical background tasks so they
+        // never compete with the first meaningful render
+        const _ric = (fn, timeout) => (window.requestIdleCallback || ((f, o) => setTimeout(f, o?.timeout ?? 4000)))(fn, { timeout });
         // Check for newly earned badges and show unlock notifications
-        setTimeout(() => checkAndNotifyNewBadges().catch(() => {}), 3000);
+        _ric(() => checkAndNotifyNewBadges().catch(() => {}), 6000);
         // Auto-start guided tour for new users
-        setTimeout(() => { if (typeof GuidedTour !== 'undefined' && GuidedTour.shouldAutoStart()) GuidedTour.start(); }, 1500);
+        _ric(() => { if (typeof GuidedTour !== 'undefined' && GuidedTour.shouldAutoStart()) GuidedTour.start(); }, 3000);
         // Sync widget data after login
-        if (typeof Native !== 'undefined') setTimeout(() => Native.syncWidgetData(), 2000);
+        if (typeof Native !== 'undefined') _ric(() => Native.syncWidgetData(), 4000);
         // Dismiss native login screen if it was showing (iOS)
         if (typeof Native !== 'undefined' && Native.isNative) Native.nativeAuth.dismissLogin();
         // If on auth page or no page, try to restore from URL hash first

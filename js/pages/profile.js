@@ -342,7 +342,23 @@ const ProfilePage = {
     }).map(t => t.id));
   },
 
+  // Lazy-load QR code library on first use (not needed on initial page load)
+  _qrCodeLoading: null,
+  async _ensureQRCode() {
+    if (typeof QRCode !== 'undefined') return;
+    if (this._qrCodeLoading) return this._qrCodeLoading;
+    this._qrCodeLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load QR code library'));
+      document.head.appendChild(s);
+    });
+    return this._qrCodeLoading;
+  },
+
   async showShareCard() {
+    await this._ensureQRCode().catch(() => {});
     const uid = auth.currentUser.uid;
     const p = this.state.profile || {};
     const s = this.state.stats || {};
@@ -365,6 +381,7 @@ const ProfilePage = {
   },
 
   async showInviteShareCard(code) {
+    await this._ensureQRCode().catch(() => {});
     const uid = auth.currentUser?.uid;
     const p = this.state.profile || {};
     const username = p.username || auth.currentUser?.displayName || 'User';

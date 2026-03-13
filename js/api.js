@@ -3,18 +3,45 @@ const TMDB_KEY = '02ce7d51a5b8a8614f1c06d0558f5acd';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 
+// In-memory TTL cache — eliminates redundant TMDB network calls within a session
+const _tmdbCache = new Map();
+const _CACHE_TTL       = 5  * 60 * 1000; // 5 min  — trending, search, discover
+const _CACHE_TTL_LONG  = 30 * 60 * 1000; // 30 min — details, credits, people, genres
+// Regex for endpoints whose data rarely changes mid-session
+const _LONG_TTL_RE = /\/(tv|movie)\/\d+$|\/credits|\/aggregate_credits|\/images|\/person\/\d+|\/genre\//;
+function _tmdbCacheGet(key) {
+  const entry = _tmdbCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > entry.ttl) { _tmdbCache.delete(key); return null; }
+  return entry.data;
+}
+function _tmdbCacheSet(key, data, ttl) {
+  _tmdbCache.set(key, { data, ts: Date.now(), ttl });
+  // Evict expired entries if cache grows large
+  if (_tmdbCache.size > 300) {
+    const now = Date.now();
+    for (const [k, v] of _tmdbCache) { if (now - v.ts > v.ttl) _tmdbCache.delete(k); }
+  }
+}
+
 const API = {
   // --- Image URL (generic, used by all pages) ---
   imageUrl(path, size = 'w342') { return path ? `${TMDB_IMG}/${size}${path}` : ''; },
 
-  // --- Fetch helper ---
+  // --- Fetch helper (cached) ---
   async tmdb(endpoint, params = {}) {
     const url = new URL(`${TMDB_BASE}${endpoint}`);
     url.searchParams.set('api_key', TMDB_KEY);
     Object.entries(params).forEach(([k, v]) => { if (v != null) url.searchParams.set(k, String(v)); });
+    const cacheKey = url.toString();
+    const cached = _tmdbCacheGet(cacheKey);
+    if (cached) return cached;
     const res = await fetch(url);
     if (!res.ok) return null;
-    return res.json();
+    const data = await res.json();
+    const ttl = _LONG_TTL_RE.test(endpoint) ? _CACHE_TTL_LONG : _CACHE_TTL;
+    _tmdbCacheSet(cacheKey, data, ttl);
+    return data;
   },
 
   // --- Search (return raw TMDB results) ---

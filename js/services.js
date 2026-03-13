@@ -3,6 +3,19 @@ const Services = {
   _user() { return auth.currentUser; },
   _uid() { return this._user()?.uid; },
 
+  // Session-level read cache — avoids duplicate Firestore reads within a page session.
+  // Cleared on writes and when UID changes.
+  _rc: {
+    _uid: null,
+    wl:      new Map(), // isInWatchlist: tmdbId → bool
+    rating:  new Map(), // getRating:     tmdbId → data|null
+    watched: new Map(), // isWatched:     compositeKey → bool
+    _ensure(uid) { if (uid !== this._uid) { this.wl.clear(); this.rating.clear(); this.watched.clear(); this._uid = uid; } },
+    clearWl(tmdbId)     { if (tmdbId != null) this.wl.delete(String(tmdbId)); else this.wl.clear(); },
+    clearRating(tmdbId) { if (tmdbId != null) this.rating.delete(String(tmdbId)); else this.rating.clear(); },
+    clearWatched(key)   { if (key != null) this.watched.delete(key); else this.watched.clear(); }
+  },
+
   // ==================== WATCHLIST ====================
   async getWatchlist(userId) {
     const uid = userId || this._uid(); if (!uid) return [];
@@ -17,8 +30,13 @@ const Services = {
 
   async isInWatchlist(tmdbId) {
     const uid = this._uid(); if (!uid) return false;
+    this._rc._ensure(uid);
+    const k = String(tmdbId);
+    if (this._rc.wl.has(k)) return this._rc.wl.get(k);
     const snap = await db.collection('users').doc(uid).collection('watchlist').where('id', '==', Number(tmdbId)).get();
-    return !snap.empty;
+    const result = !snap.empty;
+    this._rc.wl.set(k, result);
+    return result;
   },
 
   async addToWatchlist(item) {
@@ -28,6 +46,7 @@ const Services = {
       mediaType: item.mediaType || 'tv', addedAt: Date.now(),
       backdropPath: item.backdropPath || null, overview: item.overview || ''
     });
+    this._rc.wl.set(String(item.id), true);
     this._logActivity('added_to_watchlist', item);
   },
 
@@ -37,6 +56,7 @@ const Services = {
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
+    this._rc.wl.set(String(tmdbId), false);
   },
 
   async toggleWatchlist(item) {
@@ -58,18 +78,26 @@ const Services = {
 
   async isWatched(tmdbId, mediaType, season, episode) {
     const uid = this._uid(); if (!uid) return false;
+    this._rc._ensure(uid);
+    const k = season != null && episode != null
+      ? `${mediaType}:${tmdbId}:s${season}:e${episode}`
+      : `${mediaType}:${tmdbId}`;
+    if (this._rc.watched.has(k)) return this._rc.watched.get(k);
     const ref = db.collection('users').doc(uid).collection('watched');
+    let result;
     if (mediaType === 'movie') {
       const snap = await ref.where('tmdbId', '==', Number(tmdbId)).where('mediaType', '==', 'movie').get();
-      return !snap.empty;
-    }
-    if (season != null && episode != null) {
+      result = !snap.empty;
+    } else if (season != null && episode != null) {
       const docId = `tv:${tmdbId}:s${season}:e${episode}`;
       const doc = await ref.doc(docId).get();
-      return doc.exists;
+      result = doc.exists;
+    } else {
+      const snap = await ref.where('tmdbId', '==', Number(tmdbId)).get();
+      result = !snap.empty;
     }
-    const snap = await ref.where('tmdbId', '==', Number(tmdbId)).get();
-    return !snap.empty;
+    this._rc.watched.set(k, result);
+    return result;
   },
 
   async markWatched(tmdbId, mediaType, season, episode, meta = {}) {
@@ -84,6 +112,11 @@ const Services = {
       name: meta.title || meta.name || '', posterPath: meta.posterPath || null,
       backdropPath: meta.backdropPath || null, overview: meta.overview || ''
     }, { merge: true });
+    // Update watched cache
+    const _wk = season != null && episode != null
+      ? `${mediaType}:${tmdbId}:s${season}:e${episode}`
+      : `${mediaType}:${tmdbId}`;
+    this._rc.watched.set(_wk, true);
     const actType = (season != null && episode != null) ? 'watched_episode' : 'watched';
     this._logActivity(actType, {
       id: tmdbId, name: meta.title || meta.name, mediaType, posterPath: meta.posterPath,
@@ -101,6 +134,11 @@ const Services = {
     const docId = mediaType === 'movie' ? `movie:${tmdbId}` :
       (season != null && episode != null) ? `tv:${tmdbId}:s${season}:e${episode}` : `tv:${tmdbId}`;
     await ref.doc(docId).delete();
+    // Invalidate watched cache for this item
+    const _wk = season != null && episode != null
+      ? `${mediaType}:${tmdbId}:s${season}:e${episode}`
+      : `${mediaType}:${tmdbId}`;
+    this._rc.watched.set(_wk, false);
     // If shame was pending absolution, revert to active
     await this._unresolveShames(tmdbId);
   },
@@ -159,25 +197,33 @@ const Services = {
 
   async getRating(tmdbId) {
     const uid = this._uid(); if (!uid) return null;
-    const doc = await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).get();
-    return doc.exists ? doc.data() : null;
+    this._rc._ensure(uid);
+    const k = String(tmdbId);
+    if (this._rc.rating.has(k)) return this._rc.rating.get(k);
+    const doc = await db.collection('users').doc(uid).collection('ratings').doc(k).get();
+    const result = doc.exists ? doc.data() : null;
+    this._rc.rating.set(k, result);
+    return result;
   },
 
   async rateMedia(tmdbId, rating, meta = {}) {
     const uid = this._uid(); if (!uid) return;
     if (!rating || rating <= 0) { await this.removeRating(tmdbId); return; }
-    await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).set({
+    const data = {
       tmdbId: Number(tmdbId), rating, ratedAt: Date.now(),
       name: meta.name || '', posterPath: meta.posterPath || null,
       mediaType: meta.mediaType || 'tv',
       review: meta.review || ''
-    }, { merge: true });
+    };
+    await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).set(data, { merge: true });
+    this._rc.rating.set(String(tmdbId), data);
     this._logActivity('rated', { id: tmdbId, name: meta.name, mediaType: meta.mediaType, posterPath: meta.posterPath, rating, comment: meta.review });
   },
 
   async removeRating(tmdbId) {
     const uid = this._uid(); if (!uid) return;
     await db.collection('users').doc(uid).collection('ratings').doc(String(tmdbId)).delete().catch(() => {});
+    this._rc.rating.set(String(tmdbId), null);
   },
 
   async removeEpisodeRating(tmdbId, season, episode) {

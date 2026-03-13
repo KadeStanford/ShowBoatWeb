@@ -1,8 +1,8 @@
-const CACHE_NAME = 'showboat-v82';
+const CACHE_NAME = 'showboat-v84';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/style.css?v=27',
+  '/css/style.css?v=30',
   '/js/firebase-config.js',
   '/js/api.js',
   '/js/services.js',
@@ -43,16 +43,61 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Skip Firebase Storage and other external storage — let browser handle CORS directly
+
+  // Skip Firebase Storage — let browser handle CORS directly
   if (url.hostname.includes('firebasestorage.googleapis.com') || url.hostname.includes('storage.googleapis.com')) return;
-  // Network-first for API calls and JS files, cache-first for other static assets
-  if (url.hostname.includes('api.themoviedb.org') || url.hostname.includes('firestore.googleapis.com') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
-    e.respondWith(fetch(e.request).then(res => {
-      const clone = res.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-      return res;
-    }).catch(() => caches.match(e.request)));
-  } else {
-    e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request)));
+
+  // Skip Firestore & Firebase auth — always network
+  if (url.hostname.includes('firestore.googleapis.com') || url.hostname.includes('identitytoolkit.googleapis.com') || url.hostname.includes('securetoken.googleapis.com')) return;
+
+  // TMDB API: stale-while-revalidate (serve from cache instantly, refresh in background)
+  if (url.hostname.includes('api.themoviedb.org')) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(async cache => {
+        const cached = await cache.match(e.request);
+        const fetchPromise = fetch(e.request).then(res => {
+          if (res.ok) cache.put(e.request, res.clone());
+          return res;
+        }).catch(() => null);
+        return cached || fetchPromise;
+      })
+    );
+    return;
   }
+
+  // TMDB images: cache-first (images don't change)
+  if (url.hostname.includes('image.tmdb.org')) {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return res;
+        });
+      })
+    );
+    return;
+  }
+
+  // App JS & CSS: stale-while-revalidate (fast load + background refresh)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(async cache => {
+        const cached = await cache.match(e.request);
+        const fetchPromise = fetch(e.request).then(res => {
+          if (res.ok) cache.put(e.request, res.clone());
+          return res;
+        }).catch(() => null);
+        // Serve from cache immediately; refresh in background
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // Everything else: cache-first with network fallback
+  e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request)));
 });
